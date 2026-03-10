@@ -4,6 +4,8 @@ import { db } from '../config/database';
 import { authenticate, requireRoles } from '../middleware/auth.middleware';
 import { writeAuditLog } from '../services/audit.service';
 import { createIntegrityHash } from '../services/integrity.service';
+import { sendDonationReceipt, sendHighValueDonationAlert } from '../services/email.service';
+import { decrypt } from '../utils/crypto';
 import { v4 as uuidv4 } from 'uuid';
 
 export const donationRouter = Router();
@@ -111,6 +113,59 @@ donationRouter.post(
       actorId:       req.user!.userId,
       ipAddress:     req.ip,
     });
+
+    // Send email receipt to donor (non-blocking)
+    if (donorId) {
+      (async () => {
+        try {
+          const donorRow = await db('dfb_donors as d')
+            .join('dfb_users as u', 'u.user_id', 'd.user_id')
+            .where('d.donor_id', donorId)
+            .first('u.email_encrypted', 'd.first_name', 'd.last_name');
+          const fundRow = targetFundId
+            ? await db('dfb_funds').where({ fund_id: targetFundId }).first('fund_name')
+            : null;
+          const campaignRow = campaignId
+            ? await db('dfb_campaigns').where({ campaign_id: campaignId }).first('title')
+            : null;
+
+          if (donorRow?.email_encrypted) {
+            const toEmail = decrypt(donorRow.email_encrypted);
+            await sendDonationReceipt({
+              toEmail,
+              firstName: donorRow.first_name || 'Donor',
+              amount: netAmount,
+              currency,
+              transactionId: txnId,
+              fundName: fundRow?.fund_name,
+              campaignName: campaignRow?.title,
+              date: new Date(),
+            });
+          }
+
+          // Alert admin for high-value donations (>= 10,000)
+          if (netAmount >= 10000) {
+            const adminRow = await db('dfb_users')
+              .join('dfb_roles', 'dfb_roles.role_id', 'dfb_users.role_id')
+              .where('dfb_roles.role_name', 'Super Admin')
+              .first('dfb_users.email_encrypted', 'dfb_users.first_name');
+            if (adminRow?.email_encrypted) {
+              const adminEmail = decrypt(adminRow.email_encrypted);
+              await sendHighValueDonationAlert({
+                toEmail: adminEmail,
+                amount: netAmount,
+                currency,
+                transactionId: txnId,
+                donorName: donorRow ? `${donorRow.first_name} ${donorRow.last_name}` : 'Anonymous',
+              });
+            }
+          }
+        } catch (err) {
+          // Non-fatal — log but never crash the request
+          console.error('[Email] Donation receipt error:', err);
+        }
+      })();
+    }
 
     res.status(201).json({ success: true, transactionId: txnId, netAmount });
   }

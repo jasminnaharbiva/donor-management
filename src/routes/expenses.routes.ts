@@ -5,6 +5,8 @@ import { authenticate, requireRoles } from '../middleware/auth.middleware';
 import { consumeAllocations } from '../services/fifo.service';
 import { createIntegrityHash } from '../services/integrity.service';
 import { writeAuditLog } from '../services/audit.service';
+import { sendExpenseApproved, sendExpenseRejected } from '../services/email.service';
+import { decrypt } from '../utils/crypto';
 import { v4 as uuidv4 } from 'uuid';
 
 export const expenseRouter = Router();
@@ -166,6 +168,26 @@ expenseRouter.post(
       ipAddress:     req.ip,
     });
 
+    // Send email notification to the volunteer (non-blocking)
+    try {
+      const vol = await db('dfb_volunteers as v')
+        .join('dfb_users as u', 'v.volunteer_id', 'u.volunteer_id')
+        .where('v.volunteer_id', expense.submitted_by_volunteer_id)
+        .first('u.email', 'v.first_name');
+      if (vol?.email) {
+        const email = (() => { try { return decrypt(vol.email); } catch { return null; } })();
+        if (email) {
+          sendExpenseApproved({
+            toEmail: email,
+            firstName: vol.first_name || 'Volunteer',
+            amount: Number(expense.amount_spent),
+            purpose: expense.purpose || 'Expense',
+            expenseId: expense.expense_id,
+          }).catch(() => {});
+        }
+      }
+    } catch { /* non-critical */ }
+
     res.json({ success: true, message: 'Expense approved and allocations consumed (FIFO)' });
   }
 );
@@ -204,6 +226,27 @@ expenseRouter.post(
       actorId:       req.user!.userId,
       ipAddress:     req.ip,
     });
+
+    // Send rejection email (non-blocking)
+    try {
+      const vol = await db('dfb_volunteers as v')
+        .join('dfb_users as u', 'v.volunteer_id', 'u.volunteer_id')
+        .where('v.volunteer_id', expense.submitted_by_volunteer_id)
+        .first('u.email', 'v.first_name');
+      if (vol?.email) {
+        const email = (() => { try { return decrypt(vol.email); } catch { return null; } })();
+        if (email) {
+          sendExpenseRejected({
+            toEmail: email,
+            firstName: vol.first_name || 'Volunteer',
+            amount: Number(expense.amount_spent),
+            purpose: expense.purpose || 'Expense',
+            reason: req.body.reason,
+            expenseId: expense.expense_id,
+          }).catch(() => {});
+        }
+      }
+    } catch { /* non-critical */ }
 
     res.json({ success: true, message: 'Expense rejected' });
   }

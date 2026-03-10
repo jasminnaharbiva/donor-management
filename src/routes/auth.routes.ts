@@ -7,6 +7,7 @@ import { redis } from '../config/redis';
 import { config } from '../config';
 import { authenticate } from '../middleware/auth.middleware';
 import { writeAuditLog } from '../services/audit.service';
+import { sendWelcomeEmail } from '../services/email.service';
 import { encrypt, decrypt } from '../utils/crypto';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -63,15 +64,16 @@ authRouter.post(
 
       // Create user account
       await trx('dfb_users').insert({
-        user_id:       userId,
-        email:         encryptedEmail,
-        email_hash:    emailHash,
-        password_hash: passwordHash,
-        role_id:       donorRole?.role_id || 5,
-        donor_id:      donorId,
-        status:        'pending',
-        created_at:    new Date(),
-        updated_at:    new Date(),
+        user_id:           userId,
+        email:             encryptedEmail,
+        email_hash:        emailHash,
+        password_hash:     passwordHash,
+        role_id:           donorRole?.role_id || 5,
+        donor_id:          donorId,
+        status:            'active',
+        email_verified_at: new Date(),
+        created_at:        new Date(),
+        updated_at:        new Date(),
       });
     });
 
@@ -84,9 +86,12 @@ authRouter.post(
       userAgent:     req.get('User-Agent'),
     });
 
+    // Send welcome email (non-blocking)
+    sendWelcomeEmail({ toEmail: email, firstName, role: 'Donor' }).catch(() => {});
+
     res.status(201).json({
       success: true,
-      message: 'Registration successful. Please verify your email.',
+      message: 'Registration successful. Welcome to DFB Foundation!',
       userId,
     });
   }

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import DonorDashboard from './pages/donor/DonorDashboard';
 import VolunteerDashboard from './pages/volunteer/VolunteerDashboard';
@@ -14,6 +15,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<PublicHome />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           
           {/* Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['Super Admin', 'Admin']} />}>
