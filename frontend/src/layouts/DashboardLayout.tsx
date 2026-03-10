@@ -180,7 +180,7 @@ export default function DashboardLayout({ children, menuItems, title, role }: Da
                   {/* Actions */}
                   <div className="py-1">
                     <button
-                      onClick={() => setDropdownOpen(false)}
+                      onClick={() => { setDropdownOpen(false); navigate('/profile'); }}
                       className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
                     >
                       <User size={16} className="text-slate-400" />

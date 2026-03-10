@@ -7,6 +7,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import DonorDashboard from './pages/donor/DonorDashboard';
 import VolunteerDashboard from './pages/volunteer/VolunteerDashboard';
 import PublicHome from './pages/PublicHome';
+import ProfilePage from './pages/ProfilePage';
 
 export default function App() {
   return (
@@ -30,6 +31,11 @@ export default function App() {
           {/* Volunteer Routes */}
           <Route element={<ProtectedRoute allowedRoles={['Volunteer', 'Super Admin', 'Admin']} />}>
             <Route path="/volunteer/*" element={<VolunteerDashboard />} />
+          </Route>
+
+          {/* Profile — all authenticated roles */}
+          <Route element={<ProtectedRoute allowedRoles={['Super Admin', 'Admin', 'Donor', 'Volunteer']} />}>
+            <Route path="/profile" element={<ProfilePage />} />
           </Route>
 
           {/* Catch All */}

@@ -3,7 +3,8 @@ import DashboardLayout from '../../layouts/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
 import {
   Settings, Shield, Activity, Users, Megaphone, BarChart3,
-  Heart, DollarSign, Target, UserCheck, Layers
+  Heart, DollarSign, Target, UserCheck, Layers, Globe, HandCoins,
+  CalendarClock, Bell, UserRound
 } from 'lucide-react';
 
 import SettingsPanel from './SettingsPanel';
@@ -18,6 +19,11 @@ import VolunteersAdminPanel from './VolunteersAdminPanel';
 import ReportsPanel from './ReportsPanel';
 import AnnouncementsPanel from './AnnouncementsPanel';
 import DashboardStats from './DashboardStats';
+import SeoPanel from './SeoPanel';
+import BeneficiariesPanel from './BeneficiariesPanel';
+import PledgesPanel from './PledgesPanel';
+import RecurringPanel from './RecurringPanel';
+import NotificationsAdminPanel from './NotificationsAdminPanel';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -32,9 +38,14 @@ export default function AdminDashboard() {
     { name: 'Users', path: '/admin/users', icon: <Users size={20} /> },
     { name: 'Roles & Perms', path: '/admin/roles', icon: <Shield size={20} /> },
     { name: 'Announcements', path: '/admin/announcements', icon: <Megaphone size={20} /> },
+    { name: 'Beneficiaries', path: '/admin/beneficiaries', icon: <UserRound size={20} /> },
+    { name: 'Pledges', path: '/admin/pledges', icon: <HandCoins size={20} /> },
+    { name: 'Recurring', path: '/admin/recurring', icon: <CalendarClock size={20} /> },
+    { name: 'Notifications', path: '/admin/notifications', icon: <Bell size={20} /> },
     { name: 'Reports', path: '/admin/reports', icon: <Activity size={20} /> },
     { name: 'Audit Logs', path: '/admin/audit', icon: <Activity size={20} /> },
     { name: 'System Settings', path: '/admin/settings', icon: <Settings size={20} /> },
+    { name: 'SEO Manager', path: '/admin/seo', icon: <Globe size={20} /> },
   ];
 
   return (
@@ -58,6 +69,11 @@ export default function AdminDashboard() {
           <Route path="reports" element={<ReportsPanel />} />
           <Route path="audit" element={<AuditLogsFull />} />
           <Route path="settings" element={<SettingsPanel />} />
+          <Route path="seo" element={<SeoPanel />} />
+          <Route path="beneficiaries" element={<BeneficiariesPanel />} />
+          <Route path="pledges" element={<PledgesPanel />} />
+          <Route path="recurring" element={<RecurringPanel />} />
+          <Route path="notifications" element={<NotificationsAdminPanel />} />
         </Routes>
       </div>
     </DashboardLayout>
