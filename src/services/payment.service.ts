@@ -1,3 +1,4 @@
+import { db } from '../config/database';
 import { createIntegrityHash } from './integrity.service';
 import { evaluateUserBadges } from './gamification.service';
 import { v4 as uuidv4 } from 'uuid';
