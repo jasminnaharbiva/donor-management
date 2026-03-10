@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+DATABASE.md
+*.log
+logs/
+uploads/
