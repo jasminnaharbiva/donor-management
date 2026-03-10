@@ -1,37 +1,66 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
-import { Settings, Shield, Activity, Users } from 'lucide-react';
+import {
+  Settings, Shield, Activity, Users, Megaphone, BarChart3,
+  Heart, DollarSign, Target, UserCheck, Layers
+} from 'lucide-react';
 
 import SettingsPanel from './SettingsPanel';
-// import RolesPanel from './RolesPanel';
-// import AuditLogs from './AuditLogs';
+import RolesPanelFull from './RolesPanelFull';
+import AuditLogsFull from './AuditLogsFull';
+import UsersPanelFull from './UsersPanelFull';
+import CampaignsPanel from './CampaignsPanel';
+import DonorsPanel from './DonorsPanel';
+import DonationsPanel from './DonationsPanel';
+import ExpensesAdminPanel from './ExpensesAdminPanel';
+import VolunteersAdminPanel from './VolunteersAdminPanel';
+import ReportsPanel from './ReportsPanel';
+import AnnouncementsPanel from './AnnouncementsPanel';
+import DashboardStats from './DashboardStats';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
 
   const menuItems = [
-    { name: 'System Settings', path: '/admin/settings', icon: <Settings size={20} /> },
-    { name: 'Role Management', path: '/admin/roles', icon: <Shield size={20} /> },
+    { name: 'Overview', path: '/admin/overview', icon: <Layers size={20} /> },
+    { name: 'Campaigns', path: '/admin/campaigns', icon: <Target size={20} /> },
+    { name: 'Donations', path: '/admin/donations', icon: <DollarSign size={20} /> },
+    { name: 'Donors', path: '/admin/donors', icon: <Heart size={20} /> },
+    { name: 'Expenses', path: '/admin/expenses', icon: <BarChart3 size={20} /> },
+    { name: 'Volunteers', path: '/admin/volunteers', icon: <UserCheck size={20} /> },
+    { name: 'Users', path: '/admin/users', icon: <Users size={20} /> },
+    { name: 'Roles & Perms', path: '/admin/roles', icon: <Shield size={20} /> },
+    { name: 'Announcements', path: '/admin/announcements', icon: <Megaphone size={20} /> },
+    { name: 'Reports', path: '/admin/reports', icon: <Activity size={20} /> },
     { name: 'Audit Logs', path: '/admin/audit', icon: <Activity size={20} /> },
-    { name: 'User Management', path: '/admin/users', icon: <Users size={20} /> },
+    { name: 'System Settings', path: '/admin/settings', icon: <Settings size={20} /> },
   ];
 
   return (
-    <DashboardLayout 
-      title="Admin Control Panel" 
-      role={user?.role || 'Admin'} 
+    <DashboardLayout
+      title="Admin Control Panel"
+      role={user?.role || 'Admin'}
       menuItems={menuItems}
     >
       <div className="animate-in fade-in duration-500">
         <Routes>
-          <Route path="/" element={<Navigate to="settings" replace />} />
+          <Route path="/" element={<Navigate to="overview" replace />} />
+          <Route path="overview" element={<DashboardStats />} />
+          <Route path="campaigns" element={<CampaignsPanel />} />
+          <Route path="donations" element={<DonationsPanel />} />
+          <Route path="donors" element={<DonorsPanel />} />
+          <Route path="expenses" element={<ExpensesAdminPanel />} />
+          <Route path="volunteers" element={<VolunteersAdminPanel />} />
+          <Route path="users" element={<UsersPanelFull />} />
+          <Route path="roles" element={<RolesPanelFull />} />
+          <Route path="announcements" element={<AnnouncementsPanel />} />
+          <Route path="reports" element={<ReportsPanel />} />
+          <Route path="audit" element={<AuditLogsFull />} />
           <Route path="settings" element={<SettingsPanel />} />
-          <Route path="roles" element={<div className="glass p-6 rounded-xl">Role Management (Coming Soon)</div>} />
-          <Route path="audit" element={<div className="glass p-6 rounded-xl">Audit Logs (Coming Soon)</div>} />
-          <Route path="users" element={<div className="glass p-6 rounded-xl">User Management (Coming Soon)</div>} />
         </Routes>
       </div>
     </DashboardLayout>
   );
 }
+

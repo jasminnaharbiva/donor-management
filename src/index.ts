@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import http from 'http';
+import path from 'path';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -27,6 +28,13 @@ import { volunteersRouter } from './routes/volunteers.routes';
 import { adminRouter } from './routes/admin.routes';
 import { advancedRouter } from './routes/advanced.routes';
 import { processDonationQueue, initCronJobs } from './services/queue.worker';
+import { campaignsRouter } from './routes/campaigns.routes';
+import { beneficiariesRouter } from './routes/beneficiaries.routes';
+import { announcementsRouter } from './routes/announcements.routes';
+import { notificationsRouter } from './routes/notifications.routes';
+import { pledgesRouter } from './routes/pledges.routes';
+import { recurringRouter } from './routes/recurring.routes';
+import { reportsRouter } from './routes/reports.routes';
 
 const app    = express();
 const server = http.createServer(app);
@@ -138,6 +146,13 @@ app.use('/api/v1/public',    publicRouter);
 app.use('/api/v1/volunteers', volunteersRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/advanced', advancedRouter);
+app.use('/api/v1/campaigns', campaignsRouter);
+app.use('/api/v1/beneficiaries', beneficiariesRouter);
+app.use('/api/v1/announcements', announcementsRouter);
+app.use('/api/v1/notifications', notificationsRouter);
+app.use('/api/v1/pledges', pledgesRouter);
+app.use('/api/v1/recurring', recurringRouter);
+app.use('/api/v1/reports', reportsRouter);
 
 // Health check (no auth, no rate limit)
 app.get('/health', (_req, res) => {
@@ -147,6 +162,20 @@ app.get('/health', (_req, res) => {
     uptime:  process.uptime(),
     ts:      new Date().toISOString(),
   });
+});
+
+// ---------------------------------------------------------------------------
+// Serve Frontend (React SPA)
+// ---------------------------------------------------------------------------
+const frontendBuildPath = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendBuildPath));
+
+// Fallback all unused non-API routes to React's index.html
+app.get('*', (req, res, next) => {
+  if (req.url.startsWith('/api/')) {
+    return next();
+  }
+  res.sendFile(path.join(frontendBuildPath, 'index.html'));
 });
 
 // 404 & error handlers (must be last)

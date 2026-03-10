@@ -4,6 +4,7 @@ import { db } from '../config/database';
 import { authenticate, requireRoles } from '../middleware/auth.middleware';
 import { invalidatePermissionCache, broadcastConfigChange } from '../services/admin.service';
 import { writeAuditLog } from '../services/audit.service';
+import { decrypt } from '../utils/crypto';
 
 export const adminRouter = Router();
 
@@ -250,4 +251,94 @@ adminRouter.put('/roles/:id/permissions',
     });
 
     res.json({ success: true, message: 'Role permissions updated and caches flushed' });
+});
+
+// ---------------------------------------------------------------------------
+// 6. User Management (dfb_users)
+// ---------------------------------------------------------------------------
+adminRouter.get('/users', async (_req: Request, res: Response) => {
+  const users = await db('dfb_users as u')
+    .leftJoin('dfb_roles as r', 'u.role_id', 'r.role_id')
+    .select(
+      'u.user_id',
+      'u.email',
+      'u.status',
+      'u.last_login_at',
+      'u.created_at',
+      'r.role_name'
+    )
+    .orderBy('u.created_at', 'desc');
+
+  // Decrypt emails
+  users.forEach((user: any) => {
+    try { user.email = decrypt(user.email); } catch { user.email = '[encrypted]'; }
+  });
+
+  res.json({ success: true, data: users });
+});
+
+// Update User Status or Role
+adminRouter.put('/users/:id',
+  param('id').isUUID(),
+  body('status').optional().isIn(['active', 'pending', 'suspended']),
+  body('role_id').optional().isInt(),
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
+    const userId = req.params.id as string;
+    const { status, role_id } = req.body;
+
+    const updateData: any = { updated_at: new Date() };
+    if (status) updateData.status = status;
+    if (role_id) updateData.role_id = role_id;
+
+    const updated = await db('dfb_users')
+      .where({ user_id: userId })
+      .update(updateData);
+
+    if (!updated) { res.status(404).json({ success: false, message: 'User not found' }); return; }
+
+    await writeAuditLog({
+      tableAffected: 'dfb_users',
+      recordId: userId,
+      actionType: 'UPDATE',
+      newPayload: updateData,
+      actorId: req.user!.userId,
+      ipAddress: req.ip
+    });
+
+    res.json({ success: true, message: 'User updated successfully' });
+});
+
+// ---------------------------------------------------------------------------
+// 7. Audit Logs (dfb_audit_logs)
+// ---------------------------------------------------------------------------
+adminRouter.get('/audit', async (_req: Request, res: Response) => {
+  const logs = await db('dfb_audit_logs as a')
+    .leftJoin('dfb_users as u', 'a.actor_id', 'u.user_id')
+    .select(
+      'a.log_id',
+      'a.table_affected',
+      'a.record_id',
+      'a.action_type',
+      'a.old_payload',
+      'a.new_payload',
+      'a.actor_id',
+      'u.email as actor_email',
+      'a.actor_role',
+      'a.ip_address',
+      'a.timestamp'
+    )
+    .orderBy('a.timestamp', 'desc')
+    .limit(500);
+
+  // Decrypt actor emails if available
+  logs.forEach((log: any) => {
+    if (log.actor_email) {
+      try { log.actor_email = decrypt(log.actor_email); } catch { log.actor_email = '[encrypted]'; }
+    }
+  });
+
+  res.json({ success: true, data: logs });
 });

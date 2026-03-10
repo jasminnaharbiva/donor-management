@@ -211,3 +211,33 @@ donationRouter.post(
     res.json({ success: true, message: 'Refund processed' });
   }
 );
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/donations/my — donor's own donation history
+// ---------------------------------------------------------------------------
+donationRouter.get(
+  '/my',
+  authenticate,
+  async (req: Request, res: Response): Promise<void> => {
+    const user = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
+    if (!user?.donor_id) {
+      res.json({ success: true, data: [] });
+      return;
+    }
+    const page  = Number(req.query.page)  || 1;
+    const limit = Number(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+    const rows = await db('dfb_transactions as t')
+      .leftJoin('dfb_funds as f', 't.fund_id', 'f.fund_id')
+      .leftJoin('dfb_campaigns as c', 't.campaign_id', 'c.campaign_id')
+      .where({ 't.donor_id': user.donor_id })
+      .orderBy('t.created_at', 'desc')
+      .limit(limit)
+      .offset(offset)
+      .select(
+        't.transaction_id as id', 't.net_amount as amount', 't.payment_method',
+        't.status', 't.created_at', 'f.fund_name', 'c.title as campaign_title'
+      );
+    res.json({ success: true, data: rows });
+  }
+);

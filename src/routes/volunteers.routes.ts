@@ -106,8 +106,8 @@ volunteersRouter.post(
     if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
 
     const shiftId = req.params.id as any;
-    // @ts-ignore
-    const volunteerId = req.user!.volunteerId; // Assumes JWT payload includes volunteerId
+    const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id');
+    const volunteerId = userRow?.volunteer_id;
 
     if (!volunteerId) {
       res.status(403).json({ success: false, message: 'Only active volunteers can sign up for shifts' });
@@ -160,8 +160,8 @@ volunteersRouter.post(
     const errors = validationResult(req);
     if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
 
-    // @ts-ignore
-    const volunteerId = req.user!.volunteerId;
+    const volUser = await db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id');
+    const volunteerId = volUser?.volunteer_id;
     if (!volunteerId) {
       res.status(403).json({ success: false, message: 'Only active volunteers can log hours' });
       return;
@@ -183,12 +183,38 @@ volunteersRouter.post(
       activity_description: activityDescription,
       start_datetime: startDatetime,
       end_datetime: endDatetime,
-      duration_minutes: durationMinutes,
       status: 'pending',
       submitted_at: new Date(),
       updated_at: new Date()
     });
 
-    res.status(201).json({ success: true, message: 'Timesheet submitted for approval', timesheetId, durationMinutes });
+    res.status(201).json({ success: true, message: 'Timesheet submitted for approval', data: { timesheet_id: timesheetId, duration_minutes: durationMinutes } });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/volunteers/timesheets — List own timesheets
+// ---------------------------------------------------------------------------
+volunteersRouter.get(
+  '/timesheets',
+  authenticate,
+  async (req: Request, res: Response): Promise<void> => {
+    const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id');
+    const volunteerId = userRow?.volunteer_id;
+    if (!volunteerId) { res.json({ success: true, data: [] }); return; }
+
+    const sheets = await db('dfb_timesheets as t')
+      .leftJoin('dfb_shifts as s', 't.shift_id', 's.shift_id')
+      .where({ 't.volunteer_id': volunteerId })
+      .orderBy('t.submitted_at', 'desc')
+      .select(
+        't.timesheet_id as id', 't.shift_id', 't.activity_description as task_description',
+        't.start_datetime', 't.end_datetime', 't.duration_minutes',
+        't.status', 't.submitted_at', 's.shift_title'
+      );
+
+    // add hours_worked convenience field
+    const data = sheets.map((s: any) => ({ ...s, hours_worked: +(s.duration_minutes / 60).toFixed(2) }));
+    res.json({ success: true, data });
   }
 );

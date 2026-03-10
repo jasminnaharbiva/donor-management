@@ -39,7 +39,7 @@ authRouter.post(
     const { sha256Hash } = await import('../utils/crypto');
     const emailHash = sha256Hash(email.toLowerCase());
 
-    const existing = await db('dfb_users').where({ email: encryptedEmail }).first();
+    const existing = await db('dfb_users').where({ email_hash: emailHash }).first();
     if (existing) {
       res.status(409).json({ success: false, message: 'Email already registered' });
       return;
@@ -55,6 +55,7 @@ authRouter.post(
         first_name: firstName,
         last_name:  lastName,
         email:      encryptedEmail,
+        email_hash: emailHash,
         donor_type: 'Individual',
         created_at: new Date(),
         updated_at: new Date(),
@@ -64,6 +65,7 @@ authRouter.post(
       await trx('dfb_users').insert({
         user_id:       userId,
         email:         encryptedEmail,
+        email_hash:    emailHash,
         password_hash: passwordHash,
         role_id:       donorRole?.role_id || 5,
         donor_id:      donorId,
@@ -107,10 +109,12 @@ authRouter.post(
     }
 
     const { email, password } = req.body;
-    const encryptedEmail = encrypt(email);
+    
+    const { sha256Hash } = await import('../utils/crypto');
+    const emailHash = sha256Hash(email.toLowerCase());
 
     const user = await db('dfb_users')
-      .where({ email: encryptedEmail })
+      .where({ email_hash: emailHash })
       .whereNull('deleted_at')
       .first();
 
@@ -170,12 +174,20 @@ authRouter.post(
       userAgent:     req.get('User-Agent'),
     });
 
+    const roleRec = await db('dfb_roles').where({ role_id: user.role_id }).first('role_name');
+
     res.json({
       success:      true,
+      token:        accessToken,
       accessToken,
       refreshToken,
       expiresIn:    config.jwt.accessExpires,
       tokenType:    'Bearer',
+      user: {
+        userId: user.user_id,
+        email: email,
+        role: roleRec?.role_name || 'Donor'
+      }
     });
   }
 );
