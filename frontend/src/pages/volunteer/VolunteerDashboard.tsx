@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout';
-import { Calendar, Clock, Star, Edit3, Loader2, CheckCircle, Plus } from 'lucide-react';
+import { Calendar, Clock, Star, Edit3, Loader2, CheckCircle, Plus, UploadCloud, FileImage } from 'lucide-react';
 import api from '../../services/api';
 
 interface Shift {
@@ -24,6 +24,7 @@ interface Timesheet {
   status: string;
   submitted_at: string;
   shift_title?: string;
+  receipt_url?: string;
 }
 
 function Shifts() {
@@ -94,8 +95,9 @@ function Timesheets() {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ shiftId: '', activityDescription: '', startDatetime: '', endDatetime: '' });
+  const [form, setForm] = useState({ shiftId: '', activityDescription: '', startDatetime: '', endDatetime: '', receiptUrl: '' });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -116,12 +118,36 @@ function Timesheets() {
         activityDescription: form.activityDescription,
         startDatetime: form.startDatetime,
         endDatetime: form.endDatetime,
+        receiptUrl: form.receiptUrl || undefined,
       });
       setSheets(prev => [r.data.data, ...prev]);
       setShowForm(false);
-      setForm({ shiftId: '', activityDescription: '', startDatetime: '', endDatetime: '' });
+      setForm({ shiftId: '', activityDescription: '', startDatetime: '', endDatetime: '', receiptUrl: '' });
     } catch { alert('Could not submit timesheet.'); }
     setSaving(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('purpose', 'volunteer_receipt');
+
+    setUploading(true);
+    try {
+      const res = await api.post('/media/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data.success) {
+        setForm({ ...form, receiptUrl: res.data.data.url });
+      }
+    } catch {
+      alert('Failed to upload receipt. Limits: 10MB, formats: JPEG/PNG/PDF.');
+    } finally {
+      setUploading(false);
+      if (e.target) e.target.value = '';
+    }
   };
 
   const statusColor: Record<string, string> = { pending: 'bg-amber-100 text-amber-700', approved: 'bg-green-100 text-green-700', rejected: 'bg-red-100 text-red-600' };
@@ -169,7 +195,25 @@ function Timesheets() {
               <textarea value={form.activityDescription} onChange={e => setForm({ ...form, activityDescription: e.target.value })} required rows={2}
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 focus:outline-none" />
             </div>
-            <div className="flex gap-2 justify-end">
+            
+            <div className="pt-2 border-t border-slate-100">
+              <label className="block text-sm font-medium text-slate-700 mb-2">Upload Expense Receipt (Optional)</label>
+              <div className="flex flex-col sm:flex-row gap-3 items-center">
+                <label className="relative cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition outline-none focus-within:ring-2 focus-within:ring-primary-500/50">
+                  {uploading ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <UploadCloud size={16} className="text-slate-500" />}
+                  {uploading ? 'Uploading...' : 'Choose File'}
+                  <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleFileUpload} accept="image/jpeg,image/png,image/webp,application/pdf" disabled={uploading}/>
+                </label>
+                {form.receiptUrl && (
+                   <span className="flex items-center gap-2 text-sm text-green-600 font-medium bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                     <FileImage size={14} /> Attached File
+                   </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 mt-2">Accepted formats: JPG, PNG, PDF (Max 10MB). Used for volunteer mileage or material compensation proof.</p>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
               <button type="button" onClick={() => setShowForm(false)} className="text-sm px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
               <button type="submit" disabled={saving} className="flex items-center gap-2 text-sm bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg disabled:opacity-50">
                 {saving && <Loader2 size={14} className="animate-spin" />} Submit

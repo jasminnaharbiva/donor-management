@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
-import { Heart, Trophy, RefreshCw, Activity, Bell, Loader2, CheckCircle, XCircle, Plus, DollarSign } from 'lucide-react';
+import { Heart, Trophy, RefreshCw, Activity, Bell, Loader2, CheckCircle, XCircle, Plus, DollarSign, Calendar, Calculator } from 'lucide-react';
 import api from '../../services/api';
+import ZakatCalculator from '../../components/ZakatCalculator';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -364,11 +365,140 @@ function Subscriptions() {
   );
 }
 
+function Pledges() {
+  const [pledges, setPledges] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [funds, setFunds] = useState<any[]>([]);
+  const [form, setForm] = useState({ fundId: '', totalAmount: '', installmentCount: '12', frequency: 'monthly' });
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/pledges').catch(() => ({ data: { data: [] } })),
+      api.get('/funds').catch(() => ({ data: { data: [] } })),
+    ]).then(([p, f]) => {
+      setPledges(p.data.data || []);
+      setFunds(f.data.data || []);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const submitPledge = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.totalAmount || Number(form.totalAmount) <= 0 || !form.fundId) return;
+    setSubmitting(true);
+    try {
+      await api.post('/pledges', {
+        fundId: Number(form.fundId),
+        totalPledgeAmount: Number(form.totalAmount),
+        installmentCount: Number(form.installmentCount),
+        frequency: form.frequency
+      });
+      alert('Pledge created successfully!');
+      setForm({ fundId: '', totalAmount: '', installmentCount: '12', frequency: 'monthly' });
+      const p = await api.get('/pledges');
+      setPledges(p.data.data || []);
+    } catch {
+      alert('Failed to create pledge.');
+    }
+    setSubmitting(false);
+  };
+
+  const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary-500" size={32} /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+          <div className="glass rounded-xl p-6">
+            <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <Plus className="text-primary-500" size={18} /> Make a Commitment
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">Pledges allow you to commit to a larger total amount today, but pay it in smaller installments over time.</p>
+            <form onSubmit={submitPledge} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Fund</label>
+                <select required value={form.fundId} onChange={e => setForm(f => ({ ...f, fundId: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 focus:outline-none">
+                  <option value="">Select a Fund</option>
+                  {funds.map(f => <option key={f.fund_id} value={f.fund_id}>{f.fund_name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Total Pledge Amount (USD)</label>
+                <input required type="number" min="1" step="0.01" value={form.totalAmount} onChange={e => setForm(f => ({ ...f, totalAmount: e.target.value }))} 
+                  placeholder="e.g. 5000" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 focus:outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Frequency</label>
+                  <select value={form.frequency} onChange={e => setForm(f => ({ ...f, frequency: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 focus:outline-none">
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="annually">Annually</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Total Installments</label>
+                  <input required type="number" min="1" max="120" value={form.installmentCount} onChange={e => setForm(f => ({ ...f, installmentCount: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 focus:outline-none" />
+                </div>
+              </div>
+              <button type="submit" disabled={submitting}
+                className="w-full flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2.5 rounded-lg text-sm disabled:opacity-50 transition">
+                {submitting ? <Loader2 size={16} className="animate-spin" /> : <Calendar size={16} />} 
+                {submitting ? 'Processing...' : 'Create Pledge'}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="lg:col-span-2 space-y-4">
+          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <Calendar className="text-primary-500" /> My Active Pledges
+          </h2>
+          <div className="space-y-3">
+            {pledges.map(p => {
+              const remaining = Number(p.total_pledge_amount) - Number(p.amount_fulfilled);
+              const progressPct = Math.min(100, (Number(p.amount_fulfilled) / Number(p.total_pledge_amount)) * 100);
+              return (
+                <div key={p.id} className="glass rounded-xl p-5 border-l-4 border-primary-500">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-semibold text-slate-800 text-lg">{fmt(Number(p.total_pledge_amount))} Pledge</p>
+                      <p className="text-xs text-slate-500">Funded: {fmt(Number(p.amount_fulfilled))} · Remaining: {fmt(remaining)}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.status === 'active' ? 'bg-primary-100 text-primary-700' : 'bg-slate-100 text-slate-600'}`}>{p.status}</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2 mb-2 overflow-hidden">
+                    <div className="bg-primary-500 h-2 rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }}></div>
+                  </div>
+                  <div className="flex justify-between items-center text-xs text-slate-500">
+                    <div className="flex items-center gap-1">
+                      <RefreshCw size={12} /> {p.frequency} ({p.installments_paid}/{p.installment_count} installments paid)
+                    </div>
+                    {p.status === 'active' && <button className="text-primary-600 font-medium hover:underline">Make Payment</button>}
+                  </div>
+                </div>
+              );
+            })}
+            {pledges.length === 0 && <div className="glass rounded-xl p-8 text-center text-slate-400">You have no active pledges.</div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DonorDashboard() {
   const { user } = useAuth();
   const menuItems = [
     { name: 'Overview', path: '/donor/overview', icon: <Activity size={20} /> },
     { name: 'Donation History', path: '/donor/history', icon: <Heart size={20} /> },
+    { name: 'Pledges', path: '/donor/pledges', icon: <Calendar size={20} /> },
+    { name: 'Zakat Calculator', path: '/donor/zakat', icon: <Calculator size={20} /> },
     { name: 'Subscriptions', path: '/donor/billing', icon: <RefreshCw size={20} /> },
     { name: 'Notifications', path: '/donor/notifications', icon: <Bell size={20} /> },
   ];
@@ -379,6 +509,8 @@ export default function DonorDashboard() {
         <Route path="/" element={<Navigate to="overview" replace />} />
         <Route path="overview" element={<Overview />} />
         <Route path="history" element={<DonationHistory />} />
+        <Route path="pledges" element={<Pledges />} />
+        <Route path="zakat" element={<div className="max-w-4xl mx-auto"><ZakatCalculator /></div>} />
         <Route path="billing" element={<Subscriptions />} />
         <Route path="notifications" element={<NotificationsPage />} />
       </Routes>

@@ -110,7 +110,7 @@ shiftsRouter.get('/timesheets', authenticate, async (req: Request, res: Response
 
   const [{ total }] = await qb.clone().count('t.timesheet_id as total');
   const timesheets = await qb.orderBy('t.submitted_at', 'desc').limit(limit).offset(offset)
-    .select('t.*', 'v.first_name', 'v.last_name', 'p.project_name', 's.shift_title');
+    .select('t.*', 'v.first_name', 'v.last_name', 'p.project_name', 's.shift_title', 't.receipt_url');
 
   res.json({ success: true, data: timesheets, meta: { page, limit, total: Number(total) } });
 });

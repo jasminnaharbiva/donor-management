@@ -29,6 +29,7 @@ interface Timesheet {
   admin_notes?: string;
   project_name?: string;
   shift_title?: string;
+  receipt_url?: string;
   submitted_at: string;
 }
 
@@ -170,6 +171,14 @@ export default function ShiftsPanel() {
               <p><strong>End:</strong> {new Date(reviewTs.end_datetime).toLocaleString()}</p>
               <p><strong>Duration:</strong> {reviewTs.duration_minutes ? `${Math.round(reviewTs.duration_minutes/60)}h ${reviewTs.duration_minutes%60}m` : '—'}</p>
               {reviewTs.project_name && <p><strong>Project:</strong> {reviewTs.project_name}</p>}
+              {reviewTs.receipt_url && (
+                <p>
+                  <strong>Attachment:</strong>{' '}
+                  <a href={reviewTs.receipt_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                    View Receipt
+                  </a>
+                </p>
+              )}
             </div>
             <textarea placeholder="Admin notes (optional)" value={adminNotes} onChange={e => setAdminNotes(e.target.value)} rows={2} className="w-full border rounded-lg px-3 py-2 text-sm" />
             <div className="flex gap-2 justify-end">

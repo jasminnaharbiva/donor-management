@@ -155,6 +155,7 @@ volunteersRouter.post(
     body('activityDescription').trim().notEmpty(),
     body('startDatetime').isISO8601().toDate(),
     body('endDatetime').isISO8601().toDate(),
+    body('receiptUrl').optional({ nullable: true }).isString(),
   ],
   async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req);
@@ -167,7 +168,7 @@ volunteersRouter.post(
       return;
     }
 
-    const { projectId, shiftId, activityDescription, startDatetime, endDatetime } = req.body;
+    const { projectId, shiftId, activityDescription, startDatetime, endDatetime, receiptUrl } = req.body;
 
     const diffMs = new Date(endDatetime).getTime() - new Date(startDatetime).getTime();
     if (diffMs <= 0) {
@@ -183,12 +184,13 @@ volunteersRouter.post(
       activity_description: activityDescription,
       start_datetime: startDatetime,
       end_datetime: endDatetime,
+      receipt_url: receiptUrl || null,
       status: 'pending',
       submitted_at: new Date(),
       updated_at: new Date()
     });
 
-    res.status(201).json({ success: true, message: 'Timesheet submitted for approval', data: { timesheet_id: timesheetId, duration_minutes: durationMinutes } });
+    res.status(201).json({ success: true, message: 'Timesheet submitted for approval', data: { timesheet_id: timesheetId, duration_minutes: durationMinutes, receipt_url: receiptUrl } });
   }
 );
 
@@ -209,7 +211,7 @@ volunteersRouter.get(
       .orderBy('t.submitted_at', 'desc')
       .select(
         't.timesheet_id as id', 't.shift_id', 't.activity_description as task_description',
-        't.start_datetime', 't.end_datetime', 't.duration_minutes',
+        't.start_datetime', 't.end_datetime', 't.duration_minutes', 't.receipt_url',
         't.status', 't.submitted_at', 's.shift_title'
       );
 

@@ -42,6 +42,7 @@ import { shiftsRouter }                from './routes/shifts.routes';
 import { p2pRouter }                   from './routes/p2p.routes';
 import { emailTemplatesRouter }        from './routes/email-templates.routes';
 import { customFieldsRouter }          from './routes/custom-fields.routes';
+import { mediaRouter }                 from './routes/media.routes';
 
 const app    = express();
 const server = http.createServer(app);
@@ -167,6 +168,7 @@ app.use('/api/v1/shifts',                  shiftsRouter);
 app.use('/api/v1/p2p',                     p2pRouter);
 app.use('/api/v1/email-templates',         emailTemplatesRouter);
 app.use('/api/v1/custom-fields',           customFieldsRouter);
+app.use('/api/v1/media',                   mediaRouter);
 
 // Health check (no auth, no rate limit)
 app.get('/health', (_req, res) => {

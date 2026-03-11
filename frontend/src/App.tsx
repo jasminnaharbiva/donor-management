@@ -13,7 +13,84 @@ import VolunteerDashboard from './pages/volunteer/VolunteerDashboard';
 import PublicHome from './pages/PublicHome';
 import ProfilePage from './pages/ProfilePage';
 
+import { useEffect } from 'react';
+import { useSocket } from './hooks/useSocket';
+import api from './services/api';
+
 export default function App() {
+  const { socket, connected } = useSocket();
+
+  useEffect(() => {
+    // 1. Listen for global admin-broadcasts via WebSocket
+    if (socket && connected) {
+      socket.on('admin-broadcast', (data: any) => {
+        console.log('[App] Received admin broadcast:', data);
+        if (data.type === 'settings_updated') {
+          // In a full app, you might re-fetch settings into a Zustand store or AuthContext here
+          console.log('[App] Settings updated globally. Refreshing SEO...');
+          loadDynamicSeo();
+        }
+      });
+    }
+
+    return () => {
+      if (socket) {
+        socket.off('admin-broadcast');
+      }
+    };
+  }, [socket, connected]);
+
+  useEffect(() => {
+    // Initial SEO load
+    loadDynamicSeo();
+  }, []);
+
+  const loadDynamicSeo = async () => {
+    try {
+      // Assuming a public endpoint exists for global SEO
+      // Fallback securely if it doesn't
+      const res = await api.get('/settings/public').catch(() => null);
+      if (!res?.data?.data) return;
+
+      const settings = res.data.data;
+      const gtmScript = settings.find((s: any) => s.setting_key === 'integration.gtm_id')?.setting_value;
+      const jsonLd = settings.find((s: any) => s.setting_key === 'seo.global_json_ld')?.setting_value;
+
+      // Inject GTM if configured
+      if (gtmScript && !document.getElementById('dfb-gtm')) {
+        const script = document.createElement('script');
+        script.id = 'dfb-gtm';
+        script.async = true;
+        script.src = `https://www.googletagmanager.com/gtag/js?id=${gtmScript}`;
+        document.head.appendChild(script);
+
+        const inlineScript = document.createElement('script');
+        inlineScript.id = 'dfb-gtm-inline';
+        inlineScript.innerHTML = `
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', '${gtmScript}');
+        `;
+        document.head.appendChild(inlineScript);
+      }
+
+      // Inject JSON-LD if configured
+      if (jsonLd) {
+        let script = document.getElementById('dfb-json-ld') as HTMLScriptElement;
+        if (!script) {
+          script = document.createElement('script');
+          script.id = 'dfb-json-ld';
+          script.type = 'application/ld+json';
+          document.head.appendChild(script);
+        }
+        script.innerHTML = jsonLd;
+      }
+    } catch (e) {
+      console.error('[App] Failed to inject dynamic SEO:', e);
+    }
+  };
+
   return (
     <AuthProvider>
       <BrowserRouter>

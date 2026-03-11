@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Shield, KeyRound, LogOut, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { User, Mail, Shield, KeyRound, LogOut, Loader2, CheckCircle, AlertCircle, Smartphone } from 'lucide-react';
 import api from '../services/api';
 
 export default function ProfilePage() {
@@ -14,6 +14,38 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+
+  // 2FA state
+  const [qrCodeData, setQrCodeData] = useState('');
+  const [twoFaToken, setTwoFaToken] = useState('');
+  const [twoFaEnabling, setTwoFaEnabling] = useState(false);
+  const [twoFaSuccess, setTwoFaSuccess] = useState('');
+
+  const generate2Fa = async () => {
+    try {
+      const res = await api.post('/auth/2fa/generate');
+      setQrCodeData(res.data.qrCode);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to generate 2FA token.');
+    }
+  };
+
+  const verify2Fa = async () => {
+    setTwoFaEnabling(true);
+    setTwoFaSuccess('');
+    setError('');
+    try {
+      await api.post('/auth/2fa/verify', { token: twoFaToken });
+      setTwoFaSuccess('Two-Factor Authentication is now actively protecting your account.');
+      setQrCodeData('');
+      setTwoFaToken('');
+      // Force refresh user context if available, otherwise just rely on page reload or future relogin
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Invalid 2FA code. Please try again.');
+    } finally {
+      setTwoFaEnabling(false);
+    }
+  };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +142,74 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* 2FA Security Section */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <h2 className="text-base font-semibold text-slate-700 flex items-center gap-2 mb-4">
+            <Smartphone size={16} className="text-indigo-600" /> Two-Factor Authentication (2FA)
+          </h2>
+          
+          {twoFaSuccess && (
+            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl mb-4">
+              <CheckCircle size={16} /> {twoFaSuccess}
+            </div>
+          )}
+
+          {(user as any)?.two_fa_enabled || twoFaSuccess ? (
+            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl flex items-start gap-3 text-indigo-800 text-sm">
+              <Shield size={20} className="shrink-0 text-indigo-600 mt-0.5" />
+              <div>
+                <strong className="block mb-1">2FA is Enabled</strong>
+                Your account is secured with Two-Factor Authentication. A Time-based One Time Password (TOTP) from your authenticator app will be required during login.
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600">
+                Enhance your account security by requiring an authentication code from an app like Google Authenticator or Authy when you sign in.
+              </p>
+
+              {!qrCodeData ? (
+                <button
+                  onClick={generate2Fa}
+                  className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+                >
+                  Enable 2FA
+                </button>
+              ) : (
+                <div className="p-5 border border-slate-200 rounded-xl bg-slate-50 space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
+                    <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-200 shrink-0">
+                      <img src={qrCodeData} alt="2FA QR Code" className="w-32 h-32" />
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <h4 className="font-semibold text-slate-800 text-sm">1. Scan the QR Code</h4>
+                      <p className="text-sm text-slate-600">Open your authenticator app and scan the QR code to add this account.</p>
+                      <h4 className="font-semibold text-slate-800 text-sm mt-4">2. Enter the verification code</h4>
+                      <div className="flex gap-2 max-w-xs">
+                        <input
+                          type="text"
+                          maxLength={6}
+                          placeholder="e.g. 123456"
+                          value={twoFaToken}
+                          onChange={(e) => setTwoFaToken(e.target.value.replace(/\D/g, ''))}
+                          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm text-center tracking-widest font-mono"
+                        />
+                        <button
+                          onClick={verify2Fa}
+                          disabled={twoFaToken.length !== 6 || twoFaEnabling}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition"
+                        >
+                          {twoFaEnabling ? <Loader2 size={16} className="animate-spin" /> : 'Verify'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Change Password */}

@@ -10,6 +10,9 @@ import { writeAuditLog } from '../services/audit.service';
 import { sendWelcomeEmail, sendEmail } from '../services/email.service';
 import { encrypt, decrypt } from '../utils/crypto';
 import { v4 as uuidv4 } from 'uuid';
+// @ts-ignore
+import { authenticator } from 'otplib';
+import * as QRCode from 'qrcode';
 
 export const authRouter = Router();
 
@@ -154,6 +157,17 @@ authRouter.post(
       return;
     }
 
+    if (user.two_fa_enabled) {
+      // Don't issue real tokens yet, require OTP
+      res.status(200).json({
+        success: true,
+        twoFaRequired: true,
+        userId: user.user_id,
+        message: 'Two-factor authentication required',
+      });
+      return;
+    }
+
     const payload = { userId: user.user_id, roleId: user.role_id };
 
     const accessToken  = jwt.sign(payload, config.jwt.accessSecret,  { expiresIn: '15m' });
@@ -191,6 +205,90 @@ authRouter.post(
       user: {
         userId: user.user_id,
         email: email,
+        role: roleRec?.role_name || 'Donor'
+      }
+    });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/auth/2fa/login — Step 2 of 2FA login
+// ---------------------------------------------------------------------------
+authRouter.post(
+  '/2fa/login',
+  [body('userId').notEmpty(), body('token').isLength({ min: 6, max: 6 })],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(422).json({ success: false, errors: errors.array() });
+      return;
+    }
+
+    const { userId, token } = req.body;
+
+    const user = await db('dfb_users')
+      .where({ user_id: userId })
+      .whereNull('deleted_at')
+      .first();
+
+    if (!user || !user.two_fa_enabled || !user.two_fa_secret) {
+      res.status(401).json({ success: false, message: 'Invalid 2FA context' });
+      return;
+    }
+
+    let secret = '';
+    try {
+      secret = decrypt(user.two_fa_secret);
+    } catch {
+      res.status(500).json({ success: false, message: 'Failed to decrypt 2FA secret' });
+      return;
+    }
+
+    // @ts-ignore
+    const isValid = authenticator.verify({ token, secret });
+
+    if (!isValid) {
+      res.status(401).json({ success: false, message: 'Invalid authentication code' });
+      return;
+    }
+
+    const payload = { userId: user.user_id, roleId: user.role_id };
+    const accessToken  = jwt.sign(payload, config.jwt.accessSecret,  { expiresIn: '15m' });
+    const refreshToken = jwt.sign(payload, config.jwt.refreshSecret, { expiresIn: '30d' });
+
+    const { sha256Hash } = await import('../utils/crypto');
+    const refreshHash = sha256Hash(refreshToken);
+
+    await db('dfb_users').where({ user_id: user.user_id }).update({
+      failed_login_attempts: 0,
+      locked_until:          null,
+      last_login_at:         new Date(),
+      last_login_ip:         req.ip,
+      refresh_token_hash:    refreshHash,
+      updated_at:            new Date(),
+    });
+
+    await writeAuditLog({
+      tableAffected: 'dfb_users',
+      recordId:      user.user_id,
+      actionType:    'LOGIN',
+      actorId:       user.user_id,
+      ipAddress:     req.ip,
+      userAgent:     req.get('User-Agent'),
+    });
+
+    const roleRec = await db('dfb_roles').where({ role_id: user.role_id }).first('role_name');
+
+    res.json({
+      success:      true,
+      token:        accessToken,
+      accessToken,
+      refreshToken,
+      expiresIn:    config.jwt.accessExpires,
+      tokenType:    'Bearer',
+      user: {
+        userId: user.user_id,
+        email: decrypt(user.email),
         role: roleRec?.role_name || 'Donor'
       }
     });
@@ -448,6 +546,105 @@ authRouter.post(
       userAgent:     req.get('User-Agent'),
     });
 
-    res.json({ success: true, message: 'Password has been reset. You may now log in.' });
   }
 );
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/auth/2fa/generate
+// ---------------------------------------------------------------------------
+authRouter.post('/2fa/generate', authenticate, async (req: Request, res: Response): Promise<void> => {
+  const user = await db('dfb_users').where({ user_id: req.user!.userId }).first('email', 'two_fa_enabled');
+  
+  if (!user) {
+    res.status(404).json({ success: false, message: 'User not found' });
+    return;
+  }
+
+  if (user.two_fa_enabled) {
+    res.status(400).json({ success: false, message: '2FA is already enabled on this account' });
+    return;
+  }
+
+  let plainEmail = '';
+  try { plainEmail = decrypt(user.email); } catch { plainEmail = user.email; }
+
+  // Generate new secret
+  // @ts-ignore
+  const secret = authenticator.generateSecret();
+  const encryptedSecret = encrypt(secret);
+
+  // Save temporarily (user must verify to enable)
+  await db('dfb_users').where({ user_id: req.user!.userId }).update({
+    two_fa_secret: encryptedSecret,
+    updated_at: new Date()
+  });
+
+  // @ts-ignore
+  const otpauthUrl = authenticator.keyuri(plainEmail, 'DFB Foundation', secret);
+  const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
+
+  res.json({ success: true, secret, qrCode: qrCodeDataUrl });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/auth/2fa/verify
+// ---------------------------------------------------------------------------
+authRouter.post(
+  '/2fa/verify', 
+  authenticate,
+  [body('token').isLength({ min: 6, max: 6 })],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(422).json({ success: false, errors: errors.array() });
+      return;
+    }
+
+    const { token } = req.body;
+    const user = await db('dfb_users').where({ user_id: req.user!.userId }).first('two_fa_secret', 'two_fa_enabled');
+
+    if (!user || user.two_fa_enabled) {
+      res.status(400).json({ success: false, message: '2FA is already enabled or invalid user' });
+      return;
+    }
+
+    if (!user.two_fa_secret) {
+      res.status(400).json({ success: false, message: 'Generate 2FA secret first' });
+      return;
+    }
+
+    let secret = '';
+    try {
+      secret = decrypt(user.two_fa_secret);
+    } catch {
+      res.status(500).json({ success: false, message: 'Failed to decrypt secret' });
+      return;
+    }
+
+    // @ts-ignore
+    const isValid = authenticator.verify({ token, secret });
+
+    if (!isValid) {
+      res.status(400).json({ success: false, message: 'Invalid authentication code' });
+      return;
+    }
+
+    await db('dfb_users').where({ user_id: req.user!.userId }).update({
+      two_fa_enabled: true,
+      two_fa_method: 'totp',
+      updated_at: new Date()
+    });
+
+    await writeAuditLog({
+      tableAffected: 'dfb_users',
+      recordId: req.user!.userId,
+      actionType: 'UPDATE',
+      actorId: req.user!.userId,
+      newPayload: { action: 'enabled_2fa' },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
+
+    res.json({ success: true, message: 'Two-factor authentication successfully enabled' });
+});
+

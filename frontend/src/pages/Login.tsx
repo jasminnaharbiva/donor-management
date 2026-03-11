@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Heart, Loader2, AlertCircle, Info } from 'lucide-react';
+import { Heart, Loader2, AlertCircle, Info, Shield } from 'lucide-react';
 import api from '../services/api';
 
 export default function Login() {
@@ -9,6 +9,10 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [twoFaRequired, setTwoFaRequired] = useState(false);
+  const [twoFaToken, setTwoFaToken] = useState('');
+  const [tempUserId, setTempUserId] = useState('');
+  
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionExpired = searchParams.get('expired') === '1';
@@ -22,6 +26,12 @@ export default function Login() {
     try {
       const response = await api.post('/auth/login', { email, password });
       
+      if (response.data.twoFaRequired) {
+        setTwoFaRequired(true);
+        setTempUserId(response.data.userId);
+        return;
+      }
+
       if (response.data.success) {
         // Store both tokens
         if (response.data.refreshToken) {
@@ -37,6 +47,32 @@ export default function Login() {
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Invalid credentials. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handle2FaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      const response = await api.post('/auth/2fa/login', { userId: tempUserId, token: twoFaToken });
+      
+      if (response.data.success) {
+        if (response.data.refreshToken) {
+          localStorage.setItem('refreshToken', response.data.refreshToken);
+        }
+        login(response.data.token || response.data.accessToken, response.data.user);
+        
+        const role = response.data.user.role;
+        if (role === 'Super Admin' || role === 'Admin') navigate('/admin');
+        else if (role === 'Volunteer') navigate('/volunteer');
+        else navigate('/donor');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Invalid authentication code.');
     } finally {
       setIsSubmitting(false);
     }
@@ -80,56 +116,102 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Email Address</label>
-              <input
-                type="email"
-                required
-                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50 transition-all"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+
+          {twoFaRequired ? (
+            <form onSubmit={handle2FaSubmit} className="space-y-5">
+              <div className="text-center mb-6">
+                <Shield size={48} className="mx-auto text-primary-400 mb-3" />
+                <p className="text-slate-300 text-sm">Enter the 6-digit code from your authenticator app to continue.</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5 text-center">Authentication Code</label>
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50 transition-all text-center text-2xl tracking-widest font-mono"
+                  placeholder="000000"
+                  value={twoFaToken}
+                  onChange={(e) => setTwoFaToken(e.target.value.replace(/\D/g, ''))}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setTwoFaRequired(false); setTwoFaToken(''); setPassword(''); }}
+                  className="w-1/3 bg-white/10 hover:bg-white/20 text-white font-semibold py-3 px-4 rounded-xl transition-all border border-white/20"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || twoFaToken.length !== 6}
+                  className="w-2/3 bg-primary-500 hover:bg-primary-400 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg hover:shadow-primary-500/30 flex justify-center items-center gap-2 disabled:opacity-60"
+                >
+                  {isSubmitting ? (
+                    <><Loader2 className="animate-spin" size={18} /> Verifying…</>
+                  ) : (
+                    'Verify & Sign In'
+                  )}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50 transition-all"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
+                <input
+                  type="password"
+                  required
+                  className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50 transition-all"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+
+              <div className="flex justify-end -mt-2 mb-1">
+                <Link to="/forgot-password" className="text-sm text-blue-400 hover:text-blue-300">Forgot password?</Link>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-primary-500 hover:bg-primary-400 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg hover:shadow-primary-500/30 flex justify-center items-center gap-2 disabled:opacity-60"
+              >
+                {isSubmitting ? (
+                  <><Loader2 className="animate-spin" size={18} /> Signing In…</>
+                ) : (
+                  'Sign In'
+                )}
+              </button>
+            </form>
+          )}
+
+          {!twoFaRequired && (
+            <div className="mt-6 pt-6 border-t border-white/10">
+              <p className="text-center text-slate-400 text-sm">
+                Don't have an account?{' '}
+                <Link to="/register" className="text-primary-400 hover:text-primary-300 font-medium">
+                  Register here
+                </Link>
+              </p>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
-              <input
-                type="password"
-                required
-                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50 transition-all"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
-            <div className="flex justify-end -mt-2 mb-1">
-              <Link to="/forgot-password" className="text-sm text-blue-400 hover:text-blue-300">Forgot password?</Link>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-primary-500 hover:bg-primary-400 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg hover:shadow-primary-500/30 flex justify-center items-center gap-2 disabled:opacity-60"
-            >
-              {isSubmitting ? (
-                <><Loader2 className="animate-spin" size={18} /> Signing In…</>
-              ) : (
-                'Sign In'
-              )}
-            </button>
-          </form>
-
-          <div className="mt-6 pt-6 border-t border-white/10">
-            <p className="text-center text-slate-400 text-sm">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-primary-400 hover:text-primary-300 font-medium">
-                Register here
-              </Link>
-            </p>
-          </div>
+          )}
         </div>
 
         {/* Demo credentials */}
