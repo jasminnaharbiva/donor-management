@@ -612,3 +612,49 @@ Implemented all remaining enterprise-grade requirements:
 | `frontend/src/pages/ResetPassword.tsx` | Password reset form (token-based) |
 | `frontend/src/pages/CampaignPage.tsx` | Public campaign detail page |
 | `frontend/src/pages/VolunteerVerify.tsx` | Public volunteer badge verification |
+
+---
+
+## Phase 8 — Enterprise Final Completion (March 11, 2026)
+
+**Commit**: `9563c7c`
+
+### New Backend Routes
+
+| Route File | Endpoints | Description |
+|---|---|---|
+| `src/routes/translations.routes.ts` | GET/POST/PUT/DELETE + bulk-import | i18n translation strings CRUD — locale/namespace/key/value with bulk JSON import |
+| `src/routes/public-pages.routes.ts` | GET/POST/PUT/DELETE + `/slug/:slug` public | CMS public pages with SEO metadata, sections_json, custom CSS |
+| `src/routes/form-schemas.routes.ts` | GET/POST/PUT/DELETE + `/type/:type` public | Dynamic form schema management (donation/registration/expense/campaign/beneficiary_intake) |
+| `src/routes/volunteer-records.routes.ts` | ID cards, certificates, messages | Volunteer ID card issuance, certificate awarding, direct messaging |
+
+### New Admin Panels (frontend)
+
+| Panel File | Features |
+|---|---|
+| `frontend/src/pages/admin/TranslationsPanel.tsx` | Filter by locale/namespace/search, inline edit, delete, add, bulk JSON import |
+| `frontend/src/pages/admin/PublicPagesPanel.tsx` | CMS with toggle publish, SEO meta editor (70/160 char counters), JSON content editor, custom CSS tab |
+| `frontend/src/pages/admin/FormSchemasPanel.tsx` | Schema editor by form type, JSON validation, active toggle auto-deactivates siblings |
+| `frontend/src/pages/admin/VolunteerRecordsPanel.tsx` | 3-tab panel: ID Cards (issue/revoke), Certificates (award/track), Messages (compose/send) |
+
+### Bug Fixes & Infrastructure
+
+| Fix | Details |
+|---|---|
+| Redis startup crash | Wrapped `redis.connect()` in try-catch; ignores "already connecting/connected" error from `rate-limit-redis` triggering early connection on `lazyConnect` client |
+| `GDPR_EXPORT` audit type | Added to `audit.service.ts` union type |
+| robots.txt static file | Created `frontend/public/robots.txt` + `frontend/dist/robots.txt`; added `context /robots.txt` static block in LiteSpeed vhost config |
+| sitemap.xml proxy | Added `context /sitemap.xml` proxy block in LiteSpeed vhost config routing to Node API |
+| LiteSpeed vhost config | Added explicit static context for `robots.txt` and proxy context for `sitemap.xml` |
+
+### Deployment Status
+
+| Step | Result |
+|---|---|
+| TypeScript compile (`npx tsc`) | ✅ Exit 0 — clean |
+| Frontend build (`npm run build`) | ✅ Built — 2525 modules |
+| PM2 restart (4 instances) | ✅ All online, stable |
+| Health endpoint | ✅ `{"status":"ok","version":"1.0.0"}` |
+| Translations API auth | ✅ HTTP 401 (correct — auth required) |
+| robots.txt serving | ✅ `text/plain` (Cloudflare cache TTL expiry pending) |
+| GitHub push | ✅ `9563c7c` on main |
