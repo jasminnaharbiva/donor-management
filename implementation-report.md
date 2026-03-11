@@ -658,3 +658,184 @@ Implemented all remaining enterprise-grade requirements:
 | Translations API auth | ✅ HTTP 401 (correct — auth required) |
 | robots.txt serving | ✅ `text/plain` (Cloudflare cache TTL expiry pending) |
 | GitHub push | ✅ `9563c7c` on main |
+
+---
+
+## Phase 9 — Bug Fixes & Stability (March 11, 2026)
+
+**Commit**: `fa2053d`
+
+### Root Cause Analysis & Bug Fixes
+
+#### White Screen on Page Refresh ✅ FIXED
+**File**: `frontend/src/context/AuthContext.tsx`
+
+**Root cause**: `GET /auth/me` returns snake_case fields (`user_id`, `role_name`) while `POST /auth/login` returns camelCase (`userId`, `role`). On fresh login, `AuthContext` stored `user.role` correctly from the login response. On page refresh, the app re-fetched `/auth/me` and stored the raw response — `user.role` became `undefined` because the field is named `role_name` on that endpoint. `ProtectedRoute` checked `user.role` for every route, found it undefined, and redirected to `/login`. The redirect itself loaded a protected route, causing an infinite redirect loop → blank white screen.
+
+**Fix**: Normalize the `/auth/me` response in `AuthContext.useEffect`:
+
+```typescript
+api.get('/auth/me').then(res => {
+  const d = res.data.data;
+  setUser({
+    userId:    d.userId    || d.user_id,
+    email:     d.email,
+    role:      d.role      || d.role_name,
+    firstName: d.firstName || d.first_name,
+    lastName:  d.lastName  || d.last_name,
+  });
+});
+```
+
+**API response shapes confirmed:**
+- `POST /auth/login` → `{ userId, email, role: "Super Admin" }` (camelCase)
+- `GET /auth/me` → `{ user_id, email, role_name: "Super Admin" }` (snake_case)
+
+---
+
+#### `toFixed is not a function` Crash ✅ FIXED
+**File**: `frontend/src/pages/admin/DashboardStats.tsx`
+
+**Root cause**: MariaDB returns `DECIMAL` / `NUMERIC` columns as JavaScript strings (e.g., `"47500.00"`), not numbers. The `fmt()` and `fmtFull()` helpers were typed as `(n: number)` and called `.toFixed()` directly on the value — crashing at runtime when a string arrived.
+
+**Fix**: Accept `number | string | null | undefined`, coerce with `Number()`:
+
+```typescript
+// BEFORE (crashes on strings)
+function fmt(n: number) { return '$' + (n / 1000).toFixed(0) + 'K'; }
+
+// AFTER (safe — handles DB strings)
+function fmt(n: number | string | null | undefined) {
+  const num = Number(n) || 0;
+  if (num >= 1_000_000) return '$' + (num / 1_000_000).toFixed(1) + 'M';
+  if (num >= 1_000)     return '$' + (num / 1_000).toFixed(0) + 'K';
+  return '$' + num.toFixed(0);
+}
+function fmtFull(n: number | string | null | undefined) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
+    .format(Number(n) || 0);
+}
+```
+
+---
+
+#### Blank Screen with No Error Message ✅ FIXED
+**File**: `frontend/src/components/ErrorBoundary.tsx` (new file)
+**File**: `frontend/src/App.tsx` (modified)
+
+**Root cause**: Any unhandled React render error produced a completely blank white screen with no feedback to the user or developers.
+
+**Fix**: Created a React class component Error Boundary. Catches all render-phase errors via `componentDidCatch`, displays an error panel with the error message and a Reload button instead of a blank screen.
+
+```tsx
+// App.tsx — wraps entire app tree
+<ErrorBoundary>
+  <AuthProvider>
+    <BrowserRouter>...</BrowserRouter>
+  </AuthProvider>
+</ErrorBoundary>
+```
+
+---
+
+#### Browser Cache Serving Stale JS After Build ✅ FIXED
+**Files**: `frontend/public/.htaccess`, LiteSpeed vhost config
+
+**Root cause (two separate issues)**:
+1. LiteSpeed vhost had a `context /index.html` block with no-cache headers — this ONLY matched direct requests for `/index.html`, not SPA rewrites (e.g., `/admin/dashboard` rewritten to `index.html`). So HTML served via SPA rewrite had no cache headers.
+2. The `/assets/` context in LiteSpeed AND `.htaccess` both set `Cache-Control` on assets — two conflicting headers caused Cloudflare to set `cf-cache-status: BYPASS` and serve stale bundles.
+
+**Fix 1 — `.htaccess` uses `Header always set`**:
+```apache
+# Applies to ALL .html responses including SPA rewrites
+<FilesMatch "\.html$">
+  Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+  Header always set Pragma "no-cache"
+  Header always set Expires "0"
+</FilesMatch>
+<FilesMatch "\.(js|css|woff2?|ttf|eot|svg|png|jpg|webp|ico)$">
+  Header always set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+```
+
+**Fix 2 — LiteSpeed vhost config** (`/usr/local/lsws/conf/vhosts/donor-management.nokshaojibon.com/vhconf.conf`):
+- Root context `/` — SPA rewrite rules only, NO extra cache headers (prevents double-header conflict)
+- `/assets/` context — `Cache-Control: public, max-age=31536000, immutable` (one source of truth)
+
+---
+
+#### VolunteerRecordsPanel Complete Rewrite ✅
+**File**: `frontend/src/pages/admin/VolunteerRecordsPanel.tsx` (813 lines)
+
+**Root cause**: Previous implementation had incorrect field names, missing interface definitions, and wrong API response access patterns (`res.data` instead of `res.data.data`), causing the panel to silently fail or display empty data.
+
+**Rewrite includes**:
+- Correct TypeScript interfaces matching DB column names (`volunteer_id`, `badge_number`, `issue_date`, `expiry_date`, `card_status`, etc.)
+- All API calls using `res.data?.data` access pattern
+- Tab 1 — ID Cards: issue new card form, badge number auto-generation, revoke with confirm, card status badges
+- Tab 2 — Certificates: award certificate form, certificate type selector, expiry date, revoke action
+- Tab 3 — Messages: compose form with recipient volunteer selector, subject+body fields, message history table
+
+---
+
+#### Missing `GET /api/v1/volunteers` Route ✅ FIXED
+**File**: `src/routes/volunteers.routes.ts`
+
+Added root `GET /` endpoint returning volunteer list:
+```typescript
+router.get('/', authenticate, async (req, res) => {
+  const volunteers = await db('dfb_volunteers as v')
+    .select('v.volunteer_id', 'u.first_name', 'u.last_name', 'v.badge_number', 'v.status')
+    .join('dfb_users as u', 'u.user_id', 'v.user_id')
+    .where('v.status', 'active')
+    .orderBy('u.last_name');
+  res.json({ success: true, data: volunteers });
+});
+```
+
+---
+
+#### `volunteer-records` orderBy Field Error ✅ FIXED
+**File**: `src/routes/volunteer-records.routes.ts`
+
+**Root cause**: Query used `.orderBy('a.issued_at')` but the actual DB column is `issue_date`.
+
+**Fix**: Changed to `.orderBy('a.issue_date', 'desc')`.
+
+---
+
+#### App.tsx Settings URL Fix ✅ FIXED
+**File**: `frontend/src/App.tsx`
+
+**Root cause**: App was fetching `/api/v1/settings/public` on load — this route does not exist. The correct route is `/api/v1/public/settings`.
+
+**Fix**: Changed fetch URL to `/api/v1/public/settings` and fixed response access to `res.data.data` (was `res.data`).
+
+---
+
+### Summary of All Changes
+
+| File | Change |
+|---|---|
+| `frontend/src/context/AuthContext.tsx` | Normalize `/auth/me` snake_case → camelCase fields |
+| `frontend/src/pages/admin/DashboardStats.tsx` | Fix `toFixed` crash — DECIMAL strings from MariaDB |
+| `frontend/src/components/ErrorBoundary.tsx` | New: React Error Boundary class component |
+| `frontend/src/App.tsx` | Wrap with `<ErrorBoundary>`, fix settings URL + response parsing |
+| `frontend/src/pages/admin/VolunteerRecordsPanel.tsx` | Complete rewrite (813 lines) — correct field names and API access |
+| `src/routes/volunteers.routes.ts` | Add `GET /` volunteer list endpoint |
+| `src/routes/volunteer-records.routes.ts` | Fix `orderBy('a.issued_at')` → `orderBy('a.issue_date')` |
+| `frontend/public/.htaccess` | Use `Header always set` for HTML no-cache (covers SPA rewrites) |
+| LiteSpeed vhost config | Remove double Cache-Control headers — root context rewrite only, assets context for immutable cache |
+
+### Deployment Status
+
+| Step | Result |
+|---|---|
+| TypeScript compile (`npx tsc`) | ✅ Exit 0 — clean |
+| Frontend build (`npm run build`) | ✅ Built successfully |
+| Current JS bundle | `index-DhqGanM0.js` |
+| Current CSS bundle | `index-CBK6a0Zn.css` |
+| PM2 restart (4 instances) | ✅ All online, stable |
+| LiteSpeed graceful restart | ✅ Applied |
+| Cloudflare cache purge | ✅ Assets purged after build |
+| GitHub push | ✅ `fa2053d` on main |
