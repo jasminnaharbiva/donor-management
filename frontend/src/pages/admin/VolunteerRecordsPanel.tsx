@@ -3,61 +3,89 @@ import api from '../../services/api';
 
 type ActiveTab = 'id-cards' | 'certificates' | 'messages';
 
+// Matches GET /volunteer-records/id-card-templates
 interface IdCardTemplate {
-  template_id: string;
+  template_id: number;
   template_name: string;
-  template_html: string;
-  is_active: boolean;
+  orientation: string;
+  org_name: string | null;
+  tagline: string | null;
+  accent_color: string;
+  is_active: boolean | number;
   created_at: string;
 }
 
+// Matches GET /volunteer-records/id-cards (joined with volunteers + templates)
 interface IssuedCard {
   card_id: string;
-  volunteer_id: string;
-  volunteer_name?: string;
-  email?: string;
-  template_id: string;
-  issued_at: string;
-  expires_at: string | null;
-  is_revoked: boolean;
+  volunteer_id: number;
+  first_name: string;
+  last_name: string;
+  template_id: number;
+  template_name: string;
+  badge_number: string;
+  issue_date: string;
+  expiry_date: string | null;
+  status: string;           // 'active' | 'revoked' (computed from revoked_at)
+  revoked_at: string | null;
+  revoked_reason: string | null;
 }
 
+// Matches GET /volunteer-records/certificate-templates
 interface CertificateTemplate {
-  template_id: string;
+  cert_template_id: number;
   template_name: string;
-  certificate_type: string;
-  template_html: string;
-  is_active: boolean;
+  title_text: string;
+  body_template: string;
+  primary_color: string;
+  is_active: boolean | number;
   created_at: string;
 }
 
+// Matches GET /volunteer-records/certificates (joined)
 interface IssuedCertificate {
-  certificate_id: string;
-  volunteer_id: string;
-  volunteer_name?: string;
-  email?: string;
-  template_id: string;
-  certificate_type: string;
-  awarded_for: string;
-  awarded_at: string;
+  award_id: string;
+  cert_template_id: number;
+  volunteer_id: number;
+  first_name: string;
+  last_name: string;
+  badge_number: string;
+  template_name: string;
+  title_text: string;
+  custom_note: string | null;
+  hours_served: number | null;
+  issue_date: string;
   verification_code: string;
 }
 
+// Matches GET /volunteer-records/messages (joined)
 interface VolunteerMessage {
   message_id: string;
-  volunteer_id: string;
-  volunteer_name?: string;
+  recipient_volunteer_id: number;
+  first_name: string;
+  last_name: string;
+  badge_number: string;
   subject: string;
   body: string;
-  is_read: boolean;
+  channel: string;
+  is_read: boolean | number;
   sent_at: string;
 }
 
+// Matches GET /volunteers (list endpoint)
 interface Volunteer {
-  volunteer_id: string;
-  full_name: string;
-  email: string;
+  volunteer_id: number;
+  first_name: string;
+  last_name: string;
+  badge_number: string;
+  status: string;
 }
+
+const today = () => new Date().toISOString().split('T')[0];
+const nextYear = () => {
+  const d = new Date(); d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString().split('T')[0];
+};
 
 export default function VolunteerRecordsPanel() {
   const [tab, setTab] = useState<ActiveTab>('id-cards');
@@ -69,34 +97,48 @@ export default function VolunteerRecordsPanel() {
   const [issuedCards, setIssuedCards]   = useState<IssuedCard[]>([]);
   const [loadingCards, setLoadingCards] = useState(false);
   const [showNewIdTemplate, setShowNewIdTemplate] = useState(false);
-  const [idTemplateForm, setIdTemplateForm] = useState({ template_name: '', template_html: '<div>{{volunteer_name}}</div>', is_active: true });
+  const [idTemplateForm, setIdTemplateForm] = useState({
+    templateName: '', orgName: '', tagline: '',
+    backgroundColor: '#dbeafe', accentColor: '#1a56db',
+    validityDurationMonths: 12, isActive: true,
+  });
   const [showIssueCard, setShowIssueCard] = useState(false);
-  const [issueCardForm, setIssueCardForm] = useState({ volunteer_id: '', template_id: '', expires_at: '' });
+  const [issueCardForm, setIssueCardForm] = useState({
+    volunteerId: '', templateId: '', issueDate: today(), expiryDate: nextYear(),
+  });
 
   // --- Certificates State ---
   const [certTemplates, setCertTemplates]   = useState<CertificateTemplate[]>([]);
   const [issuedCerts, setIssuedCerts]       = useState<IssuedCertificate[]>([]);
   const [loadingCerts, setLoadingCerts]     = useState(false);
   const [showNewCertTemplate, setShowNewCertTemplate] = useState(false);
-  const [certTemplateForm, setCertTemplateForm] = useState({ template_name: '', certificate_type: 'participation', template_html: '<div>{{volunteer_name}}</div>', is_active: true });
+  const [certTemplateForm, setCertTemplateForm] = useState({
+    templateName: '', titleText: '',
+    bodyTemplate: '<div style="text-align:center;padding:40px;font-family:Georgia,serif">\n  <h1>{{org_name}}</h1>\n  <h2>{{title_text}}</h2>\n  <p>Awarded to</p>\n  <h3>{{volunteer_name}}</h3>\n  <p>{{custom_note}}</p>\n  <p>Verification: {{verification_code}} | Date: {{issue_date}}</p>\n</div>',
+    primaryColor: '#2563eb', isActive: true,
+  });
   const [showIssueCert, setShowIssueCert]   = useState(false);
-  const [issueCertForm, setIssueCertForm]   = useState({ volunteer_id: '', template_id: '', awarded_for: '' });
+  const [issueCertForm, setIssueCertForm]   = useState({
+    volunteerId: '', certTemplateId: '', issueDate: today(),
+    hoursServed: '', customNote: '',
+  });
 
   // --- Messages State ---
   const [messages, setMessages]         = useState<VolunteerMessage[]>([]);
   const [loadingMsgs, setLoadingMsgs]   = useState(false);
   const [showSendMessage, setShowSendMessage] = useState(false);
-  const [msgForm, setMsgForm]           = useState({ volunteer_id: '', subject: '', body: '' });
+  const [msgForm, setMsgForm]           = useState({
+    recipientVolunteerId: '', subject: '', body: '', channel: 'in_app',
+  });
   const [sending, setSending]           = useState(false);
 
   // Volunteer list for dropdowns
-  const [volunteers, setVolunteers]     = useState<Volunteer[]>([]);
+  const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
 
   const loadVolunteers = useCallback(async () => {
     try {
-      const res = await api.get('/api/v1/volunteers', { params: { limit: 500 } });
-      const data = res.data?.volunteers || res.data?.data || res.data || [];
-      setVolunteers(Array.isArray(data) ? data : []);
+      const res = await api.get('/volunteers');
+      setVolunteers(res.data?.data ?? []);
     } catch {}
   }, []);
 
@@ -108,11 +150,11 @@ export default function VolunteerRecordsPanel() {
     setLoadingCards(true);
     try {
       const [tmplRes, cardsRes] = await Promise.all([
-        api.get('/api/v1/volunteer-records/id-card-templates'),
-        api.get('/api/v1/volunteer-records/id-cards'),
+        api.get('/volunteer-records/id-card-templates'),
+        api.get('/volunteer-records/id-cards'),
       ]);
-      setIdTemplates(tmplRes.data || []);
-      setIssuedCards(cardsRes.data || []);
+      setIdTemplates(tmplRes.data?.data ?? []);
+      setIssuedCards(cardsRes.data?.data ?? []);
     } catch { setError('Failed to load ID card data'); }
     setLoadingCards(false);
   }, [tab]);
@@ -123,11 +165,11 @@ export default function VolunteerRecordsPanel() {
     setLoadingCerts(true);
     try {
       const [tmplRes, certsRes] = await Promise.all([
-        api.get('/api/v1/volunteer-records/certificate-templates'),
-        api.get('/api/v1/volunteer-records/certificates'),
+        api.get('/volunteer-records/certificate-templates'),
+        api.get('/volunteer-records/certificates'),
       ]);
-      setCertTemplates(tmplRes.data || []);
-      setIssuedCerts(certsRes.data || []);
+      setCertTemplates(tmplRes.data?.data ?? []);
+      setIssuedCerts(certsRes.data?.data ?? []);
     } catch { setError('Failed to load certificate data'); }
     setLoadingCerts(false);
   }, [tab]);
@@ -137,8 +179,8 @@ export default function VolunteerRecordsPanel() {
     if (tab !== 'messages') return;
     setLoadingMsgs(true);
     try {
-      const res = await api.get('/api/v1/volunteer-records/messages');
-      setMessages(res.data || []);
+      const res = await api.get('/volunteer-records/messages');
+      setMessages(res.data?.data ?? []);
     } catch { setError('Failed to load messages'); }
     setLoadingMsgs(false);
   }, [tab]);
@@ -150,69 +192,107 @@ export default function VolunteerRecordsPanel() {
     else if (tab === 'messages') loadMessages();
   }, [tab, loadCards, loadCerts, loadMessages]);
 
-  const flash = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); };
+  const flash = (msg: string) => {
+    setSuccess(msg);
+    setTimeout(() => setSuccess(''), 3500);
+  };
 
   // ID Card actions
   const createIdTemplate = async () => {
+    if (!idTemplateForm.templateName.trim()) { setError('Template name is required'); return; }
     try {
-      await api.post('/api/v1/volunteer-records/id-card-templates', idTemplateForm);
+      await api.post('/volunteer-records/id-card-templates', idTemplateForm);
       setShowNewIdTemplate(false);
-      setIdTemplateForm({ template_name: '', template_html: '<div>{{volunteer_name}}</div>', is_active: true });
-      flash('Template created');
+      setIdTemplateForm({ templateName: '', orgName: '', tagline: '', backgroundColor: '#dbeafe', accentColor: '#1a56db', validityDurationMonths: 12, isActive: true });
+      flash('ID card template created');
       loadCards();
-    } catch { setError('Failed to create template'); }
+    } catch { setError('Failed to create ID card template'); }
   };
 
   const issueIdCard = async () => {
-    if (!issueCardForm.volunteer_id || !issueCardForm.template_id) { setError('Select volunteer and template'); return; }
+    if (!issueCardForm.volunteerId || !issueCardForm.templateId || !issueCardForm.issueDate) {
+      setError('Select volunteer, template, and issue date');
+      return;
+    }
     try {
-      await api.post('/api/v1/volunteer-records/id-cards', issueCardForm);
+      await api.post('/volunteer-records/id-cards', {
+        volunteerId: Number(issueCardForm.volunteerId),
+        templateId:  Number(issueCardForm.templateId),
+        issueDate:   issueCardForm.issueDate,
+        expiryDate:  issueCardForm.expiryDate || undefined,
+      });
       setShowIssueCard(false);
-      setIssueCardForm({ volunteer_id: '', template_id: '', expires_at: '' });
-      flash('ID card issued');
+      setIssueCardForm({ volunteerId: '', templateId: '', issueDate: today(), expiryDate: nextYear() });
+      flash('ID card issued successfully');
       loadCards();
-    } catch { setError('Failed to issue card'); }
+    } catch { setError('Failed to issue ID card'); }
   };
 
   const revokeCard = async (cardId: string) => {
-    if (!window.confirm('Revoke this ID card?')) return;
+    if (!window.confirm('Revoke this ID card? This cannot be undone.')) return;
     try {
-      await api.patch(`/api/v1/volunteer-records/id-cards/${cardId}/revoke`);
-      setIssuedCards(cs => cs.map(c => c.card_id === cardId ? { ...c, is_revoked: true } : c));
-      flash('Card revoked');
+      await api.patch(`/volunteer-records/id-cards/${cardId}/revoke`);
+      setIssuedCards(cs => cs.map(c => c.card_id === cardId ? { ...c, status: 'revoked', revoked_at: new Date().toISOString() } : c));
+      flash('ID card revoked');
     } catch { setError('Failed to revoke card'); }
   };
 
   // Certificate actions
   const createCertTemplate = async () => {
+    if (!certTemplateForm.templateName.trim() || !certTemplateForm.titleText.trim() || !certTemplateForm.bodyTemplate.trim()) {
+      setError('Template name, title and body are required');
+      return;
+    }
     try {
-      await api.post('/api/v1/volunteer-records/certificate-templates', certTemplateForm);
+      await api.post('/volunteer-records/certificate-templates', {
+        templateName:  certTemplateForm.templateName,
+        titleText:     certTemplateForm.titleText,
+        bodyTemplate:  certTemplateForm.bodyTemplate,
+        primaryColor:  certTemplateForm.primaryColor,
+      });
       setShowNewCertTemplate(false);
-      setCertTemplateForm({ template_name: '', certificate_type: 'participation', template_html: '<div>{{volunteer_name}}</div>', is_active: true });
+      setCertTemplateForm({ templateName: '', titleText: '', bodyTemplate: '<div style="text-align:center;padding:40px;font-family:Georgia,serif">\n  <h1>{{org_name}}</h1>\n  <h2>{{title_text}}</h2>\n  <p>Awarded to</p>\n  <h3>{{volunteer_name}}</h3>\n  <p>{{custom_note}}</p>\n  <p>Verification: {{verification_code}} | Date: {{issue_date}}</p>\n</div>', primaryColor: '#2563eb', isActive: true });
       flash('Certificate template created');
       loadCerts();
-    } catch { setError('Failed to create cert template'); }
+    } catch { setError('Failed to create certificate template'); }
   };
 
   const issueCertificate = async () => {
-    if (!issueCertForm.volunteer_id || !issueCertForm.template_id || !issueCertForm.awarded_for) { setError('Fill all fields'); return; }
+    if (!issueCertForm.volunteerId || !issueCertForm.certTemplateId || !issueCertForm.issueDate) {
+      setError('Select volunteer, template, and issue date');
+      return;
+    }
     try {
-      await api.post('/api/v1/volunteer-records/certificates', issueCertForm);
+      await api.post('/volunteer-records/certificates', {
+        volunteerId:    Number(issueCertForm.volunteerId),
+        certTemplateId: Number(issueCertForm.certTemplateId),
+        issueDate:      issueCertForm.issueDate,
+        hoursServed:    issueCertForm.hoursServed ? Number(issueCertForm.hoursServed) : undefined,
+        customNote:     issueCertForm.customNote || undefined,
+      });
       setShowIssueCert(false);
-      setIssueCertForm({ volunteer_id: '', template_id: '', awarded_for: '' });
-      flash('Certificate awarded');
+      setIssueCertForm({ volunteerId: '', certTemplateId: '', issueDate: today(), hoursServed: '', customNote: '' });
+      flash('Certificate awarded successfully');
       loadCerts();
-    } catch { setError('Failed to issue certificate'); }
+    } catch { setError('Failed to award certificate'); }
   };
 
   // Message actions
   const sendMessage = async () => {
-    if (!msgForm.volunteer_id || !msgForm.subject || !msgForm.body) { setError('Fill all fields'); return; }
+    if (!msgForm.recipientVolunteerId || !msgForm.subject || !msgForm.body) {
+      setError('Select a volunteer and fill subject and body');
+      return;
+    }
     setSending(true);
     try {
-      await api.post('/api/v1/volunteer-records/messages', msgForm);
+      await api.post('/volunteer-records/messages', {
+        recipientVolunteerId: Number(msgForm.recipientVolunteerId),
+        subject: msgForm.subject,
+        body:    msgForm.body,
+        channel: msgForm.channel,
+      });
       setShowSendMessage(false);
-      setMsgForm({ volunteer_id: '', subject: '', body: '' });
+      setMsgForm({ recipientVolunteerId: '', subject: '', body: '', channel: 'in_app' });
       flash('Message sent');
       loadMessages();
     } catch { setError('Failed to send message'); }
@@ -232,8 +312,15 @@ export default function VolunteerRecordsPanel() {
         <p className="text-gray-500 text-sm mt-1">Manage ID cards, certificates, and direct messages for volunteers</p>
       </div>
 
-      {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error} <button onClick={() => setError('')} className="ml-2 font-bold">&times;</button></div>}
-      {success && <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">{success}</div>}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="ml-2 font-bold text-red-500 hover:text-red-700">&times;</button>
+        </div>
+      )}
+      {success && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">{success}</div>
+      )}
 
       {/* Tab Nav */}
       <div className="flex border-b border-gray-200 mb-6">
@@ -248,64 +335,77 @@ export default function VolunteerRecordsPanel() {
       {/* =================== ID CARDS TAB =================== */}
       {tab === 'id-cards' && (
         <div>
-          {/* Templates section */}
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-gray-700">ID Card Templates</h3>
-            <button onClick={() => setShowNewIdTemplate(true)} className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ New Template</button>
+            <button onClick={() => setShowNewIdTemplate(true)} className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              + New Template
+            </button>
           </div>
 
-          {loadingCards ? <div className="text-gray-400 py-4 text-center">Loading…</div> : (
+          {loadingCards ? (
+            <div className="text-gray-400 py-8 text-center">Loading…</div>
+          ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
               {idTemplates.length === 0 ? (
-                <div className="col-span-3 text-gray-400 text-sm py-4 text-center">No templates yet</div>
+                <div className="col-span-3 text-gray-400 text-sm py-8 text-center">No templates yet. Create one to issue ID cards.</div>
               ) : idTemplates.map(t => (
                 <div key={t.template_id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="font-semibold text-gray-800 text-sm">{t.template_name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{new Date(t.created_at).toLocaleDateString()}</p>
+                      {t.org_name && <p className="text-xs text-gray-500 mt-0.5">{t.org_name}</p>}
+                      {t.tagline && <p className="text-xs text-gray-400 italic mt-0.5">{t.tagline}</p>}
+                      <p className="text-xs text-gray-400 mt-1 capitalize">{t.orientation}</p>
                     </div>
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${t.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {t.is_active ? 'Active' : 'Inactive'}
                     </span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="inline-block w-4 h-4 rounded" style={{ backgroundColor: t.accent_color }} />
+                    <span className="text-xs text-gray-400">{new Date(t.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Issued Cards section */}
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-gray-700">Issued ID Cards</h3>
-            <button onClick={() => setShowIssueCard(true)} className="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700">Issue Card</button>
+            <button onClick={() => setShowIssueCard(true)} className="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700">
+              Issue Card
+            </button>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <table className="min-w-full divide-y divide-gray-100">
               <thead className="bg-gray-50">
                 <tr>
-                  {['Volunteer', 'Template', 'Issued', 'Expires', 'Status', 'Actions'].map(h => (
+                  {['Volunteer', 'Badge #', 'Template', 'Issue Date', 'Expiry', 'Status', 'Actions'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {issuedCards.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center py-6 text-gray-400 text-sm">No cards issued yet</td></tr>
+                  <tr><td colSpan={7} className="text-center py-8 text-gray-400 text-sm">No cards issued yet</td></tr>
                 ) : issuedCards.map(c => (
                   <tr key={c.card_id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-700">{c.volunteer_name || c.volunteer_id}</td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{c.template_id.substring(0, 8)}…</td>
-                    <td className="px-4 py-3 text-xs text-gray-400">{new Date(c.issued_at).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-xs text-gray-400">{c.expires_at ? new Date(c.expires_at).toLocaleDateString() : '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{c.first_name} {c.last_name}</td>
+                    <td className="px-4 py-3 text-xs font-mono text-gray-600">{c.badge_number}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{c.template_name}</td>
+                    <td className="px-4 py-3 text-xs text-gray-400">{new Date(c.issue_date).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-xs text-gray-400">{c.expiry_date ? new Date(c.expiry_date).toLocaleDateString() : '—'}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${c.is_revoked ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                        {c.is_revoked ? 'Revoked' : 'Valid'}
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${c.status === 'revoked' || c.revoked_at ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                        {c.status === 'revoked' || c.revoked_at ? 'Revoked' : 'Valid'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      {!c.is_revoked && (
-                        <button onClick={() => revokeCard(c.card_id)} className="text-red-500 hover:text-red-700 text-xs font-medium">Revoke</button>
+                      {!(c.status === 'revoked' || c.revoked_at) && (
+                        <button onClick={() => revokeCard(c.card_id)} className="text-red-500 hover:text-red-700 text-xs font-medium">
+                          Revoke
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -321,23 +421,30 @@ export default function VolunteerRecordsPanel() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-gray-700">Certificate Templates</h3>
-            <button onClick={() => setShowNewCertTemplate(true)} className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ New Template</button>
+            <button onClick={() => setShowNewCertTemplate(true)} className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              + New Template
+            </button>
           </div>
 
-          {loadingCerts ? <div className="text-gray-400 py-4 text-center">Loading…</div> : (
+          {loadingCerts ? (
+            <div className="text-gray-400 py-8 text-center">Loading…</div>
+          ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
               {certTemplates.length === 0 ? (
-                <div className="col-span-3 text-gray-400 text-sm py-4 text-center">No templates yet</div>
+                <div className="col-span-3 text-gray-400 text-sm py-8 text-center">No templates yet. Create one to award certificates.</div>
               ) : certTemplates.map(t => (
-                <div key={t.template_id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <div key={t.cert_template_id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                   <div className="flex items-start justify-between mb-1">
                     <p className="font-semibold text-gray-800 text-sm">{t.template_name}</p>
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${t.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {t.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 capitalize">{t.certificate_type.replace(/_/g, ' ')}</p>
-                  <p className="text-xs text-gray-400 mt-1">{new Date(t.created_at).toLocaleDateString()}</p>
+                  <p className="text-xs text-gray-600 italic">{t.title_text}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="inline-block w-4 h-4 rounded" style={{ backgroundColor: t.primary_color }} />
+                    <span className="text-xs text-gray-400">{new Date(t.created_at).toLocaleDateString()}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -345,27 +452,30 @@ export default function VolunteerRecordsPanel() {
 
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-gray-700">Awarded Certificates</h3>
-            <button onClick={() => setShowIssueCert(true)} className="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700">Award Certificate</button>
+            <button onClick={() => setShowIssueCert(true)} className="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700">
+              Award Certificate
+            </button>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <table className="min-w-full divide-y divide-gray-100">
               <thead className="bg-gray-50">
                 <tr>
-                  {['Volunteer', 'Type', 'Awarded For', 'Date', 'Verification Code'].map(h => (
+                  {['Volunteer', 'Template', 'Note', 'Hours', 'Issue Date', 'Verification Code'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {issuedCerts.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-6 text-gray-400 text-sm">No certificates awarded yet</td></tr>
+                  <tr><td colSpan={6} className="text-center py-8 text-gray-400 text-sm">No certificates awarded yet</td></tr>
                 ) : issuedCerts.map(c => (
-                  <tr key={c.certificate_id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-700">{c.volunteer_name || c.volunteer_id}</td>
-                    <td className="px-4 py-3 text-xs text-gray-500 capitalize">{c.certificate_type.replace(/_/g, ' ')}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{c.awarded_for}</td>
-                    <td className="px-4 py-3 text-xs text-gray-400">{new Date(c.awarded_at).toLocaleDateString()}</td>
+                  <tr key={c.award_id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-700">{c.first_name} {c.last_name}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{c.template_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">{c.custom_note ?? '—'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{c.hours_served != null ? `${c.hours_served}h` : '—'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-400">{new Date(c.issue_date).toLocaleDateString()}</td>
                     <td className="px-4 py-3 font-mono text-xs text-indigo-700 bg-indigo-50 rounded">{c.verification_code}</td>
                   </tr>
                 ))}
@@ -380,27 +490,32 @@ export default function VolunteerRecordsPanel() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-700">Sent Messages to Volunteers</h3>
-            <button onClick={() => setShowSendMessage(true)} className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Send Message</button>
+            <button onClick={() => setShowSendMessage(true)} className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              Send Message
+            </button>
           </div>
 
-          {loadingMsgs ? <div className="text-gray-400 py-4 text-center">Loading…</div> : (
+          {loadingMsgs ? (
+            <div className="text-gray-400 py-8 text-center">Loading…</div>
+          ) : (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <table className="min-w-full divide-y divide-gray-100">
                 <thead className="bg-gray-50">
                   <tr>
-                    {['Volunteer', 'Subject', 'Body', 'Read', 'Sent At'].map(h => (
+                    {['Volunteer', 'Subject', 'Body', 'Channel', 'Read', 'Sent At'].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {messages.length === 0 ? (
-                    <tr><td colSpan={5} className="text-center py-6 text-gray-400 text-sm">No messages sent yet</td></tr>
+                    <tr><td colSpan={6} className="text-center py-8 text-gray-400 text-sm">No messages sent yet</td></tr>
                   ) : messages.map(m => (
                     <tr key={m.message_id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-700">{m.volunteer_name || m.volunteer_id}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{m.first_name} {m.last_name}</td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-800">{m.subject}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600 max-w-[300px] truncate">{m.body}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 max-w-[250px] truncate">{m.body}</td>
+                      <td className="px-4 py-3 text-xs text-gray-500 capitalize">{m.channel.replace('_', ' ')}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${m.is_read ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
                           {m.is_read ? 'Read' : 'Unread'}
@@ -421,25 +536,63 @@ export default function VolunteerRecordsPanel() {
       {/* New ID Card Template Modal */}
       {showNewIdTemplate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-xl p-6">
             <h3 className="text-lg font-bold mb-4">New ID Card Template</h3>
-            <div className="mb-3">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Template Name</label>
-              <input value={idTemplateForm.template_name} onChange={e => setIdTemplateForm(f => ({ ...f, template_name: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div className="mb-3">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">HTML Template (use &#123;&#123;volunteer_name&#125;&#125;, &#123;&#123;card_id&#125;&#125;, &#123;&#123;issued_at&#125;&#125;)</label>
-              <textarea rows={8} value={idTemplateForm.template_html} onChange={e => setIdTemplateForm(f => ({ ...f, template_html: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-blue-500" />
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Template Name *</label>
+                <input value={idTemplateForm.templateName}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, templateName: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. Standard Volunteer Card" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Organisation Name</label>
+                <input value={idTemplateForm.orgName}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, orgName: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  placeholder="DFB Foundation" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Tagline</label>
+                <input value={idTemplateForm.tagline}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, tagline: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  placeholder="Serving Humanity" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Background Colour</label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={idTemplateForm.backgroundColor}
+                    onChange={e => setIdTemplateForm(f => ({ ...f, backgroundColor: e.target.value }))}
+                    className="h-9 w-12 rounded border border-gray-300 cursor-pointer" />
+                  <span className="text-xs text-gray-500">{idTemplateForm.backgroundColor}</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Accent Colour</label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={idTemplateForm.accentColor}
+                    onChange={e => setIdTemplateForm(f => ({ ...f, accentColor: e.target.value }))}
+                    className="h-9 w-12 rounded border border-gray-300 cursor-pointer" />
+                  <span className="text-xs text-gray-500">{idTemplateForm.accentColor}</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Validity (months)</label>
+                <input type="number" min={1} max={120} value={idTemplateForm.validityDurationMonths}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, validityDurationMonths: Number(e.target.value) }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+              </div>
             </div>
             <label className="flex items-center gap-2 mb-4 cursor-pointer">
-              <input type="checkbox" checked={idTemplateForm.is_active} onChange={e => setIdTemplateForm(f => ({ ...f, is_active: e.target.checked }))} className="rounded" />
+              <input type="checkbox" checked={idTemplateForm.isActive}
+                onChange={e => setIdTemplateForm(f => ({ ...f, isActive: e.target.checked }))} className="rounded" />
               <span className="text-sm text-gray-700">Set as Active</span>
             </label>
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowNewIdTemplate(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={createIdTemplate} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Create</button>
+              <button onClick={createIdTemplate} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Create Template</button>
             </div>
           </div>
         </div>
@@ -451,25 +604,42 @@ export default function VolunteerRecordsPanel() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
             <h3 className="text-lg font-bold mb-4">Issue ID Card</h3>
             <div className="mb-3">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Volunteer</label>
-              <select value={issueCardForm.volunteer_id} onChange={e => setIssueCardForm(f => ({ ...f, volunteer_id: e.target.value }))}
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Volunteer *</label>
+              <select value={issueCardForm.volunteerId}
+                onChange={e => setIssueCardForm(f => ({ ...f, volunteerId: e.target.value }))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
                 <option value="">Select volunteer…</option>
-                {volunteers.map(v => <option key={v.volunteer_id} value={v.volunteer_id}>{v.full_name} ({v.email})</option>)}
+                {volunteers.map(v => (
+                  <option key={v.volunteer_id} value={v.volunteer_id}>
+                    {v.first_name} {v.last_name} ({v.badge_number})
+                  </option>
+                ))}
               </select>
             </div>
             <div className="mb-3">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Template</label>
-              <select value={issueCardForm.template_id} onChange={e => setIssueCardForm(f => ({ ...f, template_id: e.target.value }))}
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Template *</label>
+              <select value={issueCardForm.templateId}
+                onChange={e => setIssueCardForm(f => ({ ...f, templateId: e.target.value }))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
                 <option value="">Select template…</option>
-                {idTemplates.map(t => <option key={t.template_id} value={t.template_id}>{t.template_name}</option>)}
+                {idTemplates.filter(t => t.is_active).map(t => (
+                  <option key={t.template_id} value={t.template_id}>{t.template_name}</option>
+                ))}
               </select>
             </div>
-            <div className="mb-4">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Expires At (optional)</label>
-              <input type="date" value={issueCardForm.expires_at} onChange={e => setIssueCardForm(f => ({ ...f, expires_at: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Issue Date *</label>
+                <input type="date" value={issueCardForm.issueDate}
+                  onChange={e => setIssueCardForm(f => ({ ...f, issueDate: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Expiry Date</label>
+                <input type="date" value={issueCardForm.expiryDate}
+                  onChange={e => setIssueCardForm(f => ({ ...f, expiryDate: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+              </div>
             </div>
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowIssueCard(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
@@ -486,62 +656,97 @@ export default function VolunteerRecordsPanel() {
             <h3 className="text-lg font-bold mb-4">New Certificate Template</h3>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Template Name</label>
-                <input value={certTemplateForm.template_name} onChange={e => setCertTemplateForm(f => ({ ...f, template_name: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Template Name *</label>
+                <input value={certTemplateForm.templateName}
+                  onChange={e => setCertTemplateForm(f => ({ ...f, templateName: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. Volunteer Appreciation Certificate" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Certificate Type</label>
-                <select value={certTemplateForm.certificate_type} onChange={e => setCertTemplateForm(f => ({ ...f, certificate_type: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
-                  {['participation', 'excellence', 'completion', 'appreciation', 'leadership'].map(t => (
-                    <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-                  ))}
-                </select>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Certificate Title *</label>
+                <input value={certTemplateForm.titleText}
+                  onChange={e => setCertTemplateForm(f => ({ ...f, titleText: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. Certificate of Appreciation" />
               </div>
             </div>
             <div className="mb-3">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">HTML Template</label>
-              <textarea rows={8} value={certTemplateForm.template_html} onChange={e => setCertTemplateForm(f => ({ ...f, template_html: e.target.value }))}
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                HTML Body Template
+                <span className="ml-2 font-normal text-gray-400">Variables: {'{{volunteer_name}}'}, {'{{issue_date}}'}, {'{{verification_code}}'}, {'{{custom_note}}'}</span>
+              </label>
+              <textarea rows={10} value={certTemplateForm.bodyTemplate}
+                onChange={e => setCertTemplateForm(f => ({ ...f, bodyTemplate: e.target.value }))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-blue-500" />
             </div>
-            <label className="flex items-center gap-2 mb-4 cursor-pointer">
-              <input type="checkbox" checked={certTemplateForm.is_active} onChange={e => setCertTemplateForm(f => ({ ...f, is_active: e.target.checked }))} className="rounded" />
-              <span className="text-sm text-gray-700">Set as Active</span>
-            </label>
+            <div className="flex items-center gap-4 mb-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Primary Colour</label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={certTemplateForm.primaryColor}
+                    onChange={e => setCertTemplateForm(f => ({ ...f, primaryColor: e.target.value }))}
+                    className="h-9 w-12 rounded border border-gray-300 cursor-pointer" />
+                  <span className="text-xs text-gray-500">{certTemplateForm.primaryColor}</span>
+                </div>
+              </div>
+            </div>
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowNewCertTemplate(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={createCertTemplate} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Create</button>
+              <button onClick={createCertTemplate} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Create Template</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Issue Certificate Modal */}
+      {/* Award Certificate Modal */}
       {showIssueCert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
             <h3 className="text-lg font-bold mb-4">Award Certificate</h3>
             <div className="mb-3">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Volunteer</label>
-              <select value={issueCertForm.volunteer_id} onChange={e => setIssueCertForm(f => ({ ...f, volunteer_id: e.target.value }))}
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Volunteer *</label>
+              <select value={issueCertForm.volunteerId}
+                onChange={e => setIssueCertForm(f => ({ ...f, volunteerId: e.target.value }))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
                 <option value="">Select volunteer…</option>
-                {volunteers.map(v => <option key={v.volunteer_id} value={v.volunteer_id}>{v.full_name} ({v.email})</option>)}
+                {volunteers.map(v => (
+                  <option key={v.volunteer_id} value={v.volunteer_id}>
+                    {v.first_name} {v.last_name} ({v.badge_number})
+                  </option>
+                ))}
               </select>
             </div>
             <div className="mb-3">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Certificate Template</label>
-              <select value={issueCertForm.template_id} onChange={e => setIssueCertForm(f => ({ ...f, template_id: e.target.value }))}
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Certificate Template *</label>
+              <select value={issueCertForm.certTemplateId}
+                onChange={e => setIssueCertForm(f => ({ ...f, certTemplateId: e.target.value }))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
                 <option value="">Select template…</option>
-                {certTemplates.map(t => <option key={t.template_id} value={t.template_id}>{t.template_name} ({t.certificate_type})</option>)}
+                {certTemplates.filter(t => t.is_active).map(t => (
+                  <option key={t.cert_template_id} value={t.cert_template_id}>{t.template_name}</option>
+                ))}
               </select>
             </div>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Issue Date *</label>
+                <input type="date" value={issueCertForm.issueDate}
+                  onChange={e => setIssueCertForm(f => ({ ...f, issueDate: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Hours Served</label>
+                <input type="number" min={0} value={issueCertForm.hoursServed}
+                  onChange={e => setIssueCertForm(f => ({ ...f, hoursServed: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. 40" />
+              </div>
+            </div>
             <div className="mb-4">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Awarded For</label>
-              <input value={issueCertForm.awarded_for} onChange={e => setIssueCertForm(f => ({ ...f, awarded_for: e.target.value }))}
-                placeholder="e.g. Outstanding service in Ramadan Drive 2026"
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Custom Note / Award Reason</label>
+              <input value={issueCertForm.customNote}
+                onChange={e => setIssueCertForm(f => ({ ...f, customNote: e.target.value }))}
+                placeholder="e.g. For outstanding service during Ramadan Drive 2026"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="flex justify-end gap-3">
@@ -558,27 +763,46 @@ export default function VolunteerRecordsPanel() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
             <h3 className="text-lg font-bold mb-4">Send Message to Volunteer</h3>
             <div className="mb-3">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Volunteer</label>
-              <select value={msgForm.volunteer_id} onChange={e => setMsgForm(f => ({ ...f, volunteer_id: e.target.value }))}
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Volunteer *</label>
+              <select value={msgForm.recipientVolunteerId}
+                onChange={e => setMsgForm(f => ({ ...f, recipientVolunteerId: e.target.value }))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
                 <option value="">Select volunteer…</option>
-                {volunteers.map(v => <option key={v.volunteer_id} value={v.volunteer_id}>{v.full_name} ({v.email})</option>)}
+                {volunteers.map(v => (
+                  <option key={v.volunteer_id} value={v.volunteer_id}>
+                    {v.first_name} {v.last_name} ({v.badge_number})
+                  </option>
+                ))}
               </select>
             </div>
             <div className="mb-3">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Subject</label>
-              <input value={msgForm.subject} onChange={e => setMsgForm(f => ({ ...f, subject: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Channel</label>
+              <select value={msgForm.channel}
+                onChange={e => setMsgForm(f => ({ ...f, channel: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+                <option value="in_app">In-App Only</option>
+                <option value="email">Email Only</option>
+                <option value="both">In-App + Email</option>
+              </select>
+            </div>
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Subject *</label>
+              <input value={msgForm.subject}
+                onChange={e => setMsgForm(f => ({ ...f, subject: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. Shift Confirmation — March 15th" />
             </div>
             <div className="mb-4">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Message Body</label>
-              <textarea rows={6} value={msgForm.body} onChange={e => setMsgForm(f => ({ ...f, body: e.target.value }))}
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Message Body *</label>
+              <textarea rows={5} value={msgForm.body}
+                onChange={e => setMsgForm(f => ({ ...f, body: e.target.value }))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowSendMessage(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={sendMessage} disabled={sending} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                {sending ? 'Sending…' : 'Send'}
+              <button onClick={sendMessage} disabled={sending}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                {sending ? 'Sending…' : 'Send Message'}
               </button>
             </div>
           </div>

@@ -177,7 +177,7 @@ volunteerRecordsRouter.get('/certificates', authenticate, requireRoles('Super Ad
     const awards = await db('dfb_certificate_awards as a')
       .join('dfb_volunteers as v', 'a.volunteer_id', 'v.volunteer_id')
       .join('dfb_certificate_templates as t', 'a.cert_template_id', 't.cert_template_id')
-      .orderBy('a.issued_at', 'desc')
+      .orderBy('a.issue_date', 'desc')
       .select('a.*', 'v.first_name', 'v.last_name', 'v.badge_number', 't.template_name', 't.title_text');
     res.json({ success: true, data: awards });
   }

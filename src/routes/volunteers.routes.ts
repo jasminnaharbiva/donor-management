@@ -8,6 +8,21 @@ import { writeAuditLog } from '../services/audit.service';
 export const volunteersRouter = Router();
 
 // ---------------------------------------------------------------------------
+// GET /api/v1/volunteers — Admin: list all volunteers (for dropdowns etc.)
+// ---------------------------------------------------------------------------
+volunteersRouter.get(
+  '/',
+  authenticate,
+  requireRoles('Super Admin', 'Admin'),
+  async (_req: Request, res: Response): Promise<void> => {
+    const volunteers = await db('dfb_volunteers')
+      .orderBy('first_name', 'asc')
+      .select('volunteer_id', 'first_name', 'last_name', 'badge_number', 'status');
+    res.json({ success: true, data: volunteers });
+  }
+);
+
+// ---------------------------------------------------------------------------
 // POST /api/v1/volunteers/apply — Public application form
 // ---------------------------------------------------------------------------
 volunteersRouter.post(

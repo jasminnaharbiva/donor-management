@@ -49,12 +49,12 @@ export default function App() {
     try {
       // Assuming a public endpoint exists for global SEO
       // Fallback securely if it doesn't
-      const res = await api.get('/settings/public').catch(() => null);
-      if (!res?.data?.data) return;
+      const res = await api.get('/public/settings').catch(() => null);
+      if (!res?.data?.data || typeof res.data.data !== 'object') return;
 
-      const settings = res.data.data;
-      const gtmScript = settings.find((s: any) => s.setting_key === 'integration.gtm_id')?.setting_value;
-      const jsonLd = settings.find((s: any) => s.setting_key === 'seo.global_json_ld')?.setting_value;
+      const settingsObj = res.data.data as Record<string, unknown>;
+      const gtmScript = settingsObj['integration.gtm_id'] as string | undefined;
+      const jsonLd = settingsObj['seo.global_json_ld'] as string | undefined;
 
       // Inject GTM if configured
       if (gtmScript && !document.getElementById('dfb-gtm')) {
