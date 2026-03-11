@@ -9,7 +9,7 @@ export const publicPagesRouter = Router();
 publicPagesRouter.get(
   '/',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   async (req: Request, res: Response) => {
     try {
       const rows = await db('dfb_public_pages')
@@ -26,7 +26,7 @@ publicPagesRouter.get(
 publicPagesRouter.get(
   '/:id',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   param('id').isInt({ min: 1 }),
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
@@ -46,7 +46,7 @@ publicPagesRouter.get(
 publicPagesRouter.post(
   '/',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   [
     body('page_slug').isSlug().isLength({ max: 80 }).trim(),
     body('page_title').isLength({ min: 1, max: 120 }).trim().escape(),
@@ -99,7 +99,7 @@ publicPagesRouter.post(
 publicPagesRouter.put(
   '/:id',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   [
     param('id').isInt({ min: 1 }),
     body('page_slug').optional().isSlug().isLength({ max: 80 }).trim(),
@@ -153,7 +153,7 @@ publicPagesRouter.put(
 publicPagesRouter.delete(
   '/:id',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   param('id').isInt({ min: 1 }),
   async (req: Request, res: Response) => {
     const errors = validationResult(req);

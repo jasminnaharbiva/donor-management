@@ -11,7 +11,7 @@ const VALID_FORM_TYPES = ['donation', 'registration', 'expense', 'campaign', 'be
 formSchemasRouter.get(
   '/',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   async (req: Request, res: Response) => {
     try {
       const rows = await db('dfb_form_schemas')
@@ -28,7 +28,7 @@ formSchemasRouter.get(
 formSchemasRouter.get(
   '/:id',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   param('id').isInt({ min: 1 }),
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
@@ -80,7 +80,7 @@ formSchemasRouter.get(
 formSchemasRouter.post(
   '/',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   [
     body('form_type').isIn(VALID_FORM_TYPES),
     body('schema_json').isString().notEmpty(),
@@ -125,7 +125,7 @@ formSchemasRouter.post(
 formSchemasRouter.put(
   '/:id',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   [
     param('id').isInt({ min: 1 }),
     body('schema_json').optional().isString(),
@@ -174,7 +174,7 @@ formSchemasRouter.put(
 formSchemasRouter.delete(
   '/:id',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   param('id').isInt({ min: 1 }),
   async (req: Request, res: Response) => {
     const errors = validationResult(req);

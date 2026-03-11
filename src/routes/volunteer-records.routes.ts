@@ -104,7 +104,6 @@ volunteerRecordsRouter.post('/id-cards', authenticate, requireRoles('Super Admin
       badge_number:   volunteer.badge_number,
       issue_date:     req.body.issueDate,
       expiry_date:    req.body.expiryDate || null,
-      status:         'active',
       generated_at:   new Date(),
       generated_by:   req.user!.userId,
     });
@@ -120,7 +119,6 @@ volunteerRecordsRouter.patch('/id-cards/:cardId/revoke', authenticate, requireRo
   body('revokedReason').optional().trim().isLength({ max: 500 }),
   async (req: Request, res: Response): Promise<void> => {
     await db('dfb_volunteer_id_cards').where({ card_id: req.params.cardId }).update({
-      status:         'revoked',
       revoked_reason: req.body.revokedReason || null,
       revoked_by:     req.user!.userId,
       revoked_at:     new Date(),
@@ -215,7 +213,6 @@ volunteerRecordsRouter.post('/certificates', authenticate, requireRoles('Super A
       issue_date:        req.body.issueDate,
       verification_code: verificationCode,
       issued_by:         req.user!.userId,
-      issued_at:         new Date(),
     });
 
     await writeAuditLog({ tableAffected: 'dfb_certificate_awards', recordId: awardId, actionType: 'INSERT', actorId: req.user!.userId });

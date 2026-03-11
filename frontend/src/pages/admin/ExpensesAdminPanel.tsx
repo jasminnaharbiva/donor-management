@@ -26,7 +26,7 @@ export default function ExpensesAdminPanel() {
   const [loading, setLoading] = useState(true);
   const [actingOn, setActingOn] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('pending');
+  const [statusFilter, setStatusFilter] = useState('Pending');
 
   const load = async (s = statusFilter) => {
     setLoading(true);
@@ -99,9 +99,10 @@ export default function ExpensesAdminPanel() {
           </div>
           <select className="border border-slate-300 rounded-lg px-3 py-2 text-sm" value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Cancelled">Cancelled</option>
           </select>
         </div>
 

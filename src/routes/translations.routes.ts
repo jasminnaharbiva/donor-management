@@ -9,7 +9,7 @@ export const translationsRouter = Router();
 translationsRouter.get(
   '/',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   async (req: Request, res: Response) => {
     try {
       const { locale, namespace, search, page = '1', limit = '50' } = req.query as Record<string, string>;
@@ -50,7 +50,7 @@ translationsRouter.get(
 translationsRouter.post(
   '/',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   [
     body('locale').isLength({ min: 2, max: 10 }).trim(),
     body('namespace').isLength({ min: 1, max: 40 }).trim(),
@@ -85,7 +85,7 @@ translationsRouter.post(
 translationsRouter.put(
   '/:id',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   [
     param('id').isInt({ min: 1 }),
     body('value').isString().notEmpty(),
@@ -115,7 +115,7 @@ translationsRouter.put(
 translationsRouter.delete(
   '/:id',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   param('id').isInt({ min: 1 }),
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
@@ -138,7 +138,7 @@ translationsRouter.delete(
 translationsRouter.post(
   '/bulk-import',
   authenticate,
-  requireRoles('admin'),
+  requireRoles('Super Admin', 'Admin'),
   [
     body('locale').isLength({ min: 2, max: 10 }).trim(),
     body('namespace').isLength({ min: 1, max: 40 }).trim(),

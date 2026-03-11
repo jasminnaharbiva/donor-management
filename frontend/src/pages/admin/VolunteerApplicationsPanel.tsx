@@ -36,10 +36,11 @@ export default function VolunteerApplicationsPanel() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const params = statusFilter ? `?status=${statusFilter}` : '';
       const res = await api.get(`/api/v1/volunteer-applications${params}`);
-      setApps(res.data.data);
+      setApps(res.data.data ?? []);
     } catch { setError('Failed to load applications'); }
     setLoading(false);
   }, [statusFilter]);
