@@ -1,7 +1,7 @@
 # DFB Donor Management — Implementation Report
 
 **Date**: March 11, 2026  
-**Commits**: `238f4b0` → `ab6f280` → `03b4d4e`  
+**Commits**: `238f4b0` → `ab6f280` → `03b4d4e` → `0851c2a`  
 **Live URL**: https://donor-management.nokshaojibon.com  
 **GitHub**: jasminnaharbiva/donor-management
 
@@ -528,23 +528,38 @@ GET  /sitemap.xml                        ✅ 200 (dynamic from campaigns)
 
 ---
 
+## Phase 6 & 7 — Enterprise Completion (March 11, 2026)
+
+**Commit**: `0851c2a`
+Implemented all remaining enterprise-grade requirements:
+- **Two-Factor Authentication (2FA)**: Full TOTP flow using Authy/Google Authenticator (`/auth/2fa/generate`, `/auth/2fa/verify`, `/auth/2fa/login`) with frontend integrated into `ProfilePage.tsx` and `Login.tsx`.
+- **Media Uploads API**: Image/Receipt uploads via `multer` to `public/uploads` (`/api/v1/media/upload`), integrated into timesheets.
+- **Zakat Calculator**: Client-side interactive widget in the Donor Dashboard.
+- **WebSockets / Real-Time**: `useSocket.ts` hook seamlessly connecting via `socket.io-client` with automatic global event listeners.
+- **Dynamic SEO Scripts**: Injection of Google Analytics (GTM) and JSON-LD structured data directly into the application head via `<script>` injection.
+- **SMTP**: Verified live SMTP environment variables config in `.env`.
+- **Donor Pledges**: Donor-facing pledge creation UI integrated natively to `/api/v1/pledges`.
+- **Campaign Images**: Integrated `cover_image_url` onto public campaign pages.
+
+---
+
 ## Remaining / Future Work
 
 | Feature | Status | Notes |
 |---|---|---|
-| Real SMTP configuration | Not done | Configure `.env` EMAIL_* vars for production email delivery |
+| Real SMTP configuration | ✅ Done | Included in `.env` config with live SMTP host options |
 | Password reset flow (UI) | ✅ Done | `/forgot-password` + `/reset-password` pages + backend token routes |
-| Donor pledge creation UI | Not built | API endpoint exists (`POST /api/v1/pledges`) |
+| Donor pledge creation UI | ✅ Done | Integrated natively inside `DonorDashboard.tsx` |
 | Admin create donations | Working | Via admin panel form |
-| File upload for receipts | Not built | Not in planning doc |
-| Two-factor authentication | Not built | Optional security upgrade |
-| Real-time Socket.IO push | Not built | Architecture in planning doc |
-| Campaign thumbnail images | Not built | DB field exists |
+| File upload for receipts | ✅ Done | Timesheet backend supports media upload via new `/media` endpoint |
+| Two-factor authentication | ✅ Done | Live natively within Profile settings |
+| Real-time Socket.IO push | ✅ Done | Hooked up globally via `useSocket.ts` |
+| Campaign thumbnail images | ✅ Done | Hero cover images fully implemented |
 | Mobile app / PWA | Not built | Future roadmap |
 | robots.txt dynamic serving | ✅ Done | `GET /robots.txt` reads `seo.robots_txt_content` from DB |
 | sitemap.xml dynamic serving | ✅ Done | `GET /sitemap.xml` generates XML from active campaigns |
-| JSON-LD structured data | Not built | Metadata stored; needs injection into HTML |
-| Google Analytics / GTM injection | Not built | IDs stored in DB; needs `<script>` injection in index.html or SSR |
+| JSON-LD structured data | ✅ Done | Injected dynamically on frontend load in `App.tsx` |
+| Google Analytics / GTM injection | ✅ Done | Injected natively on App mount based on configuration |
 
 ---
 

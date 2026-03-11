@@ -98,6 +98,9 @@ function Timesheets() {
   const [form, setForm] = useState({ shiftId: '', activityDescription: '', startDatetime: '', endDatetime: '', receiptUrl: '' });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [gps, setGps] = useState<{ lat: number; lon: number } | null>(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -109,6 +112,16 @@ function Timesheets() {
     }).finally(() => setLoading(false));
   }, []);
 
+  const captureGps = () => {
+    if (!navigator.geolocation) { setGpsError('Geolocation not supported by your browser.'); return; }
+    setGpsLoading(true); setGpsError('');
+    navigator.geolocation.getCurrentPosition(
+      pos => { setGps({ lat: pos.coords.latitude, lon: pos.coords.longitude }); setGpsLoading(false); },
+      err => { setGpsError(`GPS error: ${err.message}`); setGpsLoading(false); },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -119,10 +132,13 @@ function Timesheets() {
         startDatetime: form.startDatetime,
         endDatetime: form.endDatetime,
         receiptUrl: form.receiptUrl || undefined,
+        gpsLat: gps?.lat,
+        gpsLon: gps?.lon,
       });
       setSheets(prev => [r.data.data, ...prev]);
       setShowForm(false);
       setForm({ shiftId: '', activityDescription: '', startDatetime: '', endDatetime: '', receiptUrl: '' });
+      setGps(null);
     } catch { alert('Could not submit timesheet.'); }
     setSaving(false);
   };
@@ -211,6 +227,21 @@ function Timesheets() {
                 )}
               </div>
               <p className="text-xs text-slate-400 mt-2">Accepted formats: JPG, PNG, PDF (Max 10MB). Used for volunteer mileage or material compensation proof.</p>
+              
+              {/* GPS capture */}
+              <div className="mt-3">
+                <p className="text-sm font-medium text-slate-700 mb-1.5">Location Verification (Optional)</p>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={captureGps} disabled={gpsLoading}
+                    className="flex items-center gap-2 text-sm bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 px-3 py-1.5 rounded-lg disabled:opacity-50 transition">
+                    {gpsLoading ? <Loader2 size={14} className="animate-spin"/> : '📍'}
+                    {gpsLoading ? 'Getting location…' : 'Capture My GPS Location'}
+                  </button>
+                  {gps && <span className="text-xs text-green-600 bg-green-50 border border-green-200 px-2 py-1 rounded">📍 {gps.lat.toFixed(5)}, {gps.lon.toFixed(5)}</span>}
+                  {gpsError && <span className="text-xs text-red-500">{gpsError}</span>}
+                </div>
+                <p className="text-xs text-slate-400 mt-1">Records your GPS coordinates for expense verification transparency.</p>
+              </div>
             </div>
 
             <div className="flex gap-2 justify-end pt-2">

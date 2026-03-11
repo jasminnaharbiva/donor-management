@@ -5,7 +5,7 @@ export interface AuditEntry {
   tableAffected?: string;
   recordId?:      string;
   actionType:     'INSERT' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'EXPORT' | 'APPROVE' | 'REJECT'
-                | 'REFUND' | 'GDPR_ERASE' | 'LOGOUT' | '2FA_ENABLE' | 'IMPERSONATE';
+                | 'REFUND' | 'GDPR_ERASE' | 'GDPR_EXPORT' | 'LOGOUT' | '2FA_ENABLE' | 'IMPERSONATE';
   oldPayload?:    Record<string, unknown>;
   newPayload?:    Record<string, unknown>;
   actorId?:       string;

@@ -5,7 +5,7 @@ import {
   Settings, Shield, Activity, Users, Megaphone, BarChart3,
   Heart, DollarSign, Target, UserCheck, Layers, Globe, HandCoins,
   CalendarClock, Bell, UserRound, FolderOpen, ToggleLeft, ClipboardList,
-  Clock, Network, Mail, Sliders
+  Clock, Network, Mail, Sliders, Languages, FileText, FormInput, BadgeCheck
 } from 'lucide-react';
 
 import SettingsPanel from './SettingsPanel';
@@ -32,6 +32,10 @@ import ShiftsPanel from './ShiftsPanel';
 import P2PPanel from './P2PPanel';
 import EmailTemplatesPanel from './EmailTemplatesPanel';
 import CustomFieldsPanel from './CustomFieldsPanel';
+import TranslationsPanel from './TranslationsPanel';
+import PublicPagesPanel from './PublicPagesPanel';
+import FormSchemasPanel from './FormSchemasPanel';
+import VolunteerRecordsPanel from './VolunteerRecordsPanel';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -61,6 +65,10 @@ export default function AdminDashboard() {
     { name: 'Audit Logs', path: '/admin/audit', icon: <Activity size={20} /> },
     { name: 'System Settings', path: '/admin/settings', icon: <Settings size={20} /> },
     { name: 'SEO Manager', path: '/admin/seo', icon: <Globe size={20} /> },
+    { name: 'Translations', path: '/admin/translations', icon: <Languages size={20} /> },
+    { name: 'Public Pages', path: '/admin/public-pages', icon: <FileText size={20} /> },
+    { name: 'Form Schemas', path: '/admin/form-schemas', icon: <FormInput size={20} /> },
+    { name: 'Vol. Records', path: '/admin/vol-records', icon: <BadgeCheck size={20} /> },
   ];
 
   return (
@@ -96,6 +104,10 @@ export default function AdminDashboard() {
           <Route path="email-templates" element={<EmailTemplatesPanel />} />
           <Route path="custom-fields" element={<CustomFieldsPanel />} />
           <Route path="feature-flags" element={<FeatureFlagsPanel />} />
+          <Route path="translations" element={<TranslationsPanel />} />
+          <Route path="public-pages" element={<PublicPagesPanel />} />
+          <Route path="form-schemas" element={<FormSchemasPanel />} />
+          <Route path="vol-records" element={<VolunteerRecordsPanel />} />
         </Routes>
       </div>
     </DashboardLayout>

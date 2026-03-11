@@ -126,6 +126,17 @@ authRouter.post(
       .whereNull('deleted_at')
       .first();
 
+    // Check lockout BEFORE bcrypt (efficiency + correct UX)
+    if (user && user.locked_until && new Date(user.locked_until) > new Date()) {
+      res.status(429).json({ success: false, message: 'Account temporarily locked due to too many failed attempts. Try again in 30 minutes.' });
+      return;
+    }
+
+    if (user && user.status === 'suspended') {
+      res.status(403).json({ success: false, message: 'Account suspended. Contact support.' });
+      return;
+    }
+
     // Constant-time comparison: always hash even if user not found
     const hashToCheck = user?.password_hash || '$2b$12$invalidhashpadding00000000000000000000000000000000000';
     const valid = await bcrypt.compare(password, hashToCheck);
@@ -133,27 +144,17 @@ authRouter.post(
     if (!user || !valid) {
       // Increment failed attempts if user exists
       if (user) {
-        await db('dfb_users')
-          .where({ user_id: user.user_id })
-          .increment('failed_login_attempts', 1)
-          .update({ updated_at: new Date() });
-
-        if (user.failed_login_attempts >= 4) {
-          const lockUntil = new Date(Date.now() + Number(config.rateLimit.windowMs));
-          await db('dfb_users').where({ user_id: user.user_id }).update({ locked_until: lockUntil });
+        const newAttempts = (user.failed_login_attempts || 0) + 1;
+        const updatePayload: Record<string, unknown> = {
+          failed_login_attempts: newAttempts,
+          updated_at: new Date(),
+        };
+        if (newAttempts >= 5) {
+          updatePayload.locked_until = new Date(Date.now() + 30 * 60 * 1000); // 30-minute lockout
         }
+        await db('dfb_users').where({ user_id: user.user_id }).update(updatePayload);
       }
       res.status(401).json({ success: false, message: 'Invalid email or password' });
-      return;
-    }
-
-    if (user.status === 'suspended') {
-      res.status(403).json({ success: false, message: 'Account suspended. Contact support.' });
-      return;
-    }
-
-    if (user.locked_until && new Date(user.locked_until) > new Date()) {
-      res.status(429).json({ success: false, message: 'Account temporarily locked. Try again later.' });
       return;
     }
 
@@ -302,8 +303,18 @@ authRouter.post('/logout', authenticate, async (req: Request, res: Response): Pr
   const authHeader = req.headers.authorization!;
   const token      = authHeader.slice(7);
 
-  // Add token suffix to deny-list in Redis (TTL = JWT max lifetime)
-  await redis.set(`denied_token:${token.slice(-16)}`, '1', 'EX', 60 * 60 * 24 * 30);
+  // Blocklist by sha256(token) so it's unique and unforgeable. TTL = 15 min (access token lifetime)
+  const { sha256Hash } = await import('../utils/crypto');
+  const tokenHash = sha256Hash(token);
+  let ttlSeconds = 900; // 15 min default
+  try {
+    const decoded = jwt.decode(token) as { exp?: number };
+    if (decoded?.exp) { ttlSeconds = Math.max(1, decoded.exp - Math.floor(Date.now() / 1000)); }
+  } catch { /* ignore */ }
+  await redis.set(`blocklist:${tokenHash}`, '1', 'EX', ttlSeconds);
+
+  // Also nullify refresh token in DB
+  await db('dfb_users').where({ user_id: req.user!.userId }).update({ refresh_token_hash: null, updated_at: new Date() });
 
   await writeAuditLog({
     tableAffected: 'dfb_users',

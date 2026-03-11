@@ -108,3 +108,51 @@ projectsRouter.delete('/:id', authenticate, requireRoles('Super Admin'), param('
   await writeAuditLog({ tableAffected: 'dfb_projects', recordId: String(req.params.id), actionType: 'DELETE', actorId: req.user!.userId });
   res.json({ success: true, message: 'Project deleted' });
 });
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/projects/:id/assignments — List volunteer assignments for a project
+// POST /api/v1/projects/:id/assignments — Assign a volunteer
+// DELETE /api/v1/projects/:id/assignments/:assignmentId — Remove an assignment
+// ---------------------------------------------------------------------------
+projectsRouter.get('/:id/assignments', authenticate, requireRoles('Super Admin', 'Admin'), param('id').isInt().toInt(),
+  async (req: Request, res: Response): Promise<void> => {
+    const assignments = await db('dfb_project_assignments as pa')
+      .join('dfb_volunteers as v', 'pa.volunteer_id', 'v.volunteer_id')
+      .where({ 'pa.project_id': req.params.id as any })
+      .select('pa.*', 'v.first_name', 'v.last_name', 'v.badge_number');
+    res.json({ success: true, data: assignments });
+  }
+);
+
+projectsRouter.post('/:id/assignments', authenticate, requireRoles('Super Admin', 'Admin'),
+  param('id').isInt().toInt(),
+  body('volunteerId').isInt({ min: 1 }).toInt(),
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
+    const exists = await db('dfb_project_assignments')
+      .where({ project_id: req.params.id as any, volunteer_id: req.body.volunteerId }).first();
+    if (exists) { res.status(409).json({ success: false, message: 'Volunteer already assigned to this project' }); return; }
+
+    const [id] = await db('dfb_project_assignments').insert({
+      project_id:   req.params.id as any,
+      volunteer_id: req.body.volunteerId,
+      assigned_at:  new Date(),
+      assigned_by:  req.user!.userId,
+      status:       'active',
+    });
+    await writeAuditLog({ tableAffected: 'dfb_project_assignments', recordId: String(id), actionType: 'INSERT', actorId: req.user!.userId });
+    res.status(201).json({ success: true, message: 'Volunteer assigned', data: { assignment_id: id } });
+  }
+);
+
+projectsRouter.delete('/:id/assignments/:assignmentId', authenticate, requireRoles('Super Admin', 'Admin'),
+  param('id').isInt().toInt(),
+  param('assignmentId').isInt().toInt(),
+  async (req: Request, res: Response): Promise<void> => {
+    await db('dfb_project_assignments').where({ assignment_id: req.params.assignmentId as any }).delete();
+    await writeAuditLog({ tableAffected: 'dfb_project_assignments', recordId: String(req.params.assignmentId), actionType: 'DELETE', actorId: req.user!.userId });
+    res.json({ success: true, message: 'Assignment removed' });
+  }
+);

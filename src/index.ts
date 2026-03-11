@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import { RedisStore } from 'rate-limit-redis';
 
 import { config } from './config';
 import { db } from './config/database';
@@ -43,6 +44,10 @@ import { p2pRouter }                   from './routes/p2p.routes';
 import { emailTemplatesRouter }        from './routes/email-templates.routes';
 import { customFieldsRouter }          from './routes/custom-fields.routes';
 import { mediaRouter }                 from './routes/media.routes';
+import { volunteerRecordsRouter }      from './routes/volunteer-records.routes';
+import { translationsRouter }          from './routes/translations.routes';
+import { publicPagesRouter }           from './routes/public-pages.routes';
+import { formSchemasRouter }           from './routes/form-schemas.routes';
 
 const app    = express();
 const server = http.createServer(app);
@@ -108,6 +113,7 @@ const webhookLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 500,
   message: { success: false, message: 'Too many webhooks. Slow down.' },
+  store: new RedisStore({ sendCommand: (...args: string[]) => (redis as any).call(...args), prefix: 'rl:webhook:' }),
 });
 app.use('/api/v1/webhooks', webhookLimiter, webhooksRouter);
 
@@ -121,7 +127,7 @@ app.use(morgan('combined', {
 }));
 
 // ---------------------------------------------------------------------------
-// Global rate limiting (per IP)
+// Global rate limiting (per IP) — Redis-backed for PM2 cluster compatibility
 // ---------------------------------------------------------------------------
 app.use(rateLimit({
   windowMs:            config.rateLimit.windowMs,
@@ -130,6 +136,7 @@ app.use(rateLimit({
   legacyHeaders:       false,
   message: { success: false, message: 'Too many requests, please slow down.' },
   skip: (req) => req.url === '/health',
+  store: new RedisStore({ sendCommand: (...args: string[]) => (redis as any).call(...args), prefix: 'rl:global:' }),
 }));
 
 // Stricter limit on auth endpoints (brute-force protection)
@@ -137,6 +144,7 @@ const authLimiter = rateLimit({
   windowMs:  5 * 60 * 1000,   // 5 minutes
   max:       10,
   message: { success: false, message: 'Too many login attempts. Try again in 5 minutes.' },
+  store: new RedisStore({ sendCommand: (...args: string[]) => (redis as any).call(...args), prefix: 'rl:auth:' }),
 });
 
 // ---------------------------------------------------------------------------
@@ -169,6 +177,10 @@ app.use('/api/v1/p2p',                     p2pRouter);
 app.use('/api/v1/email-templates',         emailTemplatesRouter);
 app.use('/api/v1/custom-fields',           customFieldsRouter);
 app.use('/api/v1/media',                   mediaRouter);
+app.use('/api/v1/volunteer-records',       volunteerRecordsRouter);
+app.use('/api/v1/translations',            translationsRouter);
+app.use('/api/v1/public-pages',            publicPagesRouter);
+app.use('/api/v1/form-schemas',            formSchemasRouter);
 
 // Health check (no auth, no rate limit)
 app.get('/health', (_req, res) => {
@@ -181,11 +193,42 @@ app.get('/health', (_req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// SSE: Real-time fund balance updates
+// ---------------------------------------------------------------------------
+app.get('/api/v1/stream/fund-updates', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // disable LiteSpeed/nginx buffering
+  res.flushHeaders();
+
+  const sendData = async () => {
+    try {
+      const funds = await db('dfb_funds')
+        .whereNull('deleted_at')
+        .select('fund_id', 'fund_name', 'current_balance', 'total_received', 'total_spent', 'currency');
+      res.write(`data: ${JSON.stringify({ type: 'fund_update', funds, ts: new Date().toISOString() })}\n\n`);
+    } catch { /* db error — keep connection alive */ }
+  };
+
+  await sendData();
+  const interval = setInterval(sendData, 10000); // push every 10 seconds
+
+  // Send a keepalive comment every 25s to prevent proxy timeouts
+  const keepalive = setInterval(() => res.write(': keepalive\n\n'), 25000);
+
+  req.on('close', () => {
+    clearInterval(interval);
+    clearInterval(keepalive);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // SEO: robots.txt and sitemap.xml dynamic serving
 // ---------------------------------------------------------------------------
 app.get('/robots.txt', async (_req, res) => {
   try {
-    const row = await db('dfb_seo_settings').where({ setting_key: 'seo.robots_txt_content' }).first('setting_value');
+    const row = await db('dfb_system_settings').where({ setting_key: 'seo.robots_txt_content' }).first('setting_value');
     const content = row?.setting_value || 'User-agent: *\nAllow: /\nDisallow: /admin/\n';
     res.setHeader('Content-Type', 'text/plain');
     res.send(content);
@@ -237,8 +280,15 @@ async function bootstrap(): Promise<void> {
   await db.raw('SELECT 1');
   logger.info('MariaDB connected', { database: config.db.database });
 
-  // Connect Redis (lazy)
-  await redis.connect();
+  // Connect Redis (lazy - ignore if already connecting/connected)
+  try {
+    await redis.connect();
+  } catch (err: any) {
+    if (!err.message?.includes('already connecting') && !err.message?.includes('already connected')) {
+      throw err;
+    }
+    logger.info('Redis already connected, skipping duplicate connect()');
+  }
 
   server.listen(config.port, () => {
     logger.info(`DFB API running on port ${config.port}`, {

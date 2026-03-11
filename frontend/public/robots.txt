@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://donor-management.nokshaojibon.com/sitemap.xml

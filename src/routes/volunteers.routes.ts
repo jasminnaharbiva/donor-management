@@ -156,6 +156,8 @@ volunteersRouter.post(
     body('startDatetime').isISO8601().toDate(),
     body('endDatetime').isISO8601().toDate(),
     body('receiptUrl').optional({ nullable: true }).isString(),
+    body('gpsLat').optional({ nullable: true }).isFloat({ min: -90, max: 90 }).toFloat(),
+    body('gpsLon').optional({ nullable: true }).isFloat({ min: -180, max: 180 }).toFloat(),
   ],
   async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req);
@@ -168,7 +170,7 @@ volunteersRouter.post(
       return;
     }
 
-    const { projectId, shiftId, activityDescription, startDatetime, endDatetime, receiptUrl } = req.body;
+    const { projectId, shiftId, activityDescription, startDatetime, endDatetime, receiptUrl, gpsLat, gpsLon } = req.body;
 
     const diffMs = new Date(endDatetime).getTime() - new Date(startDatetime).getTime();
     if (diffMs <= 0) {
@@ -189,6 +191,28 @@ volunteersRouter.post(
       submitted_at: new Date(),
       updated_at: new Date()
     });
+
+    // If receiptUrl OR GPS provided, also log an expense record for audit trail
+    if (receiptUrl || (gpsLat != null && gpsLon != null)) {
+      const { v4: uuidv4 } = await import('uuid');
+      const volunteer = await db('dfb_volunteers').where({ volunteer_id: volunteerId }).first('fund_id');
+      if (volunteer?.fund_id) {
+        await db('dfb_expenses').insert({
+          expense_id:       uuidv4(),
+          fund_id:          volunteer.fund_id,
+          amount_spent:     0, // placeholdder – admin sets actual amount
+          purpose:          activityDescription,
+          receipt_url:      receiptUrl || null,
+          gps_lat:          gpsLat ?? null,
+          gps_lon:          gpsLon ?? null,
+          spent_timestamp:  startDatetime,
+          status:           'Pending',
+          submitted_by:     req.user!.userId,
+          created_at:       new Date(),
+          updated_at:       new Date(),
+        });
+      }
+    }
 
     res.status(201).json({ success: true, message: 'Timesheet submitted for approval', data: { timesheet_id: timesheetId, duration_minutes: durationMinutes, receipt_url: receiptUrl } });
   }

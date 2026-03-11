@@ -1,0 +1,193 @@
+import { Router, Request, Response } from 'express';
+import { body, param, validationResult } from 'express-validator';
+import { authenticate, requireRoles } from '../middleware/auth.middleware';
+import { db } from '../config/database';
+
+export const formSchemasRouter = Router();
+
+const VALID_FORM_TYPES = ['donation', 'registration', 'expense', 'campaign', 'beneficiary_intake'] as const;
+
+// GET /api/v1/form-schemas — list all
+formSchemasRouter.get(
+  '/',
+  authenticate,
+  requireRoles('admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const rows = await db('dfb_form_schemas')
+        .select('schema_id', 'form_type', 'is_active', 'created_by', 'updated_at')
+        .orderBy('form_type');
+      res.json(rows);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// GET /api/v1/form-schemas/:id — get single with full schema_json
+formSchemasRouter.get(
+  '/:id',
+  authenticate,
+  requireRoles('admin'),
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    try {
+      const schema = await db('dfb_form_schemas').where('schema_id', req.params.id).first();
+      if (!schema) return res.status(404).json({ error: 'Form schema not found' });
+
+      // Parse schema_json
+      if (schema.schema_json) {
+        try { schema.schema_json = JSON.parse(schema.schema_json); } catch {}
+      }
+      res.json(schema);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// GET /api/v1/form-schemas/type/:formType — get active schema for a form type (public use)
+formSchemasRouter.get(
+  '/type/:formType',
+  async (req: Request, res: Response) => {
+    try {
+      if (!VALID_FORM_TYPES.includes(req.params.formType as any)) {
+        return res.status(400).json({ error: 'Invalid form type' });
+      }
+
+      const schema = await db('dfb_form_schemas')
+        .where('form_type', req.params.formType)
+        .where('is_active', 1)
+        .orderBy('updated_at', 'desc')
+        .first();
+
+      if (!schema) return res.status(404).json({ error: 'No active schema for this form type' });
+
+      if (schema.schema_json) {
+        try { schema.schema_json = JSON.parse(schema.schema_json); } catch {}
+      }
+      res.json(schema);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// POST /api/v1/form-schemas — create new schema
+formSchemasRouter.post(
+  '/',
+  authenticate,
+  requireRoles('admin'),
+  [
+    body('form_type').isIn(VALID_FORM_TYPES),
+    body('schema_json').isString().notEmpty(),
+    body('is_active').optional().isBoolean(),
+  ],
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    try {
+      const { form_type, schema_json, is_active } = req.body;
+
+      // Validate schema_json is valid JSON
+      try { JSON.parse(schema_json); } catch { return res.status(400).json({ error: 'schema_json must be valid JSON' }); }
+
+      const createdBy = req.user!.userId;
+
+      // If making active, deactivate others of same type
+      if (is_active) {
+        await db('dfb_form_schemas').where('form_type', form_type).update({ is_active: 0 });
+      }
+
+      const [id] = await db('dfb_form_schemas').insert({
+        form_type,
+        schema_json,
+        is_active: is_active ? 1 : 0,
+        created_by: createdBy,
+      });
+
+      const created = await db('dfb_form_schemas').where('schema_id', id).first();
+      if (created.schema_json) {
+        try { created.schema_json = JSON.parse(created.schema_json); } catch {}
+      }
+      res.status(201).json(created);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// PUT /api/v1/form-schemas/:id — update schema
+formSchemasRouter.put(
+  '/:id',
+  authenticate,
+  requireRoles('admin'),
+  [
+    param('id').isInt({ min: 1 }),
+    body('schema_json').optional().isString(),
+    body('is_active').optional().isBoolean(),
+  ],
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    try {
+      const { id } = req.params;
+      const existing = await db('dfb_form_schemas').where('schema_id', id).first();
+      if (!existing) return res.status(404).json({ error: 'Form schema not found' });
+
+      const updates: Record<string, any> = {};
+
+      if (req.body.schema_json !== undefined) {
+        try { JSON.parse(req.body.schema_json); } catch { return res.status(400).json({ error: 'schema_json must be valid JSON' }); }
+        updates.schema_json = req.body.schema_json;
+      }
+
+      if (req.body.is_active !== undefined) {
+        // If activating, deactivate siblings
+        if (req.body.is_active) {
+          await db('dfb_form_schemas').where('form_type', existing.form_type).whereNot('schema_id', id).update({ is_active: 0 });
+        }
+        updates.is_active = req.body.is_active ? 1 : 0;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await db('dfb_form_schemas').where('schema_id', id).update(updates);
+      }
+
+      const updated = await db('dfb_form_schemas').where('schema_id', id).first();
+      if (updated.schema_json) {
+        try { updated.schema_json = JSON.parse(updated.schema_json); } catch {}
+      }
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// DELETE /api/v1/form-schemas/:id
+formSchemasRouter.delete(
+  '/:id',
+  authenticate,
+  requireRoles('admin'),
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    try {
+      const existing = await db('dfb_form_schemas').where('schema_id', req.params.id).first();
+      if (!existing) return res.status(404).json({ error: 'Form schema not found' });
+
+      await db('dfb_form_schemas').where('schema_id', req.params.id).delete();
+      res.json({ message: 'Form schema deleted' });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);

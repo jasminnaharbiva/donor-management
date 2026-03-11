@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
-import { Heart, Trophy, RefreshCw, Activity, Bell, Loader2, CheckCircle, XCircle, Plus, DollarSign, Calendar, Calculator } from 'lucide-react';
+import { Heart, Trophy, RefreshCw, Activity, Bell, Loader2, CheckCircle, XCircle, Plus, DollarSign, Calendar, Calculator, Globe, Shield, TrendingUp } from 'lucide-react';
 import api from '../../services/api';
 import ZakatCalculator from '../../components/ZakatCalculator';
 import {
@@ -496,11 +496,14 @@ export default function DonorDashboard() {
   const { user } = useAuth();
   const menuItems = [
     { name: 'Overview', path: '/donor/overview', icon: <Activity size={20} /> },
+    { name: 'My Impact', path: '/donor/impact', icon: <TrendingUp size={20} /> },
     { name: 'Donation History', path: '/donor/history', icon: <Heart size={20} /> },
     { name: 'Pledges', path: '/donor/pledges', icon: <Calendar size={20} /> },
+    { name: 'Create Fundraiser', path: '/donor/fundraiser', icon: <Globe size={20} /> },
     { name: 'Zakat Calculator', path: '/donor/zakat', icon: <Calculator size={20} /> },
     { name: 'Subscriptions', path: '/donor/billing', icon: <RefreshCw size={20} /> },
     { name: 'Notifications', path: '/donor/notifications', icon: <Bell size={20} /> },
+    { name: 'My Account / GDPR', path: '/donor/account', icon: <Shield size={20} /> },
   ];
 
   return (
@@ -508,11 +511,14 @@ export default function DonorDashboard() {
       <Routes>
         <Route path="/" element={<Navigate to="overview" replace />} />
         <Route path="overview" element={<Overview />} />
+        <Route path="impact" element={<MyImpact />} />
         <Route path="history" element={<DonationHistory />} />
         <Route path="pledges" element={<Pledges />} />
+        <Route path="fundraiser" element={<P2PFundraiser />} />
         <Route path="zakat" element={<div className="max-w-4xl mx-auto"><ZakatCalculator /></div>} />
         <Route path="billing" element={<Subscriptions />} />
         <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="account" element={<MyAccount />} />
       </Routes>
     </DashboardLayout>
   );
@@ -550,6 +556,285 @@ function NotificationsPage() {
           </div>
         ))}
         {notes.length === 0 && <div className="text-center py-8 text-slate-400">No notifications yet.</div>}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// My Impact — "Where did my money go?" provenance map
+// ---------------------------------------------------------------------------
+function MyImpact() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+
+  useEffect(() => {
+    api.get('/donors/me/impact')
+      .then(r => setData(r.data.data))
+      .catch(() => setError('Could not load impact data.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary-500" size={32}/></div>;
+  if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
+  if (!data) return null;
+
+  const { summary, donations } = data;
+  const deployedPct = summary.total_donated > 0 ? Math.round((summary.total_deployed / summary.total_donated) * 100) : 0;
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><TrendingUp className="text-green-500"/> Where Did My Money Go?</h2>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[
+          { label: 'Total Donated', val: fmt(summary.total_donated), color: 'bg-blue-50 border-blue-200' },
+          { label: 'Deployed to Programs', val: fmt(summary.total_deployed), color: 'bg-green-50 border-green-200' },
+          { label: 'Pending Deployment', val: fmt(summary.total_pending), color: 'bg-yellow-50 border-yellow-200' },
+        ].map(c => (
+          <div key={c.label} className={`rounded-xl border p-4 ${c.color}`}>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">{c.label}</p>
+            <p className="text-2xl font-bold text-slate-800 mt-1">{c.val}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Deployment progress bar */}
+      <div className="glass rounded-xl p-4 border border-slate-200">
+        <div className="flex justify-between text-sm text-slate-600 mb-2">
+          <span>Money Deployed</span><span className="font-semibold">{deployedPct}%</span>
+        </div>
+        <div className="w-full bg-slate-200 rounded-full h-3">
+          <div className="bg-green-500 h-3 rounded-full transition-all" style={{ width: `${deployedPct}%` }}/>
+        </div>
+      </div>
+
+      {/* Per-donation breakdown */}
+      {donations.length === 0 && <div className="text-center py-8 text-slate-400">No donations yet.</div>}
+      {donations.map((don: any) => (
+        <div key={don.transaction_id} className="glass rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-slate-50 px-4 py-3 flex flex-wrap gap-3 justify-between items-center">
+            <div>
+              <span className="font-semibold text-slate-800">{fmt(don.amount)}</span>
+              <span className="ml-2 text-sm text-slate-500">→ {don.fund?.fund_name}</span>
+            </div>
+            <span className="text-xs text-slate-400">{new Date(don.donated_at).toLocaleDateString()}</span>
+          </div>
+          <div className="p-4 space-y-2">
+            {don.allocations.length === 0 && <p className="text-sm text-slate-400 italic">Allocation in progress…</p>}
+            {don.allocations.map((al: any) => (
+              <div key={al.allocation_id} className={`flex items-start gap-3 p-3 rounded-lg ${al.is_spent ? 'bg-green-50 border border-green-100' : 'bg-yellow-50 border border-yellow-100'}`}>
+                <div className="mt-0.5">{al.is_spent ? <CheckCircle size={16} className="text-green-500"/> : <DollarSign size={16} className="text-yellow-500"/>}</div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-700">{fmt(al.allocated_amount)} — {al.is_spent ? 'Deployed' : 'Allocated (pending deployment)'}</p>
+                  {al.expense && (
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {al.expense.purpose} {al.expense.vendor_name ? `• ${al.expense.vendor_name}` : ''} {al.expense.spent_on ? `• ${new Date(al.expense.spent_on).toLocaleDateString()}` : ''}
+                      {al.expense.receipt_url && (<> • <a href={al.expense.receipt_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Receipt</a></>)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// P2P Fundraiser — donor creates peer-to-peer fundraising campaigns
+// ---------------------------------------------------------------------------
+function P2PFundraiser() {
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [funds, setFunds] = useState<any[]>([]);
+  const [form, setForm] = useState({ title: '', personal_story: '', goal_amount: '', end_date: '', fund_id: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+  const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+
+  const load = () => {
+    Promise.all([
+      api.get('/p2p').catch(() => ({ data: { data: [] } })),
+      api.get('/funds').catch(() => ({ data: { data: [] } })),
+    ]).then(([p, f]) => {
+      setCampaigns(p.data.data || []);
+      setFunds(f.data.data || []);
+    }).finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title || !form.goal_amount || !form.end_date || !form.fund_id) { setError('Please fill all required fields.'); return; }
+    setSubmitting(true); setError('');
+    try {
+      await api.post('/p2p', {
+        title: form.title,
+        personal_story: form.personal_story,
+        goal_amount: Number(form.goal_amount),
+        end_date: form.end_date,
+        fund_id: Number(form.fund_id),
+      });
+      setSuccess(true);
+      setForm({ title: '', personal_story: '', goal_amount: '', end_date: '', fund_id: '' });
+      load();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to create campaign.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin" size={32}/></div>;
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Globe className="text-blue-500"/> Create a Fundraiser</h2>
+
+      {/* Create form */}
+      <div className="glass rounded-xl border border-slate-200 p-6">
+        <h3 className="font-semibold text-slate-700 mb-4">Start a Peer-to-Peer Campaign</h3>
+        {success && <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm flex items-center gap-2"><CheckCircle size={16}/> Campaign created successfully!</div>}
+        {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2"><XCircle size={16}/> {error}</div>}
+        <form onSubmit={submit} className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Campaign Title *</label>
+              <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none" placeholder="e.g. Running for Clean Water" required maxLength={200}/>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Target Fund *</label>
+              <select value={form.fund_id} onChange={e => setForm(f => ({ ...f, fund_id: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none" required>
+                <option value="">Select a fund…</option>
+                {funds.map((f: any) => <option key={f.fund_id} value={f.fund_id}>{f.fund_name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Goal Amount (USD) *</label>
+              <input type="number" min={10} value={form.goal_amount} onChange={e => setForm(f => ({ ...f, goal_amount: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none" placeholder="1000" required/>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">End Date *</label>
+              <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none" required min={new Date().toISOString().split('T')[0]}/>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Your Personal Story</label>
+            <textarea rows={3} value={form.personal_story} onChange={e => setForm(f => ({ ...f, personal_story: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none" placeholder="Tell potential donors why this cause matters to you…" maxLength={2000}/>
+          </div>
+          <button type="submit" disabled={submitting} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+            {submitting ? <><Loader2 size={14} className="animate-spin"/> Creating…</> : <><Plus size={14}/> Create Fundraiser</>}
+          </button>
+        </form>
+      </div>
+
+      {/* My campaigns */}
+      {campaigns.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-semibold text-slate-700">My Campaigns</h3>
+          {campaigns.map((c: any) => {
+            const pct = c.goal_amount > 0 ? Math.min(100, Math.round((Number(c.raised_amount || 0) / Number(c.goal_amount)) * 100)) : 0;
+            return (
+              <div key={c.p2p_id} className="glass rounded-xl border border-slate-200 p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-semibold text-slate-800">{c.title}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{c.personal_story?.slice(0, 120)}{c.personal_story?.length > 120 ? '…' : ''}</p>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>{c.status}</span>
+                </div>
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-slate-500 mb-1">
+                    <span>{fmt(Number(c.raised_amount || 0))} raised</span><span>Goal: {fmt(Number(c.goal_amount))}</span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${pct}%` }}/></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// My Account — GDPR data export and right to be forgotten
+// ---------------------------------------------------------------------------
+function MyAccount() {
+  const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const { logout } = useAuth();
+
+  const downloadData = async () => {
+    setExporting(true); setMessage(''); setError('');
+    try {
+      const response = await api.get('/donors/me/export', { responseType: 'blob' });
+      const url = URL.createObjectURL(response.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `my-data-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      setMessage('Your data export has been downloaded.');
+    } catch {
+      setError('Could not export data. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (confirmDelete !== 'DELETE MY ACCOUNT') { setError('Please type the confirmation text exactly.'); return; }
+    setDeleting(true); setError('');
+    try {
+      await api.delete('/donors/me');
+      setMessage('Your account has been anonymised. You will be logged out.');
+      setTimeout(() => logout(), 3000);
+    } catch {
+      setError('Could not process request. Contact support.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Shield className="text-indigo-500"/> My Account &amp; Data Rights</h2>
+
+      {message && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm flex items-center gap-2"><CheckCircle size={16}/>{message}</div>}
+      {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2"><XCircle size={16}/>{error}</div>}
+
+      {/* GDPR Article 20 — Data portability */}
+      <div className="glass rounded-xl border border-indigo-200 p-6">
+        <h3 className="font-semibold text-slate-800 mb-2">📦 Download Your Data</h3>
+        <p className="text-sm text-slate-600 mb-4">Under GDPR Article 20, you have the right to receive all personal data we hold about you in a portable, machine-readable format (JSON). This includes your profile, donation history, pledges, and notification history.</p>
+        <button onClick={downloadData} disabled={exporting} className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">
+          {exporting ? <><Loader2 size={14} className="animate-spin"/> Preparing…</> : '⬇️ Download My Data (JSON)'}
+        </button>
+      </div>
+
+      {/* GDPR Article 17 — Right to be forgotten */}
+      <div className="glass rounded-xl border border-red-200 p-6">
+        <h3 className="font-semibold text-red-700 mb-2">🗑️ Right to Be Forgotten</h3>
+        <p className="text-sm text-slate-600 mb-3">Under GDPR Article 17, you may request deletion of your personal data. Your donation records will be retained for legal/financial compliance but all personally identifiable information will be anonymised immediately. <strong className="text-red-600">This action is irreversible.</strong></p>
+        <div className="bg-red-50 border border-red-100 rounded-lg p-3 mb-4">
+          <p className="text-sm text-red-700 mb-2">Type <strong>DELETE MY ACCOUNT</strong> to confirm:</p>
+          <input type="text" value={confirmDelete} onChange={e => setConfirmDelete(e.target.value)} className="w-full border border-red-300 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-red-400 outline-none" placeholder="DELETE MY ACCOUNT"/>
+        </div>
+        <button onClick={deleteAccount} disabled={deleting || confirmDelete !== 'DELETE MY ACCOUNT'} className="px-5 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 flex items-center gap-2">
+          {deleting ? <><Loader2 size={14} className="animate-spin"/> Processing…</> : '🗑️ Permanently Delete My Account'}
+        </button>
       </div>
     </div>
   );

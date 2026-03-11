@@ -35,8 +35,10 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   try {
     const decoded = jwt.verify(token, config.jwt.accessSecret) as JwtPayload;
 
-    // Check deny-list (logout / token revocation)
-    const revoked = await redis.get(`denied_token:${token.slice(-16)}`);
+    // Check blocklist (logout / token revocation) using sha256(token)
+    const crypto = await import('crypto');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const revoked = await redis.get(`blocklist:${tokenHash}`);
     if (revoked) {
       res.status(401).json({ success: false, message: 'Token has been revoked' });
       return;
