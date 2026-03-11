@@ -3,6 +3,10 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import CampaignPage from './pages/CampaignPage';
+import VolunteerVerify from './pages/VolunteerVerify';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import DonorDashboard from './pages/donor/DonorDashboard';
 import VolunteerDashboard from './pages/volunteer/VolunteerDashboard';
@@ -17,17 +21,21 @@ export default function App() {
           <Route path="/" element={<PublicHome />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/campaigns/:slug" element={<CampaignPage />} />
+          <Route path="/verify/:badgeNumber" element={<VolunteerVerify />} />
+
           {/* Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['Super Admin', 'Admin']} />}>
             <Route path="/admin/*" element={<AdminDashboard />} />
           </Route>
-          
+
           {/* Donor Routes */}
           <Route element={<ProtectedRoute allowedRoles={['Donor', 'Super Admin', 'Admin']} />}>
             <Route path="/donor/*" element={<DonorDashboard />} />
           </Route>
-          
+
           {/* Volunteer Routes */}
           <Route element={<ProtectedRoute allowedRoles={['Volunteer', 'Super Admin', 'Admin']} />}>
             <Route path="/volunteer/*" element={<VolunteerDashboard />} />

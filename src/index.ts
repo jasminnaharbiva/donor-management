@@ -35,6 +35,13 @@ import { notificationsRouter } from './routes/notifications.routes';
 import { pledgesRouter } from './routes/pledges.routes';
 import { recurringRouter } from './routes/recurring.routes';
 import { reportsRouter } from './routes/reports.routes';
+import { projectsRouter }              from './routes/projects.routes';
+import { featureFlagsRouter }          from './routes/feature-flags.routes';
+import { volunteerApplicationsRouter } from './routes/volunteer-applications.routes';
+import { shiftsRouter }                from './routes/shifts.routes';
+import { p2pRouter }                   from './routes/p2p.routes';
+import { emailTemplatesRouter }        from './routes/email-templates.routes';
+import { customFieldsRouter }          from './routes/custom-fields.routes';
 
 const app    = express();
 const server = http.createServer(app);
@@ -153,6 +160,13 @@ app.use('/api/v1/notifications', notificationsRouter);
 app.use('/api/v1/pledges', pledgesRouter);
 app.use('/api/v1/recurring', recurringRouter);
 app.use('/api/v1/reports', reportsRouter);
+app.use('/api/v1/projects',                projectsRouter);
+app.use('/api/v1/feature-flags',           featureFlagsRouter);
+app.use('/api/v1/volunteer-applications',  volunteerApplicationsRouter);
+app.use('/api/v1/shifts',                  shiftsRouter);
+app.use('/api/v1/p2p',                     p2pRouter);
+app.use('/api/v1/email-templates',         emailTemplatesRouter);
+app.use('/api/v1/custom-fields',           customFieldsRouter);
 
 // Health check (no auth, no rate limit)
 app.get('/health', (_req, res) => {
@@ -162,6 +176,37 @@ app.get('/health', (_req, res) => {
     uptime:  process.uptime(),
     ts:      new Date().toISOString(),
   });
+});
+
+// ---------------------------------------------------------------------------
+// SEO: robots.txt and sitemap.xml dynamic serving
+// ---------------------------------------------------------------------------
+app.get('/robots.txt', async (_req, res) => {
+  try {
+    const row = await db('dfb_seo_settings').where({ setting_key: 'seo.robots_txt_content' }).first('setting_value');
+    const content = row?.setting_value || 'User-agent: *\nAllow: /\nDisallow: /admin/\n';
+    res.setHeader('Content-Type', 'text/plain');
+    res.send(content);
+  } catch {
+    res.setHeader('Content-Type', 'text/plain');
+    res.send('User-agent: *\nAllow: /\nDisallow: /admin/\n');
+  }
+});
+
+app.get('/sitemap.xml', async (_req, res) => {
+  try {
+    const campaigns  = await db('dfb_campaigns').where({ is_public: true, status: 'active' }).select('slug', 'updated_at');
+    const base       = config.appUrl;
+    const urls       = [
+      `<url><loc>${base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+      ...campaigns.map((c: any) => `<url><loc>${base}/campaigns/${c.slug}</loc><lastmod>${new Date(c.updated_at).toISOString().split('T')[0]}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`),
+    ];
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.join('')}</urlset>`;
+    res.setHeader('Content-Type', 'application/xml');
+    res.send(xml);
+  } catch {
+    res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+  }
 });
 
 // ---------------------------------------------------------------------------

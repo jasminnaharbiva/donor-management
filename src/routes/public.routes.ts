@@ -143,3 +143,35 @@ publicRouter.get('/settings', async (_req: Request, res: Response): Promise<void
 
   res.json({ success: true, data: flat });
 });
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/public/campaigns/:slug — Public campaign detail
+// ---------------------------------------------------------------------------
+publicRouter.get('/campaigns/:slug', async (req: Request, res: Response): Promise<void> => {
+  const campaign = await db('dfb_campaigns as c')
+    .leftJoin('dfb_funds as f', 'c.fund_id', 'f.fund_id')
+    .where({ 'c.slug': req.params.slug, 'c.is_public': true })
+    .first(
+      'c.campaign_id', 'c.title', 'c.slug', 'c.description', 'c.cover_image_url',
+      'c.goal_amount', 'c.raised_amount', 'c.donor_count',
+      'c.start_date', 'c.end_date', 'c.status',
+      'c.meta_title', 'c.meta_description',
+      'f.fund_name'
+    );
+  if (!campaign) { res.status(404).json({ success: false, message: 'Campaign not found' }); return; }
+  res.json({ success: true, data: campaign });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/public/volunteers/verify/:badgeNumber — Public volunteer verification
+// ---------------------------------------------------------------------------
+publicRouter.get('/volunteers/verify/:badgeNumber', async (req: Request, res: Response): Promise<void> => {
+  const volunteer = await db('dfb_volunteers')
+    .where({ badge_number: req.params.badgeNumber })
+    .first('volunteer_id', 'first_name', 'last_name', 'badge_number', 'status', 'skills', 'city', 'country', 'created_at');
+  if (!volunteer || volunteer.status !== 'active') {
+    res.status(404).json({ success: false, message: 'Volunteer not found or inactive' });
+    return;
+  }
+  res.json({ success: true, data: volunteer });
+});

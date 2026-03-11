@@ -7,7 +7,7 @@ import { redis } from '../config/redis';
 import { config } from '../config';
 import { authenticate } from '../middleware/auth.middleware';
 import { writeAuditLog } from '../services/audit.service';
-import { sendWelcomeEmail } from '../services/email.service';
+import { sendWelcomeEmail, sendEmail } from '../services/email.service';
 import { encrypt, decrypt } from '../utils/crypto';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -330,5 +330,124 @@ authRouter.post(
     });
 
     res.json({ success: true, message: 'Password changed successfully' });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/auth/forgot-password — Send password reset email
+// ---------------------------------------------------------------------------
+authRouter.post(
+  '/forgot-password',
+  [body('email').isEmail().normalizeEmail()],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(422).json({ success: false, errors: errors.array() });
+      return;
+    }
+
+    const { sha256Hash } = await import('../utils/crypto');
+    const emailHash = sha256Hash(req.body.email.toLowerCase());
+
+    const user = await db('dfb_users')
+      .where({ email_hash: emailHash })
+      .whereNull('deleted_at')
+      .first('user_id', 'email');
+
+    // Always return success to prevent user enumeration
+    if (!user) {
+      res.json({ success: true, message: 'If that email exists, a reset link has been sent.' });
+      return;
+    }
+
+    // Generate a secure random token (crypto-safe 32-byte hex)
+    const { randomBytes } = await import('crypto');
+    const token = randomBytes(32).toString('hex');
+    const tokenHash = sha256Hash(token);
+    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await db('dfb_users').where({ user_id: user.user_id }).update({
+      password_reset_token:      tokenHash,
+      password_reset_expires_at: expires,
+      updated_at:                new Date(),
+    });
+
+    const resetUrl = `${config.appUrl}/reset-password?token=${token}`;
+
+    try {
+      const { decrypt: dec } = await import('../utils/crypto');
+      let emailAddr = '';
+      try { emailAddr = dec(user.email); } catch { emailAddr = user.email; }
+
+      await sendEmail({
+        to:      emailAddr,
+        subject: 'Password Reset Request',
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+            <h2 style="color:#1e40af">Password Reset</h2>
+            <p>You requested a password reset. Click the link below. It expires in 1 hour.</p>
+            <a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#1e40af;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">Reset My Password</a>
+            <p style="color:#6b7280;font-size:13px">If you did not request this, ignore this email — your password is unchanged.</p>
+          </div>`,
+        text: `Reset your password: ${resetUrl}`,
+      });
+    } catch {
+      // Email failure — still return success (don't expose internals)
+    }
+
+    res.json({ success: true, message: 'If that email exists, a reset link has been sent.' });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/auth/reset-password — Verify token and set new password
+// ---------------------------------------------------------------------------
+authRouter.post(
+  '/reset-password',
+  [
+    body('token').notEmpty().isLength({ min: 64, max: 64 }),
+    body('password').isLength({ min: 8 }).matches(/(?=.*[A-Z])(?=.*[0-9])/),
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(422).json({ success: false, errors: errors.array() });
+      return;
+    }
+
+    const { token, password } = req.body;
+    const { sha256Hash } = await import('../utils/crypto');
+    const tokenHash = sha256Hash(token);
+
+    const user = await db('dfb_users')
+      .where({ password_reset_token: tokenHash })
+      .where('password_reset_expires_at', '>', new Date())
+      .whereNull('deleted_at')
+      .first('user_id');
+
+    if (!user) {
+      res.status(400).json({ success: false, message: 'Invalid or expired reset token.' });
+      return;
+    }
+
+    const newHash = await bcrypt.hash(password, 12);
+
+    await db('dfb_users').where({ user_id: user.user_id }).update({
+      password_hash:             newHash,
+      password_reset_token:      null,
+      password_reset_expires_at: null,
+      updated_at:                new Date(),
+    });
+
+    await writeAuditLog({
+      tableAffected: 'dfb_users',
+      recordId:      user.user_id,
+      actionType:    'UPDATE',
+      newPayload:    { action: 'password_reset' },
+      ipAddress:     req.ip,
+      userAgent:     req.get('User-Agent'),
+    });
+
+    res.json({ success: true, message: 'Password has been reset. You may now log in.' });
   }
 );

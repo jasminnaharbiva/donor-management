@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import {
   Settings, Shield, Activity, Users, Megaphone, BarChart3,
   Heart, DollarSign, Target, UserCheck, Layers, Globe, HandCoins,
-  CalendarClock, Bell, UserRound
+  CalendarClock, Bell, UserRound, FolderOpen, ToggleLeft, ClipboardList,
+  Clock, Network, Mail, Sliders
 } from 'lucide-react';
 
 import SettingsPanel from './SettingsPanel';
@@ -24,6 +25,13 @@ import BeneficiariesPanel from './BeneficiariesPanel';
 import PledgesPanel from './PledgesPanel';
 import RecurringPanel from './RecurringPanel';
 import NotificationsAdminPanel from './NotificationsAdminPanel';
+import ProjectsPanel from './ProjectsPanel';
+import FeatureFlagsPanel from './FeatureFlagsPanel';
+import VolunteerApplicationsPanel from './VolunteerApplicationsPanel';
+import ShiftsPanel from './ShiftsPanel';
+import P2PPanel from './P2PPanel';
+import EmailTemplatesPanel from './EmailTemplatesPanel';
+import CustomFieldsPanel from './CustomFieldsPanel';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -33,8 +41,12 @@ export default function AdminDashboard() {
     { name: 'Campaigns', path: '/admin/campaigns', icon: <Target size={20} /> },
     { name: 'Donations', path: '/admin/donations', icon: <DollarSign size={20} /> },
     { name: 'Donors', path: '/admin/donors', icon: <Heart size={20} /> },
+    { name: 'Projects', path: '/admin/projects', icon: <FolderOpen size={20} /> },
     { name: 'Expenses', path: '/admin/expenses', icon: <BarChart3 size={20} /> },
     { name: 'Volunteers', path: '/admin/volunteers', icon: <UserCheck size={20} /> },
+    { name: 'Vol. Applications', path: '/admin/vol-applications', icon: <ClipboardList size={20} /> },
+    { name: 'Shifts & Timesheets', path: '/admin/shifts', icon: <Clock size={20} /> },
+    { name: 'P2P Campaigns', path: '/admin/p2p', icon: <Network size={20} /> },
     { name: 'Users', path: '/admin/users', icon: <Users size={20} /> },
     { name: 'Roles & Perms', path: '/admin/roles', icon: <Shield size={20} /> },
     { name: 'Announcements', path: '/admin/announcements', icon: <Megaphone size={20} /> },
@@ -42,6 +54,9 @@ export default function AdminDashboard() {
     { name: 'Pledges', path: '/admin/pledges', icon: <HandCoins size={20} /> },
     { name: 'Recurring', path: '/admin/recurring', icon: <CalendarClock size={20} /> },
     { name: 'Notifications', path: '/admin/notifications', icon: <Bell size={20} /> },
+    { name: 'Email Templates', path: '/admin/email-templates', icon: <Mail size={20} /> },
+    { name: 'Custom Fields', path: '/admin/custom-fields', icon: <Sliders size={20} /> },
+    { name: 'Feature Flags', path: '/admin/feature-flags', icon: <ToggleLeft size={20} /> },
     { name: 'Reports', path: '/admin/reports', icon: <Activity size={20} /> },
     { name: 'Audit Logs', path: '/admin/audit', icon: <Activity size={20} /> },
     { name: 'System Settings', path: '/admin/settings', icon: <Settings size={20} /> },
@@ -61,8 +76,12 @@ export default function AdminDashboard() {
           <Route path="campaigns" element={<CampaignsPanel />} />
           <Route path="donations" element={<DonationsPanel />} />
           <Route path="donors" element={<DonorsPanel />} />
+          <Route path="projects" element={<ProjectsPanel />} />
           <Route path="expenses" element={<ExpensesAdminPanel />} />
           <Route path="volunteers" element={<VolunteersAdminPanel />} />
+          <Route path="vol-applications" element={<VolunteerApplicationsPanel />} />
+          <Route path="shifts" element={<ShiftsPanel />} />
+          <Route path="p2p" element={<P2PPanel />} />
           <Route path="users" element={<UsersPanelFull />} />
           <Route path="roles" element={<RolesPanelFull />} />
           <Route path="announcements" element={<AnnouncementsPanel />} />
@@ -74,6 +93,9 @@ export default function AdminDashboard() {
           <Route path="pledges" element={<PledgesPanel />} />
           <Route path="recurring" element={<RecurringPanel />} />
           <Route path="notifications" element={<NotificationsAdminPanel />} />
+          <Route path="email-templates" element={<EmailTemplatesPanel />} />
+          <Route path="custom-fields" element={<CustomFieldsPanel />} />
+          <Route path="feature-flags" element={<FeatureFlagsPanel />} />
         </Routes>
       </div>
     </DashboardLayout>
