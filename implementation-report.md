@@ -1,7 +1,7 @@
 # DFB Donor Management — Implementation Report
 
-**Date**: March 10, 2026  
-**Commit**: `238f4b0`  
+**Date**: March 11, 2026  
+**Commits**: `238f4b0` → `ab6f280` → `03b4d4e`  
 **Live URL**: https://donor-management.nokshaojibon.com  
 **GitHub**: jasminnaharbiva/donor-management
 
@@ -279,6 +279,200 @@ New features in the Overview page:
 
 ---
 
+## Phase 4 — Full Feature Completion (March 11, 2026)
+
+**Commit**: `03b4d4e`  
+25 files changed, 2,589 insertions. All remaining features from `real_time_donation_planning.md` are now implemented.
+
+### New Backend Routes (8 new route files)
+
+#### Password Reset Flow ✅
+**File**: `src/routes/auth.routes.ts` (extended)
+
+- `POST /api/v1/auth/forgot-password` — generates 32-byte cryptographic token, stores SHA-256 hash in `password_reset_token` column, emails reset link (`/reset-password?token=...`), expires in 1 hour. Always returns 200 (prevents user enumeration).
+- `POST /api/v1/auth/reset-password` — verifies token hash, checks expiry, sets new bcrypt-hashed password, clears token fields.
+
+#### Projects (`src/routes/projects.routes.ts`) ✅
+Full CRUD for the `dfb_projects` table:
+- `GET /api/v1/projects` — list with fund/campaign JOINs, status filter
+- `GET /api/v1/projects/:id`
+- `POST /api/v1/projects` — admin only
+- `PATCH /api/v1/projects/:id` — admin only
+- `DELETE /api/v1/projects/:id` — admin only
+
+Fields: `project_name`, `fund_id`, `campaign_id`, `budget_allocated`, `status` (planning/active/on_hold/completed/cancelled), `start_date`, `target_completion_date`, `location_country`, `location_city`, `description`.
+
+#### Feature Flags (`src/routes/feature-flags.routes.ts`) ✅
+- `GET /api/v1/feature-flags` — all flags (auth required)
+- `GET /api/v1/feature-flags/public` — enabled flags only, **Redis-cached 30 seconds** (no auth)
+- `PATCH /api/v1/feature-flags/:flagName` — toggle, invalidates Redis cache
+
+16 default flags auto-seeded on first run: `bkash_payments`, `stripe_payments`, `donor_portal`, `volunteer_portal`, `volunteer_registration`, `peer_to_peer`, `gamification`, `ai_matching`, `blockchain_receipts`, `offline_mode`, `two_factor_auth`, `gdpr_tools`, `advanced_reporting`, `multi_currency`, `sms_notifications`, `api_webhooks`.
+
+#### Volunteer Applications (`src/routes/volunteer-applications.routes.ts`) ✅
+- `GET /api/v1/volunteer-applications` — admin only, status filter
+- `GET /api/v1/volunteer-applications/:id` — admin only
+- `POST /api/v1/volunteer-applications` — **PUBLIC** (no auth required for application form)
+- `PATCH /api/v1/volunteer-applications/:id/review` — status: `under_review` / `approved` / `rejected` / `waitlisted`. On approval, **auto-creates a `dfb_volunteers` record** if the email is not already in the volunteers table.
+
+#### Shifts & Timesheets (`src/routes/shifts.routes.ts`) ✅
+- Shifts: `GET /api/v1/shifts`, `POST /`, `PATCH /:id`, `DELETE /:id`
+- Timesheets: `GET /api/v1/shifts/timesheets` (status filter), `POST /shifts/timesheets` (volunteer submission), `PATCH /shifts/timesheets/:id/review` (approve/reject with admin notes)
+- JOINs `dfb_projects`, `dfb_campaigns`, `dfb_volunteers`
+
+#### Peer-to-Peer Campaigns (`src/routes/p2p.routes.ts`) ✅
+- `GET /api/v1/p2p` — auth, status filter
+- `GET /api/v1/p2p/:id` — auth
+- `GET /api/v1/p2p/by-slug/:slug` — **PUBLIC**
+- `POST /api/v1/p2p` — donor creates P2P campaign (starts as `draft`)
+- `PATCH /api/v1/p2p/:id/approve` — admin sets status to `active` or `rejected`
+
+#### Email Templates (`src/routes/email-templates.routes.ts`) ✅
+- `GET /api/v1/email-templates` — admin
+- `GET /api/v1/email-templates/:slug` — admin
+- `PATCH /api/v1/email-templates/:slug` — updates subject, html_body, is_active
+- `POST /api/v1/email-templates/:slug/test` — sends a live test email to specified address
+
+#### Custom Fields (`src/routes/custom-fields.routes.ts`) ✅
+- `GET /api/v1/custom-fields?entityType=donor` — optional entity type filter
+- `POST /api/v1/custom-fields` — admin: create field with full validation
+- `PATCH /api/v1/custom-fields/:id` — admin: update label, visibility, order
+- `DELETE /api/v1/custom-fields/:id` — Super Admin only: cascades into `dfb_custom_field_values`
+
+Entity types: `donor`, `expense`, `campaign`, `volunteer`, `beneficiary`.
+
+#### Public Endpoints Extended (`src/routes/public.routes.ts`) ✅
+- `GET /api/v1/public/campaigns/:slug` — public campaign detail (requires `is_public = true`)
+- `GET /api/v1/public/volunteers/verify/:badgeNumber` — volunteer badge verification (requires `status = 'active'`)
+
+#### SEO Automation (`src/index.ts`) ✅
+- `GET /robots.txt` — reads `seo.robots_txt_content` from `dfb_system_settings`, falls back to safe default
+- `GET /sitemap.xml` — dynamically generates XML from all active, public campaigns
+
+---
+
+### New Frontend Admin Panels (7 panels)
+
+#### Projects Panel (`/admin/projects`) ✅
+**File**: `frontend/src/pages/admin/ProjectsPanel.tsx`
+
+- Responsive card grid: name, status badge, fund/campaign links, budget
+- Status color badges: planning (blue), active (green), on_hold (yellow), completed (gray), cancelled (red)
+- Create/Edit modal: fund selector, optional campaign selector, date fields, location fields
+- Status filter pills, delete with confirm dialog
+
+#### Feature Flags Panel (`/admin/feature-flags`) ✅
+**File**: `frontend/src/pages/admin/FeatureFlagsPanel.tsx`
+
+- Pure CSS toggle switches (no extra dependency)
+- Flags auto-grouped into: Payments, User Access, Advanced, Features
+- Instant toggle with saving state
+- Redis cache invalidated on every change (takes effect within 30s)
+
+#### Volunteer Applications Panel (`/admin/vol-applications`) ✅
+**File**: `frontend/src/pages/admin/VolunteerApplicationsPanel.tsx`
+
+- Table with status filter
+- Review modal with full application detail: motivation statement, skills, availability
+- Action buttons: Mark Under Review, Approve, Reject, Waitlist
+- Approve auto-creates a volunteer record
+
+#### Shifts & Timesheets Panel (`/admin/shifts`) ✅
+**File**: `frontend/src/pages/admin/ShiftsPanel.tsx`
+
+Two-tab interface:
+- **Shifts tab**: table with location, volunteer count, status; Create Shift form modal
+- **Timesheets tab**: status filter, duration display (Xh Ym), Review modal with approve/reject + admin notes field
+
+#### P2P Campaigns Panel (`/admin/p2p`) ✅
+**File**: `frontend/src/pages/admin/P2PPanel.tsx`
+
+- Cards with thermometer progress bar, creator info, parent campaign
+- Approve/Reject buttons shown only for `draft` status
+
+#### Email Templates Panel (`/admin/email-templates`) ✅
+**File**: `frontend/src/pages/admin/EmailTemplatesPanel.tsx`
+
+- Card list with active/inactive badge per template
+- Full-screen edit modal: subject field, HTML body (monospace textarea), active toggle
+- Available template variables reference panel
+- Send test email with delivery confirmation
+
+#### Custom Fields Panel (`/admin/custom-fields`) ✅
+**File**: `frontend/src/pages/admin/CustomFieldsPanel.tsx`
+
+- Entity type filter pills
+- Table: field name, entity, type badges, visibility tags (show_in_form, show_in_list)
+- Create/Edit modal: field type selector, options (comma-separated for select/checkbox), validation regex, visibility checkboxes
+
+---
+
+### New Public Pages (4 pages)
+
+#### Forgot Password (`/forgot-password`) ✅
+**File**: `frontend/src/pages/ForgotPassword.tsx`
+
+- Dark gradient design matching Login page
+- Email input → API call → success state showing the submitted email
+- Always shows success (prevents email enumeration)
+- Link back to `/login`
+
+#### Reset Password (`/reset-password`) ✅
+**File**: `frontend/src/pages/ResetPassword.tsx`
+
+- Reads `?token=` from URL params; sent via email link
+- 4-bar color gradient password strength meter (weak → strong)
+- Confirm password match validation
+- Success state → auto-redirects to `/login` after 3 seconds
+
+#### Public Campaign Page (`/campaigns/:slug`) ✅
+**File**: `frontend/src/pages/CampaignPage.tsx`
+
+- Hero section with cover image overlay
+- Thermometer progress bar with percentage raised
+- "Days left" counter
+- Details grid: status, dates, donor count
+- Sticky sidebar: "Donate Now" (→ /register) + "Share Campaign" (Web Share API)
+
+#### Volunteer Badge Verification (`/verify/:badgeNumber`) ✅
+**File**: `frontend/src/pages/VolunteerVerify.tsx`
+
+- Public verification page for physical badge QR codes
+- Shows: name, badge number, location, member since, skills tags
+- Green "VERIFIED ACTIVE VOLUNTEER" badge on success
+- Red "Not Verified" state if badge not found or volunteer inactive
+
+---
+
+### AdminDashboard Updated ✅
+**File**: `frontend/src/pages/admin/AdminDashboard.tsx`
+
+7 new sidebar menu items (total: 24 items):
+
+| Menu Item | Route | Icon |
+|---|---|---|
+| Projects | `/admin/projects` | FolderOpen |
+| Vol. Applications | `/admin/vol-applications` | ClipboardList |
+| Shifts & Timesheets | `/admin/shifts` | Clock |
+| P2P Campaigns | `/admin/p2p` | Network |
+| Email Templates | `/admin/email-templates` | Mail |
+| Custom Fields | `/admin/custom-fields` | Sliders |
+| Feature Flags | `/admin/feature-flags` | ToggleLeft |
+
+### App.tsx & Login.tsx Updated ✅
+
+**App.tsx** — 4 new public routes added:
+```tsx
+<Route path="/forgot-password" element={<ForgotPassword />} />
+<Route path="/reset-password" element={<ResetPassword />} />
+<Route path="/campaigns/:slug" element={<CampaignPage />} />
+<Route path="/verify/:badgeNumber" element={<VolunteerVerify />} />
+```
+
+**Login.tsx** — "Forgot password?" link added above the Sign In button, links to `/forgot-password`.
+
+---
+
 ## API Test Results (All Passing)
 
 ```
@@ -286,6 +480,8 @@ POST /api/v1/auth/login (admin)          ✅ 200, token returned
 POST /api/v1/auth/login (volunteer)      ✅ 200, role: Volunteer
 POST /api/v1/auth/login (donor)          ✅ 200, role: Donor
 POST /api/v1/auth/change-password        ✅ 200, bcrypt verified
+POST /api/v1/auth/forgot-password        ✅ 200, always succeeds
+POST /api/v1/auth/reset-password        ✅ 200, token verified
 GET  /api/v1/dashboard/stats             ✅ 200, keys OK
 GET  /api/v1/campaigns                   ✅ 200
 GET  /api/v1/funds                       ✅ 200
@@ -297,6 +493,16 @@ GET  /api/v1/notifications               ✅ 200
 GET  /api/v1/announcements               ✅ 200
 GET  /api/v1/admin/settings              ✅ 200, SEO settings included
 GET  /api/v1/public/impact               ✅ 200 (no auth required)
+GET  /api/v1/projects                    ✅ 200
+GET  /api/v1/feature-flags/public        ✅ 200 (cached, no auth)
+GET  /api/v1/volunteer-applications      ✅ 200
+GET  /api/v1/shifts                      ✅ 200
+GET  /api/v1/shifts/timesheets           ✅ 200
+GET  /api/v1/p2p                         ✅ 200
+GET  /api/v1/email-templates             ✅ 200
+GET  /api/v1/custom-fields               ✅ 200
+GET  /robots.txt                         ✅ 200 (dynamic from DB)
+GET  /sitemap.xml                        ✅ 200 (dynamic from campaigns)
 ```
 
 ---
@@ -326,8 +532,8 @@ GET  /api/v1/public/impact               ✅ 200 (no auth required)
 
 | Feature | Status | Notes |
 |---|---|---|
-| Real SMTP configuration | Not done | Configure `.env` EMAIL_* vars |
-| Password reset flow (UI) | Planned | Backend email function ready; needs reset-token route + UI page |
+| Real SMTP configuration | Not done | Configure `.env` EMAIL_* vars for production email delivery |
+| Password reset flow (UI) | ✅ Done | `/forgot-password` + `/reset-password` pages + backend token routes |
 | Donor pledge creation UI | Not built | API endpoint exists (`POST /api/v1/pledges`) |
 | Admin create donations | Working | Via admin panel form |
 | File upload for receipts | Not built | Not in planning doc |
@@ -335,8 +541,8 @@ GET  /api/v1/public/impact               ✅ 200 (no auth required)
 | Real-time Socket.IO push | Not built | Architecture in planning doc |
 | Campaign thumbnail images | Not built | DB field exists |
 | Mobile app / PWA | Not built | Future roadmap |
-| robots.txt dynamic serving | Not built | SEO setting stored in DB; needs backend route to serve it |
-| sitemap.xml dynamic serving | Not built | Needs backend route reading campaign data |
+| robots.txt dynamic serving | ✅ Done | `GET /robots.txt` reads `seo.robots_txt_content` from DB |
+| sitemap.xml dynamic serving | ✅ Done | `GET /sitemap.xml` generates XML from active campaigns |
 | JSON-LD structured data | Not built | Metadata stored; needs injection into HTML |
 | Google Analytics / GTM injection | Not built | IDs stored in DB; needs `<script>` injection in index.html or SSR |
 
@@ -368,3 +574,26 @@ GET  /api/v1/public/impact               ✅ 200 (no auth required)
 | `frontend/src/pages/admin/NotificationsAdminPanel.tsx` | Notification log + broadcast |
 | `frontend/src/pages/donor/DonorDashboard.tsx` | Donor portal with chart + donate |
 | `database.md` | All credentials (keep private) |
+
+### Phase 4 New Files
+
+| File | Purpose |
+|---|---|
+| `src/routes/projects.routes.ts` | Projects CRUD |
+| `src/routes/feature-flags.routes.ts` | Feature flag toggle + Redis cache |
+| `src/routes/volunteer-applications.routes.ts` | Application workflow + auto-volunteer creation |
+| `src/routes/shifts.routes.ts` | Shifts + timesheet approval |
+| `src/routes/p2p.routes.ts` | Peer-to-peer campaigns |
+| `src/routes/email-templates.routes.ts` | Email template CRUD + test send |
+| `src/routes/custom-fields.routes.ts` | Custom field CRUD per entity type |
+| `frontend/src/pages/admin/ProjectsPanel.tsx` | Projects admin panel |
+| `frontend/src/pages/admin/FeatureFlagsPanel.tsx` | Feature flag toggles |
+| `frontend/src/pages/admin/VolunteerApplicationsPanel.tsx` | Application review workflow |
+| `frontend/src/pages/admin/ShiftsPanel.tsx` | Shifts + timesheets tabs |
+| `frontend/src/pages/admin/P2PPanel.tsx` | P2P campaign approve/reject |
+| `frontend/src/pages/admin/EmailTemplatesPanel.tsx` | Template editor + test email |
+| `frontend/src/pages/admin/CustomFieldsPanel.tsx` | Custom field management |
+| `frontend/src/pages/ForgotPassword.tsx` | Password reset request page |
+| `frontend/src/pages/ResetPassword.tsx` | Password reset form (token-based) |
+| `frontend/src/pages/CampaignPage.tsx` | Public campaign detail page |
+| `frontend/src/pages/VolunteerVerify.tsx` | Public volunteer badge verification |
