@@ -29,7 +29,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Optimistically recover user or ping /api/v1/auth/me
       api.get('/auth/me')
         .then(res => {
-          setUser(res.data.data);
+          const d = res.data.data;
+          // /auth/me returns snake_case fields; normalise to camelCase for the User interface
+          setUser({
+            userId:    d.userId    || d.user_id,
+            email:     d.email,
+            role:      d.role      || d.role_name,
+            firstName: d.firstName || d.first_name,
+            lastName:  d.lastName  || d.last_name,
+          });
         })
         .catch(() => {
           localStorage.removeItem('token');
