@@ -93,8 +93,8 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-500 rounded-2xl shadow-xl mb-3">
             <Heart size={32} className="text-white" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">DFB Portal</h1>
-          <p className="text-slate-400 mt-1">Donor & Volunteer Management System</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary-300">DFB Portal</h1>
+          <p className="text-slate-300 mt-1">Donor & Volunteer Management System</p>
         </div>
 
         {/* Session expired notice */}

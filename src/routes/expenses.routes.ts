@@ -33,6 +33,8 @@ expenseRouter.get(
 
     let q = db('dfb_expenses as e')
       .join('dfb_funds as f', 'e.fund_id', 'f.fund_id')
+      .leftJoin('dfb_projects as p', 'e.project_id', 'p.project_id')
+      .leftJoin('dfb_volunteers as v', 'e.submitted_by_volunteer_id', 'v.volunteer_id')
       .whereNull('e.deleted_at');
 
     if (req.query.status) q = q.where('e.status', req.query.status as string);
@@ -41,7 +43,7 @@ expenseRouter.get(
     const expenses = await q
       .orderBy('e.created_at', 'desc')
       .limit(limit).offset(offset)
-      .select('e.*', 'f.fund_name');
+      .select('e.*', 'f.fund_name', 'p.project_name', db.raw("CONCAT(v.first_name, ' ', v.last_name) as volunteer_name"));
 
     res.json({
       success: true,
@@ -59,6 +61,7 @@ expenseRouter.post(
   authenticate,
   [
     body('fundId').isInt({ min: 1 }).toInt(),
+    body('projectId').optional().isInt({ min: 1 }).toInt(),
     body('amountSpent').isDecimal().toFloat(),
     body('purpose').trim().notEmpty().isLength({ max: 500 }),
     body('vendorName').optional().trim().isLength({ max: 120 }),
@@ -72,13 +75,28 @@ expenseRouter.post(
     if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
 
     const {
-      fundId, amountSpent, purpose, vendorName, receiptUrl,
+      fundId, projectId, amountSpent, purpose, vendorName, receiptUrl,
       spentTimestamp, gpsLat, gpsLon,
     } = req.body;
 
-    // Confirm fund exists
-    const fund = await db('dfb_funds').where({ fund_id: fundId }).first();
+    const [fund, submitterUser] = await Promise.all([
+      db('dfb_funds').where({ fund_id: fundId }).first(),
+      db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id'),
+    ]);
+
     if (!fund) { res.status(404).json({ success: false, message: 'Fund not found' }); return; }
+
+    if (projectId) {
+      const project = await db('dfb_projects').where({ project_id: projectId }).first('project_id', 'fund_id');
+      if (!project) {
+        res.status(404).json({ success: false, message: 'Project not found' });
+        return;
+      }
+      if (Number(project.fund_id) !== Number(fundId)) {
+        res.status(422).json({ success: false, message: 'Selected project does not belong to the selected fund' });
+        return;
+      }
+    }
 
     if (Number(fund.current_balance) < amountSpent) {
       res.status(409).json({
@@ -94,6 +112,7 @@ expenseRouter.post(
       await trx('dfb_expenses').insert({
         expense_id:                expenseId,
         fund_id:                   fundId,
+        project_id:                projectId || null,
         amount_spent:              amountSpent,
         vendor_name:               vendorName,
         purpose,
@@ -101,6 +120,7 @@ expenseRouter.post(
         gps_lat:                   gpsLat || null,
         gps_lon:                   gpsLon || null,
         spent_timestamp:           spentTimestamp || new Date(),
+        submitted_by_volunteer_id: submitterUser?.volunteer_id || null,
         status:                    'Pending',
         created_at:                new Date(),
       });
@@ -110,7 +130,7 @@ expenseRouter.post(
       tableAffected: 'dfb_expenses',
       recordId:      expenseId,
       actionType:    'INSERT',
-      newPayload:    { fundId, amountSpent, purpose },
+      newPayload:    { fundId, projectId: projectId || null, amountSpent, purpose },
       actorId:       req.user!.userId,
       ipAddress:     req.ip,
     });
@@ -158,6 +178,15 @@ expenseRouter.post(
       approved_at:         new Date(),
       integrity_hash_id:   hashId,
     });
+
+    // Update project budget_spent and budget_remaining if linked to a project
+    if (expense.project_id) {
+      await db('dfb_projects').where({ project_id: expense.project_id }).update({
+        budget_spent:     db.raw('budget_spent + ?', [Number(expense.amount_spent)]),
+        budget_remaining: db.raw('GREATEST(0, budget_remaining - ?)', [Number(expense.amount_spent)]),
+        updated_at:       new Date(),
+      });
+    }
 
     await writeAuditLog({
       tableAffected: 'dfb_expenses',

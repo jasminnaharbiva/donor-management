@@ -130,11 +130,12 @@ reportsRouter.get('/expenses',
 
     let q = db('dfb_expenses as e')
       .leftJoin('dfb_funds as f', 'e.fund_id', 'f.fund_id')
+      .leftJoin('dfb_projects as p', 'e.project_id', 'p.project_id')
       .leftJoin('dfb_volunteers as v', 'e.submitted_by_volunteer_id', 'v.volunteer_id')
       .select(
         'e.expense_id', 'e.amount_spent', 'e.vendor_name', 'e.purpose',
         'e.status', 'e.spent_timestamp', 'e.approved_at',
-        'f.fund_name',
+        'f.fund_name', 'p.project_name',
         db.raw("CONCAT(v.first_name, ' ', v.last_name) as volunteer_name")
       )
       .orderBy('e.spent_timestamp', 'desc');
@@ -169,12 +170,14 @@ reportsRouter.get('/expenses',
 // ---------------------------------------------------------------------------
 reportsRouter.get('/ledger', async (req: Request, res: Response) => {
   const [incomeRow] = await db('dfb_transactions').where({ status: 'Completed' }).sum('net_amount as total');
-  const [expenseRow] = await db('dfb_expenses').where({ status: 'approved' }).sum('amount_spent as total');
-  const [pendingRow] = await db('dfb_expenses').where({ status: 'pending' }).sum('amount_spent as total');
+  const [expenseRow] = await db('dfb_expenses').where({ status: 'Approved' }).sum('amount_spent as total');
+  const [pendingRow] = await db('dfb_expenses').where({ status: 'Pending' }).sum('amount_spent as total');
+  const [approvedCountRow] = await db('dfb_expenses').where({ status: 'Approved' }).count('expense_id as total');
 
   const totalIncome = Number(incomeRow.total || 0);
   const totalExpenses = Number(expenseRow.total || 0);
   const pendingExpenses = Number(pendingRow.total || 0);
+  const approvedExpenses = Number(approvedCountRow.total || 0);
   const netBalance = totalIncome - totalExpenses;
 
   // Fund breakdown
@@ -192,7 +195,7 @@ reportsRouter.get('/ledger', async (req: Request, res: Response) => {
   res.json({
     success: true,
     data: {
-      summary: { totalIncome, totalExpenses, pendingExpenses, netBalance },
+      summary: { totalIncome, totalExpenses, pendingExpenses, approvedExpenses, netBalance },
       fundBreakdown,
       monthlyIncome,
     }

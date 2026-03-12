@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout';
-import { Calendar, Clock, Star, Edit3, Loader2, CheckCircle, Plus, UploadCloud, FileImage } from 'lucide-react';
+import { Calendar, Clock, Star, Edit3, Loader2, CheckCircle, Plus, UploadCloud, FileImage, Briefcase } from 'lucide-react';
 import api from '../../services/api';
 
 interface Shift {
@@ -24,7 +24,24 @@ interface Timesheet {
   status: string;
   submitted_at: string;
   shift_title?: string;
+  project_name?: string;
   receipt_url?: string;
+}
+
+interface AssignedProject {
+  project_id: number;
+  project_name: string;
+  description?: string;
+  status: string;
+  budget_allocated: number;
+  budget_spent: number;
+  budget_remaining: number;
+  location_country?: string;
+  location_city?: string;
+  start_date?: string;
+  target_completion_date?: string;
+  fund_name?: string;
+  assigned_at: string;
 }
 
 function Shifts() {
@@ -93,23 +110,28 @@ function Shifts() {
 function Timesheets() {
   const [sheets, setSheets] = useState<Timesheet[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [projects, setProjects] = useState<AssignedProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ shiftId: '', activityDescription: '', startDatetime: '', endDatetime: '', receiptUrl: '' });
+  const [form, setForm] = useState({ projectId: '', shiftId: '', activityDescription: '', startDatetime: '', endDatetime: '', receiptUrl: '' });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [gps, setGps] = useState<{ lat: number; lon: number } | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState('');
 
+  const load = () => Promise.all([
+    api.get('/volunteers/timesheets').catch(() => ({ data: { data: [] } })),
+    api.get('/volunteers/shifts').catch(() => ({ data: { data: [] } })),
+    api.get('/volunteers/my-projects').catch(() => ({ data: { data: [] } })),
+  ]).then(([t, s, p]) => {
+    setSheets(t.data.data || []);
+    setShifts(s.data.data || []);
+    setProjects(p.data.data || []);
+  }).finally(() => setLoading(false));
+
   useEffect(() => {
-    Promise.all([
-      api.get('/volunteers/timesheets').catch(() => ({ data: { data: [] } })),
-      api.get('/volunteers/shifts').catch(() => ({ data: { data: [] } })),
-    ]).then(([t, s]) => {
-      setSheets(t.data.data || []);
-      setShifts(s.data.data || []);
-    }).finally(() => setLoading(false));
+    load();
   }, []);
 
   const captureGps = () => {
@@ -126,7 +148,8 @@ function Timesheets() {
     e.preventDefault();
     setSaving(true);
     try {
-      const r = await api.post('/volunteers/timesheets', {
+      await api.post('/volunteers/timesheets', {
+        projectId: Number(form.projectId) || undefined,
         shiftId: Number(form.shiftId) || undefined,
         activityDescription: form.activityDescription,
         startDatetime: form.startDatetime,
@@ -135,10 +158,10 @@ function Timesheets() {
         gpsLat: gps?.lat,
         gpsLon: gps?.lon,
       });
-      setSheets(prev => [r.data.data, ...prev]);
       setShowForm(false);
-      setForm({ shiftId: '', activityDescription: '', startDatetime: '', endDatetime: '', receiptUrl: '' });
+      setForm({ projectId: '', shiftId: '', activityDescription: '', startDatetime: '', endDatetime: '', receiptUrl: '' });
       setGps(null);
+      await load();
     } catch { alert('Could not submit timesheet.'); }
     setSaving(false);
   };
@@ -186,6 +209,14 @@ function Timesheets() {
         <div className="glass rounded-xl p-5 border border-primary-200">
           <h4 className="font-semibold text-slate-800 mb-3">Submit Hours</h4>
           <form onSubmit={submit} className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Project (optional)</label>
+              <select value={form.projectId} onChange={e => setForm({ ...form, projectId: e.target.value })}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 focus:outline-none">
+                <option value="">None / General</option>
+                {projects.map(p => <option key={p.project_id} value={p.project_id}>{p.project_name}</option>)}
+              </select>
+            </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Shift (optional)</label>
               <select value={form.shiftId} onChange={e => setForm({ ...form, shiftId: e.target.value })}
@@ -258,7 +289,7 @@ function Timesheets() {
         {sheets.map(t => (
           <div key={t.id} className="glass rounded-xl p-4 flex justify-between items-center border border-slate-200">
             <div>
-              <p className="font-semibold text-slate-800 text-sm">{(t as any).shift_title || `Shift #${t.shift_id}` || 'General'}</p>
+              <p className="font-semibold text-slate-800 text-sm">{t.project_name || t.shift_title || (t.shift_id ? `Shift #${t.shift_id}` : 'General')}</p>
               <p className="text-xs text-slate-500 mt-0.5">{(t as any).task_description || 'No description'}</p>
               <p className="text-xs text-slate-400 mt-1">{new Date(t.submitted_at).toLocaleDateString()}</p>
             </div>
@@ -276,6 +307,7 @@ function Timesheets() {
 
 export default function VolunteerDashboard() {
   const menuItems = [
+    { name: 'My Projects', path: '/volunteer/projects', icon: <Briefcase size={20} /> },
     { name: 'Open Shifts', path: '/volunteer/shifts', icon: <Calendar size={20} /> },
     { name: 'My Timesheets', path: '/volunteer/timesheets', icon: <Clock size={20} /> },
   ];
@@ -283,10 +315,88 @@ export default function VolunteerDashboard() {
   return (
     <DashboardLayout title="Volunteer Portal" role="Volunteer" menuItems={menuItems}>
       <Routes>
-        <Route path="/" element={<Navigate to="shifts" replace />} />
+        <Route path="/" element={<Navigate to="projects" replace />} />
+        <Route path="projects" element={<MyProjects />} />
         <Route path="shifts" element={<Shifts />} />
         <Route path="timesheets" element={<Timesheets />} />
       </Routes>
     </DashboardLayout>
+  );
+}
+
+function MyProjects() {
+  const [projects, setProjects] = useState<AssignedProject[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/volunteers/my-projects')
+      .then(r => setProjects(r.data.data || []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const statusColors: Record<string, string> = {
+    planning: 'bg-primary-100 text-primary-800',
+    active: 'bg-green-100 text-green-800',
+    on_hold: 'bg-yellow-100 text-yellow-800',
+    completed: 'bg-slate-100 text-slate-800',
+    cancelled: 'bg-red-100 text-red-800',
+  };
+
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary-500" size={32} /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="glass rounded-xl p-5">
+        <h3 className="text-xl font-bold flex items-center gap-2"><Briefcase className="text-primary-500" /> My Assigned Projects</h3>
+        <p className="text-sm text-slate-500 mt-0.5">Projects you have been assigned to work on.</p>
+      </div>
+
+      {projects.length === 0 ? (
+        <div className="bg-white/50 border border-slate-200 rounded-xl p-8 text-center text-slate-500">
+          You are not assigned to any active projects yet.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {projects.map((p: any) => {
+            const allocated = Number(p.budget_allocated || 0);
+            const spent = Number(p.budget_spent || 0);
+            const pct = allocated > 0 ? Math.min(100, Math.round((spent / allocated) * 100)) : 0;
+            const barColor = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-green-500';
+            return (
+              <div key={p.project_id} className="glass rounded-xl p-5 border border-slate-200 hover:border-primary-300 transition space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="font-semibold text-slate-800">{p.project_name}</h4>
+                    <p className="text-xs text-slate-500">{p.fund_name}{p.location_city ? ` · ${p.location_city}, ${p.location_country}` : ''}</p>
+                  </div>
+                  <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[p.status] || 'bg-slate-100 text-slate-800'}`}>{p.status}</span>
+                </div>
+
+                {p.description && <p className="text-sm text-slate-600">{p.description.slice(0, 120)}{p.description.length > 120 ? '…' : ''}</p>}
+
+                {allocated > 0 && (
+                  <div>
+                    <div className="flex justify-between text-xs text-slate-500 mb-1">
+                      <span>Budget used: {pct}%</span>
+                      <span>${spent.toLocaleString()} / ${allocated.toLocaleString()}</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                      <div className={`${barColor} h-1.5 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-xs text-slate-400 space-y-0.5">
+                  {p.start_date && <p>📅 Start: {new Date(p.start_date).toLocaleDateString()}</p>}
+                  {p.target_completion_date && <p>🏁 Target: {new Date(p.target_completion_date).toLocaleDateString()}</p>}
+                  <p>👤 Assigned: {new Date(p.assigned_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { Loader2, BarChart3, CheckCircle, XCircle, Search, Download, RefreshCw } from 'lucide-react';
+import { Loader2, BarChart3, CheckCircle, XCircle, Search, Download, RefreshCw, Plus, X } from 'lucide-react';
 
 interface Expense {
   expense_id: string;
@@ -13,6 +13,18 @@ interface Expense {
   spent_timestamp: string;
   approved_at: string;
   receipt_url: string;
+  project_name?: string;
+}
+
+interface Fund {
+  fund_id: number;
+  fund_name: string;
+}
+
+interface Project {
+  project_id: number;
+  project_name: string;
+  fund_id: number;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -27,6 +39,20 @@ export default function ExpensesAdminPanel() {
   const [actingOn, setActingOn] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('Pending');
+  
+  // Create expense form state
+  const [showForm, setShowForm] = useState(false);
+  const [funds, setFunds] = useState<Fund[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [formLoading, setFormLoading] = useState(false);
+  const [expenseForm, setExpenseForm] = useState({
+    vendorName: '',
+    purpose: '',
+    amountSpent: '',
+    fundId: '',
+    projectId: '',
+    receiptUrl: '',
+  });
 
   const load = async (s = statusFilter) => {
     setLoading(true);
@@ -67,6 +93,49 @@ export default function ExpensesAdminPanel() {
     } catch { alert('Export failed'); }
   };
 
+  const openCreateForm = async () => {
+    setFormLoading(true);
+    try {
+      const [fRes, pRes] = await Promise.all([
+        api.get('/funds'),
+        api.get('/projects'),
+      ]);
+      setFunds(fRes.data.data || []);
+      setProjects(pRes.data.data || []);
+    } catch (e) {
+      alert('Failed to load funds/projects');
+    }
+    setFormLoading(false);
+    setShowForm(true);
+  };
+
+  const closeCreateForm = () => {
+    setShowForm(false);
+    setExpenseForm({ vendorName: '', purpose: '', amountSpent: '', fundId: '', projectId: '', receiptUrl: '' });
+  };
+
+  const handleCreateExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!expenseForm.fundId || !expenseForm.vendorName || !expenseForm.amountSpent) {
+      alert('Please fill in required fields');
+      return;
+    }
+    try {
+      await api.post('/expenses', {
+        vendorName: expenseForm.vendorName,
+        purpose: expenseForm.purpose,
+        amountSpent: Number(expenseForm.amountSpent),
+        fundId: Number(expenseForm.fundId),
+        projectId: expenseForm.projectId ? Number(expenseForm.projectId) : undefined,
+        receiptUrl: expenseForm.receiptUrl || undefined,
+      });
+      await load();
+      closeCreateForm();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to create expense');
+    }
+  };
+
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0);
   const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString() : '—';
 
@@ -79,8 +148,11 @@ export default function ExpensesAdminPanel() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><BarChart3 className="text-primary-500" /> Expense Approval</h2>
+        <h2 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><BarChart3 className="text-primary-500" /> Expense Approval</h2>
         <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+          <button onClick={openCreateForm} className="flex items-center gap-2 text-sm bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-lg">
+            <Plus size={14} /> New Expense
+          </button>
           <button onClick={() => load()} className="flex items-center gap-2 text-sm text-slate-600 bg-white border border-slate-200 px-3 py-2 rounded-lg">
             <RefreshCw size={14} /> Refresh
           </button>
@@ -159,6 +231,57 @@ export default function ExpensesAdminPanel() {
           </table>
         </div>
       </div>
+
+      {/* Create Expense Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold">New Expense</h3>
+              <button onClick={closeCreateForm} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
+            </div>
+
+            <form onSubmit={handleCreateExpense} className="space-y-3">
+              <input required placeholder="Vendor Name" value={expenseForm.vendorName}
+                onChange={e => setExpenseForm(f => ({...f, vendorName: e.target.value}))}
+                className="w-full border rounded-lg px-3 py-2 text-sm" />
+              
+              <textarea placeholder="Purpose / Description" value={expenseForm.purpose}
+                onChange={e => setExpenseForm(f => ({...f, purpose: e.target.value}))}
+                rows={3} className="w-full border rounded-lg px-3 py-2 text-sm" />
+              
+              <input type="number" required step="0.01" placeholder="Amount Spent ($)" value={expenseForm.amountSpent}
+                onChange={e => setExpenseForm(f => ({...f, amountSpent: e.target.value}))}
+                className="w-full border rounded-lg px-3 py-2 text-sm" />
+
+              <select required value={expenseForm.fundId}
+                onChange={e => setExpenseForm(f => ({...f, fundId: e.target.value}))}
+                className="w-full border rounded-lg px-3 py-2 text-sm">
+                <option value="">Select Fund</option>
+                {funds.map(f => <option key={f.fund_id} value={f.fund_id}>{f.fund_name}</option>)}
+              </select>
+
+              <select value={expenseForm.projectId}
+                onChange={e => setExpenseForm(f => ({...f, projectId: e.target.value}))}
+                className="w-full border rounded-lg px-3 py-2 text-sm">
+                <option value="">Select Project (Optional)</option>
+                {projects.map(p => <option key={p.project_id} value={p.project_id}>{p.project_name}</option>)}
+              </select>
+
+              <input type="url" placeholder="Receipt URL (Optional)" value={expenseForm.receiptUrl}
+                onChange={e => setExpenseForm(f => ({...f, receiptUrl: e.target.value}))}
+                className="w-full border rounded-lg px-3 py-2 text-sm" />
+
+              <div className="flex gap-2 justify-end pt-2">
+                <button type="button" onClick={closeCreateForm} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
+                <button type="submit" disabled={formLoading} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50">
+                  {formLoading ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

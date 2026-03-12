@@ -120,11 +120,11 @@ export default function DashboardStats() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 text-center sm:text-left">Mission Control Overview</h2>
+        <h2 className="text-lg sm:text-xl font-bold text-slate-800 text-center sm:text-left">Mission Control Overview</h2>
         <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">Live Data</span>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards — Funding */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard label="Total Raised" value={fmt(totalRaised)} sub={fmtFull(totalRaised)} icon={<TrendingUp className="text-green-600" size={22} />} colorClass="border-green-500" trend="↑ All time" />
         <StatCard label="Total Donors" value={String(stats?.total_donors || 0)} sub="Registered" icon={<Users className="text-primary-600" size={22} />} colorClass="border-primary-500" />
@@ -134,6 +134,16 @@ export default function DashboardStats() {
         <StatCard label="Donations" value={String(stats?.total_donations || 0)} sub="All transactions" icon={<Heart className="text-rose-500" size={22} />} colorClass="border-rose-500" />
         <StatCard label="Approved Expenses" value={fmtFull(approvedExp)} sub="Disbursed" icon={<CheckCircle className="text-emerald-600" size={22} />} colorClass="border-emerald-500" />
         <StatCard label="Net Balance" value={fmt(netBalance)} sub={fmtFull(netBalance)} icon={<DollarSign className="text-primary-600" size={22} />} colorClass="border-primary-500" />
+      </div>
+
+      {/* KPI Cards — Projects */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <StatCard label="Active Projects" value={String(stats?.active_projects || 0)} sub="Ongoing" icon={<Target className="text-blue-600" size={22} />} colorClass="border-blue-500" />
+        <StatCard label="Assigned Volunteers" value={String(stats?.volunteers_assigned || 0)} sub="On projects" icon={<UserCheck className="text-teal-600" size={22} />} colorClass="border-teal-500" />
+        <StatCard label="Budget Burn Rate" value={`${stats?.project_budget_burn_pct || 0}%`} sub={fmtFull(stats?.project_budget_spent)} icon={<Activity className="text-orange-600" size={22} />} colorClass="border-orange-500" />
+        <StatCard label="Timesheets" value={String(stats?.timesheets_submitted || 0)} sub="Submitted" icon={<CheckCircle className="text-indigo-600" size={22} />} colorClass="border-indigo-500" />
+        <StatCard label="Project Budget" value={fmt(stats?.project_budget_allocated)} sub={fmtFull(stats?.project_budget_allocated)} icon={<CreditCard className="text-violet-600" size={22} />} colorClass="border-violet-500" />
+        <StatCard label="Overdue Targets" value={String(stats?.overdue_targets || 0)} sub="Past deadline" icon={<Activity className="text-red-600" size={22} />} colorClass="border-red-500" />
       </div>
 
       {/* Charts Row */}

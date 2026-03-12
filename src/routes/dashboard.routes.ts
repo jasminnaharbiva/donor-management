@@ -11,7 +11,7 @@ const CACHE_TTL = 30; // seconds
 // GET /api/v1/dashboard/stats — Super-fast dashboard KPIs
 // ---------------------------------------------------------------------------
 dashboardRouter.get('/stats', authenticate, async (req: Request, res: Response): Promise<void> => {
-  const cacheKey = 'dashboard:stats:v1';
+  const cacheKey = 'dashboard:stats:v2';
   const cached   = await redis.get(cacheKey);
   if (cached) {
     res.json({ success: true, data: JSON.parse(cached), cached: true });
@@ -21,14 +21,35 @@ dashboardRouter.get('/stats', authenticate, async (req: Request, res: Response):
   const [
     totalDonationsRow,
     totalDonorsRow,
+    totalDonationsCountRow,
+    totalVolunteersRow,
     activeCampaignsRow,
+    activeProjectsRow,
+    volunteersAssignedRow,
+    timesheetsSubmittedRow,
+    overdueTargetsRow,
+    projectBudgetRow,
     pendingExpensesRow,
     fundsRow,
     monthlyRow,
   ] = await Promise.all([
     db('dfb_transactions').where({ status: 'Completed' }).sum('net_amount as total'),
     db('dfb_donors').whereNull('deleted_at').count('donor_id as total'),
+    db('dfb_transactions').where({ status: 'Completed' }).count('transaction_id as total'),
+    db('dfb_volunteers').where({ status: 'active' }).count('volunteer_id as total'),
     db('dfb_campaigns').where({ status: 'active', is_public: true }).count('campaign_id as total'),
+    db('dfb_projects').where({ status: 'active' }).count('project_id as total'),
+    db('dfb_project_assignments').where({ status: 'active' }).count('assignment_id as total'),
+    db('dfb_timesheets').count('timesheet_id as total'),
+    db('dfb_projects')
+      .whereNotIn('status', ['completed', 'cancelled'])
+      .whereNotNull('target_completion_date')
+      .whereRaw('target_completion_date < CURDATE()')
+      .count('project_id as total'),
+    db('dfb_projects')
+      .whereNot('status', 'cancelled')
+      .sum('budget_allocated as allocated')
+      .sum('budget_spent as spent'),
     db('dfb_expenses').where({ status: 'Pending' }).count('expense_id as total'),
     db('dfb_funds').orderBy('fund_id').select('fund_name', 'fund_category', 'current_balance', 'target_goal'),
     db('dfb_transactions')
@@ -37,10 +58,23 @@ dashboardRouter.get('/stats', authenticate, async (req: Request, res: Response):
       .sum('net_amount as this_month').count('transaction_id as txn_count'),
   ]);
 
+  const totalAllocated = Number(projectBudgetRow[0].allocated || 0);
+  const totalSpent = Number(projectBudgetRow[0].spent || 0);
+  const projectBudgetBurnPct = totalAllocated > 0 ? Number(((totalSpent / totalAllocated) * 100).toFixed(1)) : 0;
+
   const stats = {
     total_raised:       Number(totalDonationsRow[0].total   || 0),
     total_donors:       Number(totalDonorsRow[0].total      || 0),
+    total_donations:    Number(totalDonationsCountRow[0].total || 0),
+    total_volunteers:   Number(totalVolunteersRow[0].total || 0),
     active_campaigns:   Number(activeCampaignsRow[0].total  || 0),
+    active_projects:    Number(activeProjectsRow[0].total || 0),
+    volunteers_assigned:Number(volunteersAssignedRow[0].total || 0),
+    timesheets_submitted: Number(timesheetsSubmittedRow[0].total || 0),
+    overdue_targets:    Number(overdueTargetsRow[0].total || 0),
+    project_budget_allocated: totalAllocated,
+    project_budget_spent: totalSpent,
+    project_budget_burn_pct: projectBudgetBurnPct,
     pending_expenses:   Number(pendingExpensesRow[0].total  || 0),
     this_month_raised:  Number(monthlyRow[0].this_month     || 0),
     this_month_count:   Number(monthlyRow[0].txn_count      || 0),

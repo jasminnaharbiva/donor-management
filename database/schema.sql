@@ -285,6 +285,7 @@ CREATE TABLE IF NOT EXISTS `dfb_allocations` (
 CREATE TABLE IF NOT EXISTS `dfb_expenses` (
   `expense_id`              CHAR(36)        NOT NULL COMMENT 'UUID',
   `fund_id`                 INT UNSIGNED    NOT NULL,
+  `project_id`              INT UNSIGNED,
   `amount_spent`            DECIMAL(15,2)   NOT NULL,
   `vendor_name`             VARCHAR(120),
   `purpose`                 TEXT,
@@ -302,9 +303,11 @@ CREATE TABLE IF NOT EXISTS `dfb_expenses` (
   `deleted_at`              DATETIME        COMMENT 'Soft delete',
   PRIMARY KEY (`expense_id`),
   KEY `idx_expense_fund` (`fund_id`),
+  KEY `idx_expense_project` (`project_id`),
   KEY `idx_expense_status` (`status`),
   KEY `idx_expense_volunteer` (`submitted_by_volunteer_id`),
   CONSTRAINT `fk_expense_fund` FOREIGN KEY (`fund_id`) REFERENCES `dfb_funds` (`fund_id`),
+  CONSTRAINT `fk_expense_project` FOREIGN KEY (`project_id`) REFERENCES `dfb_projects` (`project_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_expense_integrity` FOREIGN KEY (`integrity_hash_id`) REFERENCES `dfb_integrity_hashes` (`hash_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -507,6 +510,23 @@ CREATE TABLE IF NOT EXISTS `dfb_project_assignments` (
   KEY `idx_pa_project` (`project_id`),
   CONSTRAINT `fk_pa_volunteer` FOREIGN KEY (`volunteer_id`) REFERENCES `dfb_volunteers` (`volunteer_id`),
   CONSTRAINT `fk_pa_project` FOREIGN KEY (`project_id`) REFERENCES `dfb_projects` (`project_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `dfb_project_progress_logs` (
+  `log_id`               INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+  `project_id`           INT UNSIGNED    NOT NULL,
+  `update_type`          ENUM('field_update','milestone','issue','note') NOT NULL DEFAULT 'field_update',
+  `update_title`         VARCHAR(160)    NOT NULL,
+  `update_body`          TEXT,
+  `progress_percent`     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  `status_snapshot`      ENUM('planning','active','on_hold','completed','cancelled') NOT NULL DEFAULT 'planning',
+  `logged_by`            CHAR(36),
+  `happened_at`          DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at`           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`log_id`),
+  KEY `idx_pp_log_project` (`project_id`),
+  KEY `idx_pp_log_happened` (`happened_at`),
+  CONSTRAINT `fk_pp_log_project` FOREIGN KEY (`project_id`) REFERENCES `dfb_projects` (`project_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `dfb_expense_approval_steps` (

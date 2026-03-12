@@ -7,6 +7,36 @@ import { writeAuditLog } from '../services/audit.service';
 
 export const volunteersRouter = Router();
 
+async function attachVolunteerProjectProgress<T extends { project_id: number }>(projects: T[]): Promise<Array<T & Record<string, unknown>>> {
+  if (!projects.length) return projects;
+
+  const projectIds = projects.map(project => project.project_id);
+  const rows = await db('dfb_project_progress_logs')
+    .whereIn('project_id', projectIds)
+    .orderBy('happened_at', 'desc')
+    .orderBy('log_id', 'desc')
+    .select('project_id', 'progress_percent', 'update_title', 'update_body', 'update_type', 'status_snapshot', 'happened_at');
+
+  const latestByProject = new Map<number, any>();
+  rows.forEach((row: any) => {
+    const projectId = Number(row.project_id);
+    if (!latestByProject.has(projectId)) latestByProject.set(projectId, row);
+  });
+
+  return projects.map(project => {
+    const latest = latestByProject.get(project.project_id);
+    return {
+      ...project,
+      latest_progress_percent: latest ? Number(latest.progress_percent || 0) : null,
+      latest_progress_title: latest?.update_title || null,
+      latest_progress_body: latest?.update_body || null,
+      latest_progress_type: latest?.update_type || null,
+      latest_progress_status: latest?.status_snapshot || null,
+      latest_progress_at: latest?.happened_at || null,
+    };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/v1/volunteers — Admin: list all volunteers (for dropdowns etc.)
 // ---------------------------------------------------------------------------
@@ -158,6 +188,35 @@ volunteersRouter.post(
 );
 
 // ---------------------------------------------------------------------------
+// GET /api/v1/volunteers/my-projects — Projects the logged-in volunteer is assigned to
+// ---------------------------------------------------------------------------
+volunteersRouter.get(
+  '/my-projects',
+  authenticate,
+  async (req: Request, res: Response): Promise<void> => {
+    const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id');
+    const volunteerId = userRow?.volunteer_id;
+    if (!volunteerId) {
+      res.json({ success: true, data: [] });
+      return;
+    }
+    const projects = await db('dfb_project_assignments as pa')
+      .join('dfb_projects as p', 'pa.project_id', 'p.project_id')
+      .leftJoin('dfb_funds as f', 'p.fund_id', 'f.fund_id')
+      .where({ 'pa.volunteer_id': volunteerId, 'pa.status': 'active' })
+      .select(
+        'p.project_id', 'p.project_name', 'p.description', 'p.status',
+        'p.budget_allocated', 'p.budget_spent', 'p.budget_remaining',
+        'p.location_country', 'p.location_city',
+        'p.start_date', 'p.target_completion_date',
+        'f.fund_name', 'pa.assigned_at'
+      );
+    const enrichedProjects = await attachVolunteerProjectProgress(projects as Array<{ project_id: number }>);
+    res.json({ success: true, data: enrichedProjects });
+  }
+);
+
+// ---------------------------------------------------------------------------
 // POST /api/v1/volunteers/timesheets — Log volunteer hours
 // ---------------------------------------------------------------------------
 volunteersRouter.post(
@@ -187,6 +246,33 @@ volunteersRouter.post(
 
     const { projectId, shiftId, activityDescription, startDatetime, endDatetime, receiptUrl, gpsLat, gpsLon } = req.body;
 
+    let linkedProject: { project_id: number; fund_id: number } | undefined;
+    if (projectId) {
+      linkedProject = await db('dfb_projects').where({ project_id: projectId }).first('project_id', 'fund_id');
+      if (!linkedProject) {
+        res.status(404).json({ success: false, message: 'Project not found' });
+        return;
+      }
+
+      const assignment = await db('dfb_project_assignments')
+        .where({ project_id: projectId, volunteer_id: volunteerId, status: 'active' })
+        .first('assignment_id');
+      if (!assignment) {
+        res.status(403).json({ success: false, message: 'You are not assigned to this project' });
+        return;
+      }
+    }
+
+    if (!linkedProject && shiftId) {
+      const shiftProject = await db('dfb_shifts as s')
+        .leftJoin('dfb_projects as p', 's.project_id', 'p.project_id')
+        .where({ 's.shift_id': shiftId })
+        .first('s.project_id', 'p.fund_id');
+      if (shiftProject?.project_id && shiftProject?.fund_id) {
+        linkedProject = { project_id: shiftProject.project_id, fund_id: shiftProject.fund_id };
+      }
+    }
+
     const diffMs = new Date(endDatetime).getTime() - new Date(startDatetime).getTime();
     if (diffMs <= 0) {
       res.status(400).json({ success: false, message: 'End time must be after start time' });
@@ -208,25 +294,22 @@ volunteersRouter.post(
     });
 
     // If receiptUrl OR GPS provided, also log an expense record for audit trail
-    if (receiptUrl || (gpsLat != null && gpsLon != null)) {
+    if ((receiptUrl || (gpsLat != null && gpsLon != null)) && linkedProject?.fund_id) {
       const { v4: uuidv4 } = await import('uuid');
-      const volunteer = await db('dfb_volunteers').where({ volunteer_id: volunteerId }).first('fund_id');
-      if (volunteer?.fund_id) {
-        await db('dfb_expenses').insert({
-          expense_id:       uuidv4(),
-          fund_id:          volunteer.fund_id,
-          amount_spent:     0, // placeholdder – admin sets actual amount
-          purpose:          activityDescription,
-          receipt_url:      receiptUrl || null,
-          gps_lat:          gpsLat ?? null,
-          gps_lon:          gpsLon ?? null,
-          spent_timestamp:  startDatetime,
-          status:           'Pending',
-          submitted_by:     req.user!.userId,
-          created_at:       new Date(),
-          updated_at:       new Date(),
-        });
-      }
+      await db('dfb_expenses').insert({
+        expense_id:                uuidv4(),
+        fund_id:                   linkedProject.fund_id,
+        project_id:                linkedProject.project_id,
+        amount_spent:              0,
+        purpose:                   activityDescription,
+        receipt_url:               receiptUrl || null,
+        gps_lat:                   gpsLat ?? null,
+        gps_lon:                   gpsLon ?? null,
+        spent_timestamp:           startDatetime,
+        submitted_by_volunteer_id: volunteerId,
+        status:                    'Pending',
+        created_at:                new Date(),
+      });
     }
 
     res.status(201).json({ success: true, message: 'Timesheet submitted for approval', data: { timesheet_id: timesheetId, duration_minutes: durationMinutes, receipt_url: receiptUrl } });
@@ -246,12 +329,13 @@ volunteersRouter.get(
 
     const sheets = await db('dfb_timesheets as t')
       .leftJoin('dfb_shifts as s', 't.shift_id', 's.shift_id')
+      .leftJoin('dfb_projects as p', 't.project_id', 'p.project_id')
       .where({ 't.volunteer_id': volunteerId })
       .orderBy('t.submitted_at', 'desc')
       .select(
         't.timesheet_id as id', 't.shift_id', 't.activity_description as task_description',
         't.start_datetime', 't.end_datetime', 't.duration_minutes', 't.receipt_url',
-        't.status', 't.submitted_at', 's.shift_title'
+        't.status', 't.submitted_at', 's.shift_title', 'p.project_name'
       );
 
     // add hours_worked convenience field
