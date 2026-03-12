@@ -1,8 +1,25 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-// Use same base URL as standard API requests, stripped of /api/v1
-const SOCKET_URL = (import.meta as any).env.VITE_API_URL ? (import.meta as any).env.VITE_API_URL.replace('/api/v1', '') : '';
+// Get socket URL: use current origin (works in production at same domain)
+// or fallback to environment variable, or default to localhost:3002
+const getSocketUrl = () => {
+  // Check if environment variable is set
+  const envUrl = (import.meta as any).env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.replace('/api/v1', '');
+  }
+  
+  // Use current window origin (same domain as frontend)
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.origin;
+  }
+  
+  // Fallback for development
+  return 'http://localhost:3002';
+};
+
+const SOCKET_URL = getSocketUrl();
 
 export function useSocket(namespace = '') {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -15,8 +32,10 @@ export function useSocket(namespace = '') {
     const socketInstance = io(`${SOCKET_URL}${namespace}`, {
       auth: { token: token || undefined },
       transports: ['websocket', 'polling'], // fallback gracefully
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000, // 20 second timeout
     });
 
     socketInstance.on('connect', () => {
