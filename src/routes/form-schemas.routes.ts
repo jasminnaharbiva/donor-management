@@ -7,6 +7,24 @@ export const formSchemasRouter = Router();
 
 const VALID_FORM_TYPES = ['donation', 'registration', 'expense', 'campaign', 'beneficiary_intake', 'volunteer_application'] as const;
 
+const DEFAULT_VOLUNTEER_SCHEMA = [
+  { name: 'full_name', label: 'Name', type: 'text', required: true, placeholder: 'Enter your full name' },
+  { name: 'father_name', label: "Father's Name", type: 'text', required: true, placeholder: "Enter your father's name" },
+  { name: 'date_of_birth', label: 'Date of Birth', type: 'date', required: true },
+  { name: 'blood_group', label: 'Blood Group', type: 'select', required: true, options: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] },
+  { name: 'education_level', label: 'Education Level', type: 'select', required: true, options: ['Primary', 'Secondary', 'SSC', 'HSC', 'Diploma', 'Graduate', 'Post Graduate', 'Other'] },
+  { name: 'mobile_number', label: 'Mobile Number', type: 'tel', required: true, placeholder: '01XXXXXXXXX' },
+  { name: 'email', label: 'Email', type: 'email', required: true, placeholder: 'you@example.com' },
+  { name: 'nid_or_birth_certificate_no', label: 'NID/Birth Certificate Number', type: 'text', required: true, placeholder: 'NID or Birth Certificate Number' },
+  { name: 'division', label: 'Division', type: 'bd_division', required: true },
+  { name: 'district', label: 'District', type: 'bd_district', required: true },
+  { name: 'upazila', label: 'Upazila', type: 'bd_upazila', required: true },
+  { name: 'full_address', label: 'Full Address', type: 'textarea', required: true, placeholder: 'Village/Road, Post Office, Thana/Upazila, District' },
+  { name: 'passport_photo_url', label: 'Passport Size Photo (max 500KB)', type: 'file', required: true },
+  { name: 'identity_document_url', label: 'NID/Birth Certificate Copy (max 500KB)', type: 'file', required: true },
+  { name: 'consent', label: 'Consent', type: 'consent', required: true },
+];
+
 // GET /api/v1/form-schemas — list all
 formSchemasRouter.get(
   '/',
@@ -64,7 +82,19 @@ formSchemasRouter.get(
         .orderBy('updated_at', 'desc')
         .first();
 
-      if (!schema) return res.status(404).json({ error: 'No active schema for this form type' });
+      if (!schema) {
+        if (req.params.formType === 'volunteer_application') {
+          return res.json({
+            schema_id: 0,
+            form_type: 'volunteer_application',
+            is_active: true,
+            created_by: null,
+            updated_at: new Date().toISOString(),
+            schema_json: DEFAULT_VOLUNTEER_SCHEMA,
+          });
+        }
+        return res.status(404).json({ error: 'No active schema for this form type' });
+      }
 
       if (schema.schema_json) {
         try { schema.schema_json = JSON.parse(schema.schema_json); } catch {}

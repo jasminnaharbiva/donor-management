@@ -34,6 +34,24 @@ const SAMPLE_SCHEMA = JSON.stringify([
   }
 ], null, 2);
 
+const DEFAULT_VOLUNTEER_SCHEMA = JSON.stringify([
+  { name: 'full_name', label: 'Name', type: 'text', required: true, placeholder: 'Enter your full name' },
+  { name: 'father_name', label: "Father's Name", type: 'text', required: true, placeholder: "Enter your father's name" },
+  { name: 'date_of_birth', label: 'Date of Birth', type: 'date', required: true },
+  { name: 'blood_group', label: 'Blood Group', type: 'select', required: true, options: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] },
+  { name: 'education_level', label: 'Education Level', type: 'select', required: true, options: ['Primary', 'Secondary', 'SSC', 'HSC', 'Diploma', 'Graduate', 'Post Graduate', 'Other'] },
+  { name: 'mobile_number', label: 'Mobile Number', type: 'tel', required: true, placeholder: '01XXXXXXXXX' },
+  { name: 'email', label: 'Email', type: 'email', required: true, placeholder: 'you@example.com' },
+  { name: 'nid_or_birth_certificate_no', label: 'NID/Birth Certificate Number', type: 'text', required: true, placeholder: 'NID or Birth Certificate Number' },
+  { name: 'division', label: 'Division', type: 'bd_division', required: true },
+  { name: 'district', label: 'District', type: 'bd_district', required: true },
+  { name: 'upazila', label: 'Upazila', type: 'bd_upazila', required: true },
+  { name: 'full_address', label: 'Full Address', type: 'textarea', required: true, placeholder: 'Village/Road, Post Office, Thana/Upazila, District' },
+  { name: 'passport_photo_url', label: 'Passport Size Photo (max 500KB)', type: 'file', required: true },
+  { name: 'identity_document_url', label: 'NID/Birth Certificate Copy (max 500KB)', type: 'file', required: true },
+  { name: 'consent', label: 'Consent', type: 'consent', required: true },
+], null, 2);
+
 export default function FormSchemasPanel() {
   const [schemas, setSchemas]   = useState<FormSchema[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -103,6 +121,15 @@ export default function FormSchemasPanel() {
       setError(err.response?.data?.error || 'Save failed');
     }
     setSaving(false);
+  };
+
+  const applyVolunteerPreset = () => {
+    setForm((prev) => ({
+      ...prev,
+      form_type: 'volunteer_application',
+      schema_json: DEFAULT_VOLUNTEER_SCHEMA,
+    }));
+    setJsonError('');
   };
 
   const deleteSchema = async (id: number) => {
@@ -216,6 +243,16 @@ export default function FormSchemasPanel() {
             </div>
 
             <div className="p-6 overflow-y-auto flex-1">
+              <div className="mb-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={applyVolunteerPreset}
+                  className="px-3 py-1.5 text-xs font-medium border border-primary-300 text-primary-700 rounded-lg hover:bg-primary-50"
+                >
+                  Load Volunteer Default Preset
+                </button>
+              </div>
+
               {isCreating && (
                 <div className="mb-4">
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Form Type</label>

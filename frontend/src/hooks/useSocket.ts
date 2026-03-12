@@ -27,15 +27,22 @@ export function useSocket(namespace = '') {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+
+    // Do not attempt socket connection for public/unauthenticated users.
+    if (!token) {
+      setSocket(null);
+      setConnected(false);
+      return;
+    }
     
     // Auto-connect with standard Auth Bearer if token exists
     const socketInstance = io(`${SOCKET_URL}${namespace}`, {
-      auth: { token: token || undefined },
-      transports: ['websocket', 'polling'], // fallback gracefully
-      reconnectionAttempts: 10,
+      auth: { token },
+      transports: ['polling'],
+      reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      timeout: 20000, // 20 second timeout
+      timeout: 30000,
     });
 
     socketInstance.on('connect', () => {
@@ -49,7 +56,7 @@ export function useSocket(namespace = '') {
     });
 
     socketInstance.on('connect_error', (err) => {
-      console.error(`[Socket] Connection error: ${err.message}`);
+      console.warn(`[Socket] Connection warning: ${err.message}`);
       setConnected(false);
     });
 

@@ -37,16 +37,22 @@ const DEFAULT_SCHEMA: SchemaField[] = [
   { name: 'consent', label: 'Consent', type: 'consent', required: true },
 ];
 
+const DEFAULT_BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const DEFAULT_EDUCATION_LEVEL_OPTIONS = ['Primary', 'Secondary', 'SSC', 'HSC', 'Diploma', 'Graduate', 'Post Graduate', 'Other'];
+
 function isDivisionField(field: SchemaField): boolean {
-  return field.name === 'division' || field.type === 'bd_division';
+  const name = field.name.toLowerCase();
+  return name === 'division' || name.includes('division') || field.type === 'bd_division';
 }
 
 function isDistrictField(field: SchemaField): boolean {
-  return field.name === 'district' || field.type === 'bd_district';
+  const name = field.name.toLowerCase();
+  return name === 'district' || name.includes('district') || field.type === 'bd_district';
 }
 
 function isUpazilaField(field: SchemaField): boolean {
-  return field.name === 'upazila' || field.type === 'bd_upazila';
+  const name = field.name.toLowerCase();
+  return name === 'upazila' || name.includes('upazila') || field.type === 'bd_upazila';
 }
 
 function getFieldLabel(field: SchemaField): string {
@@ -67,8 +73,7 @@ function getInitialValues(fields: SchemaField[]): FormValues {
 }
 
 function parseSelectOptions(field: SchemaField): Array<{ label: string; value: string }> {
-  if (!Array.isArray(field.options)) return [];
-  return field.options
+  const options = Array.isArray(field.options) ? field.options
     .map((opt) => {
       if (typeof opt === 'string') return { label: opt, value: opt };
       const label = String(opt.label || opt.title || opt.value || '').trim();
@@ -76,7 +81,19 @@ function parseSelectOptions(field: SchemaField): Array<{ label: string; value: s
       if (!label || !value) return null;
       return { label, value };
     })
-    .filter((x): x is { label: string; value: string } => Boolean(x));
+    .filter((x): x is { label: string; value: string } => Boolean(x)) : [];
+
+  if (options.length > 0) return options;
+
+  const normalizedName = field.name.toLowerCase();
+  if (normalizedName.includes('blood')) {
+    return DEFAULT_BLOOD_GROUP_OPTIONS.map((opt) => ({ label: opt, value: opt }));
+  }
+  if (normalizedName.includes('education')) {
+    return DEFAULT_EDUCATION_LEVEL_OPTIONS.map((opt) => ({ label: opt, value: opt }));
+  }
+
+  return [];
 }
 
 export default function VolunteerApply() {
@@ -128,10 +145,14 @@ export default function VolunteerApply() {
     loadMeta();
   }, []);
 
+  const divisionFieldName = useMemo(() => schema.find(isDivisionField)?.name || 'division', [schema]);
+  const districtFieldName = useMemo(() => schema.find(isDistrictField)?.name || 'district', [schema]);
+  const upazilaFieldName = useMemo(() => schema.find(isUpazilaField)?.name || 'upazila', [schema]);
+
   const selectedDivision = useMemo(() => {
-    const divisionTitle = String(form.division || '').trim();
+    const divisionTitle = String(form[divisionFieldName] || '').trim();
     return divisions_en.find((item) => item.title === divisionTitle) || null;
-  }, [form.division]);
+  }, [form, divisionFieldName]);
 
   const districtOptions = useMemo(() => {
     if (!selectedDivision) return [] as LocationItem[];
@@ -139,9 +160,9 @@ export default function VolunteerApply() {
   }, [selectedDivision]);
 
   const selectedDistrict = useMemo(() => {
-    const districtTitle = String(form.district || '').trim();
+    const districtTitle = String(form[districtFieldName] || '').trim();
     return districtOptions.find((item) => item.title === districtTitle) || null;
-  }, [districtOptions, form.district]);
+  }, [districtOptions, form, districtFieldName]);
 
   const upazilaOptions = useMemo(() => {
     if (!selectedDistrict) return [] as LocationItem[];
@@ -149,25 +170,37 @@ export default function VolunteerApply() {
   }, [selectedDistrict]);
 
   useEffect(() => {
-    if (!form.district) return;
-    const stillValid = districtOptions.some((d) => d.title === form.district);
+    const districtVal = String(form[districtFieldName] || '');
+    if (!districtVal) return;
+    const stillValid = districtOptions.some((d) => d.title === districtVal);
     if (!stillValid) {
-      setForm((prev) => ({ ...prev, district: '', upazila: '' }));
+      setForm((prev) => ({ ...prev, [districtFieldName]: '', [upazilaFieldName]: '' }));
     }
-  }, [districtOptions, form.district]);
+  }, [districtOptions, form, districtFieldName, upazilaFieldName]);
 
   useEffect(() => {
-    if (!form.upazila) return;
-    const stillValid = upazilaOptions.some((u) => u.title === form.upazila);
+    const upazilaVal = String(form[upazilaFieldName] || '');
+    if (!upazilaVal) return;
+    const stillValid = upazilaOptions.some((u) => u.title === upazilaVal);
     if (!stillValid) {
-      setForm((prev) => ({ ...prev, upazila: '' }));
+      setForm((prev) => ({ ...prev, [upazilaFieldName]: '' }));
     }
-  }, [upazilaOptions, form.upazila]);
+  }, [upazilaOptions, form, upazilaFieldName]);
 
   const setText =
     (key: string) =>
     (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+      const nextValue = e.target.value;
+      setForm((prev) => {
+        const next: FormValues = { ...prev, [key]: nextValue };
+        if (key === divisionFieldName) {
+          next[districtFieldName] = '';
+          next[upazilaFieldName] = '';
+        } else if (key === districtFieldName) {
+          next[upazilaFieldName] = '';
+        }
+        return next;
+      });
     };
 
   const setChecked = (key: string) => (e: ChangeEvent<HTMLInputElement>) => {

@@ -839,3 +839,124 @@ router.get('/', authenticate, async (req, res) => {
 | LiteSpeed graceful restart | ✅ Applied |
 | Cloudflare cache purge | ✅ Assets purged after build |
 | GitHub push | ✅ `fa2053d` on main |
+
+---
+
+## Phase 10 — UX/Access Refinements & Panel-Separated Auth (March 12, 2026)
+
+**Commits**: `d1306d3` (+ follow-up hotfixes)
+
+### UI Visibility & Typography Fixes ✅
+
+- Fixed low-contrast "DFB Portal" login text visibility issue.
+- Fixed oversized admin headings across devices by resolving root CSS specificity conflict in theme overrides.
+- Added admin-manageable heading controls (size/weight) through UI settings.
+- Stabilized notification popup rendering on mobile with fixed top panel behavior.
+- Repaired landing page layout breakage: responsive hero overflow, navbar spacing, and mobile text scaling.
+
+### Authentication Flow Separation ✅
+
+- Added panel selection gateway page for clearer role-based login/registration.
+- Implemented panel-aware login behavior with role mismatch handling.
+- Implemented panel-aware register behavior:
+  - donor self-registration allowed,
+  - admin self-register blocked,
+  - volunteer redirected to dedicated application flow.
+- Added dedicated volunteer application route and landing page CTA wiring.
+
+### Files Added / Updated (Key)
+
+- `frontend/src/pages/AuthPortal.tsx`
+- `frontend/src/pages/VolunteerApply.tsx` (initial version)
+- `frontend/src/pages/Login.tsx`
+- `frontend/src/pages/Register.tsx`
+- `frontend/src/pages/PublicHome.tsx`
+- `frontend/src/context/ThemeContext.tsx`
+- `frontend/src/components/NotificationBell.tsx`
+
+---
+
+## Phase 11 — Dynamic Volunteer Onboarding Platform (March 12, 2026)
+
+**Commits**: `ab076d0`, `41783cd`
+
+### Dynamic Volunteer Form & Storage ✅
+
+- Extended dynamic form schema support with `volunteer_application` form type.
+- Volunteer form now loads active schema dynamically and renders fields from schema JSON.
+- Added strict required-field validation against active schema.
+- Full submission payload stored in DB for future schema evolution compatibility.
+
+### Required Volunteer Data Coverage ✅
+
+Implemented capture and storage for:
+- name, father's name, date of birth,
+- blood group,
+- education level,
+- mobile number,
+- email,
+- NID/Birth Certificate number,
+- division, district, upazila,
+- full address,
+- passport photo URL,
+- identity document URL,
+- consent status + consent text + consent timestamp.
+
+### Bangladesh Cascading Location Dropdowns ✅
+
+- Integrated `bangladesh-location-data`.
+- Added division → district → upazila automatic cascading behavior.
+- Added resilient field-name matching so dynamic schema variants still map location fields correctly.
+
+### File Upload & KYC Constraints ✅
+
+- Added public upload endpoint for volunteer onboarding:
+  - `POST /api/v1/media/public-upload`
+  - 500KB max file size
+  - allowed types: JPEG, PNG, WEBP, PDF
+- Added client-side 500KB validation before upload.
+
+### Dynamic Consent Text ✅
+
+- Added `legal.volunteer_application_consent_text` system setting.
+- Volunteer form now loads consent text dynamically from public settings.
+- Fallback to `legal.gdpr_consent_text` if volunteer-specific text is not set.
+
+### Admin Form Preset Productivity ✅
+
+- Added one-click preset button in Form Schemas admin editor to auto-load default volunteer schema JSON.
+- Button label: **Load Volunteer Default Preset**.
+
+### API Error & Stability Fixes ✅
+
+- Fixed public schema 404 for volunteer form type by returning a default schema when no active volunteer schema exists.
+- Seeded default active volunteer schema in SQL and in live DB where missing.
+- Reduced Socket.IO timeout noise by:
+  - connecting only when auth token exists,
+  - using stable polling transport configuration,
+  - lowering repeated hard-error logging.
+
+### Database Alignment ✅
+
+Updated schema and live DB columns to support dynamic volunteer workflow:
+- `dfb_form_schemas.form_type` includes `volunteer_application`
+- `dfb_volunteer_applications` new fields:
+  `father_name`, `date_of_birth`, `blood_group`, `education_level`,
+  `mobile_number`, `nid_or_birth_certificate_no`, `full_address`,
+  `division`, `district`, `upazila`,
+  `passport_photo_url`, `identity_document_url`,
+  `consent_given`, `consent_text`, `consent_given_at`, `form_payload`
+- Seeded setting: `legal.volunteer_application_consent_text`
+- Seeded default active volunteer schema row
+
+### Key Files Updated in Phase 11
+
+- `src/routes/volunteer-applications.routes.ts`
+- `src/routes/form-schemas.routes.ts`
+- `src/routes/media.routes.ts`
+- `src/routes/admin.routes.ts`
+- `database/schema.sql`
+- `frontend/src/pages/VolunteerApply.tsx`
+- `frontend/src/pages/admin/FormSchemasPanel.tsx`
+- `frontend/src/hooks/useSocket.ts`
+
