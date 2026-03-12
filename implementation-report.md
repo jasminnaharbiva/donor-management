@@ -1,7 +1,7 @@
 # DFB Donor Management — Implementation Report
 
-**Date**: March 11, 2026  
-**Commits**: `238f4b0` → `ab6f280` → `03b4d4e` → `0851c2a`  
+**Date**: March 12, 2026  
+**Report Coverage**: through commit `b43ef25` on `main`  
 **Live URL**: https://donor-management.nokshaojibon.com  
 **GitHub**: jasminnaharbiva/donor-management
 
@@ -972,4 +972,74 @@ Updated schema and live DB columns to support dynamic volunteer workflow:
 - `frontend/src/pages/VolunteerApply.tsx`
 - `frontend/src/pages/admin/FormSchemasPanel.tsx`
 - `frontend/src/hooks/useSocket.ts`
+
+---
+
+## Phase 12 — Commit Traceability Addendum (March 12, 2026)
+
+This section closes gaps between implemented fixes and documentation by mapping major hotfix commits to delivered outcomes.
+
+### UX + Admin Visual Tuning Chain ✅
+
+| Commit | Scope | Outcome |
+|---|---|---|
+| `b97c8b1` | Admin UI Design Studio | Introduced admin-driven theme customization capability |
+| `535e7ed` | Admin headings | Reduced oversized heading scale in admin panels |
+| `eaeb2ab`, `e48c95c`, `8b427e5` | Typography normalization | Deep heading-size normalization across panels/devices |
+| `f40f6bf` | UI settings | Added admin-manageable heading size/weight controls |
+| `a72ce5d` | Notifications | Fixed mobile notification popup layout/positioning |
+| `ec7ad63` | Public landing | Fixed hero overflow and mobile layout breakage |
+
+### Auth & Panel Routing Chain ✅
+
+| Commit | Scope | Outcome |
+|---|---|---|
+| `d1306d3` | Auth routing | Panel-specific login/registration flow from landing |
+| `d1306d3` | Volunteer path | Dedicated volunteer application flow entry |
+
+### Volunteer Platform Chain ✅
+
+| Commit | Scope | Outcome |
+|---|---|---|
+| `ab076d0` | Backend + frontend + DB | Implemented schema-driven volunteer application architecture |
+| `41783cd` | SQL seed | Added default active volunteer schema seed |
+| `da9ad0e` | Reliability pass | Added schema fallback response, dropdown robustness, report update |
+| `b43ef25` | UI contrast | Fixed unreadable dropdown option text in volunteer form |
+
+---
+
+## Phase 13 — Real-Time Transport Hardening & Runtime Topology (March 12, 2026)
+
+**Commits**: `48e92bb`, `612224b`, `b43ef25`
+
+### Socket.IO 400 Polling Session Errors — Root Cause & Fix ✅
+
+**Observed issue**
+- Browser console showed repeated polling `400 Bad Request` errors on `/socket.io` (`xhr post error`, `xhr poll error`, `transport error`).
+
+**Root cause**
+- Session-oriented polling traffic (`sid`) became unstable under multi-instance PM2 cluster routing without sticky affinity.
+- Duplicate socket initializations from multiple frontend consumers increased reconnect churn.
+
+**Implemented fix set**
+- Refactored socket client hook to a shared singleton connection pool per namespace.
+- Kept auth-gated socket connect behavior (no token => no socket attempt).
+- Finalized client transport order to `polling` then `websocket` for reliable connect and optional upgrade.
+- Kept server transports enabled as `websocket` + `polling`.
+- Updated PM2 app topology to single `dfb-api` instance to remove cross-worker polling sid mismatch.
+
+### Runtime & Validation Status ✅
+
+- Build status: backend + frontend compile successful after transport/topology updates.
+- Runtime status: `pm2` running `dfb-api` with 1 instance (stable mode).
+- Health check: `GET /health` returns OK.
+- Socket probe: production client handshake/connect succeeds using configured transport order.
+
+### Files Updated in Phase 13
+
+- `frontend/src/hooks/useSocket.ts`
+- `src/index.ts`
+- `ecosystem.config.js`
+- `frontend/src/pages/VolunteerApply.tsx`
+- `implementation-report.md`
 
