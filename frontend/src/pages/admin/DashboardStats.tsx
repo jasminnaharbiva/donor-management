@@ -33,7 +33,7 @@ function StatCard({
       <div className="p-3 rounded-xl bg-white/60 shadow-sm shrink-0">{icon}</div>
       <div className="min-w-0">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-bold text-slate-800 mt-0.5 truncate">{value}</p>
+        <p className="text-xl sm:text-2xl font-bold text-slate-800 mt-0.5 truncate">{value}</p>
         {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
         {trend && <p className="text-xs font-medium text-green-600 mt-0.5">{trend}</p>}
       </div>
@@ -120,7 +120,7 @@ export default function DashboardStats() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-800">Mission Control Overview</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Mission Control Overview</h2>
         <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">Live Data</span>
       </div>
 

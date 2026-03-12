@@ -53,8 +53,8 @@ export default function AuditLogsFull() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Activity className="text-primary-500" /> Audit Logs</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2"><Activity className="text-primary-500" /> Audit Logs</h2>
         <button onClick={load} className="flex items-center gap-2 text-sm text-slate-600 bg-white border border-slate-200 px-3 py-2 rounded-lg hover:text-primary-600">
           <RefreshCw size={14} /> Refresh
         </button>

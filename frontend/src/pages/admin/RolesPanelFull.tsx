@@ -85,8 +85,8 @@ export default function RolesPanelFull() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Shield className="text-primary-500" /> Role Management</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2"><Shield className="text-primary-500" /> Role Management</h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -104,7 +104,7 @@ export default function RolesPanelFull() {
                     : 'bg-white text-slate-700 border-slate-200 hover:border-primary-300 hover:bg-primary-50'
                 }`}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <span>{role.role_name}</span>
                   {role.is_system_role && <span className="text-xs opacity-70">System</span>}
                 </div>

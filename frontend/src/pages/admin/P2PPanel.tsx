@@ -49,8 +49,8 @@ export default function P2PPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Peer-to-Peer Campaigns</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Peer-to-Peer Campaigns</h2>
         <p className="text-sm text-slate-500">Supporter-created fundraising pages</p>
       </div>
 

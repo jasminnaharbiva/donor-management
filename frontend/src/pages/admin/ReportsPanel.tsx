@@ -37,21 +37,21 @@ export default function ReportsPanel() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><BarChart3 className="text-primary-500" /> Reports & Analytics</h2>
+      <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2"><BarChart3 className="text-primary-500" /> Reports & Analytics</h2>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="glass rounded-xl p-5 border-l-4 border-green-500">
           <div className="flex items-center gap-3 mb-2"><TrendingUp className="text-green-600" size={20} /><span className="text-sm text-slate-500 font-medium">Total Income</span></div>
-          <p className="text-2xl font-bold text-green-700">{fmt(s.totalIncome)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-700">{fmt(s.totalIncome)}</p>
         </div>
         <div className="glass rounded-xl p-5 border-l-4 border-red-400">
           <div className="flex items-center gap-3 mb-2"><DollarSign className="text-red-500" size={20} /><span className="text-sm text-slate-500 font-medium">Total Spent</span></div>
-          <p className="text-2xl font-bold text-red-600">{fmt(s.totalExpenses)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-red-600">{fmt(s.totalExpenses)}</p>
         </div>
         <div className="glass rounded-xl p-5 border-l-4 border-amber-400">
           <div className="flex items-center gap-3 mb-2"><Clock className="text-amber-500" size={20} /><span className="text-sm text-slate-500 font-medium">Pending Expenses</span></div>
-          <p className="text-2xl font-bold text-amber-600">{fmt(s.pendingExpenses)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-amber-600">{fmt(s.pendingExpenses)}</p>
         </div>
         <div className="glass rounded-xl p-5 border-l-4 border-primary-500">
           <div className="flex items-center gap-3 mb-2"><TrendingUp className="text-primary-600" size={20} /><span className="text-sm text-slate-500 font-medium">Net Balance</span></div>

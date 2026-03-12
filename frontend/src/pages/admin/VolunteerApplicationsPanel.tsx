@@ -62,8 +62,8 @@ export default function VolunteerApplicationsPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Volunteer Applications</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Volunteer Applications</h2>
         <span className="text-sm text-slate-500">{apps.length} record(s)</span>
       </div>
 

@@ -72,7 +72,7 @@ export default function VolunteerVerify() {
             {/* Details */}
             <div className="p-6 space-y-4">
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-white">{volunteer.first_name} {volunteer.last_name}</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">{volunteer.first_name} {volunteer.last_name}</h2>
                 <p className="text-slate-400 text-sm mt-1">Badge #{volunteer.badge_number}</p>
               </div>
 

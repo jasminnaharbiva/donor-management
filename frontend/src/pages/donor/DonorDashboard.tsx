@@ -120,21 +120,21 @@ function Overview() {
           <div className="p-4 bg-primary-100 text-primary-600 rounded-full shrink-0"><Heart size={26} /></div>
           <div>
             <p className="text-sm font-semibold text-slate-500">Lifetime Giving</p>
-            <p className="text-2xl font-bold text-slate-800">{fmt(stats.lifetime)}</p>
+            <p className="text-xl sm:text-2xl font-bold text-slate-800">{fmt(stats.lifetime)}</p>
           </div>
         </div>
         <div className="glass rounded-xl p-6 flex items-center gap-4 border-l-4 border-purple-500">
           <div className="p-4 bg-purple-100 text-purple-600 rounded-full shrink-0"><Activity size={26} /></div>
           <div>
             <p className="text-sm font-semibold text-slate-500">Active Subscriptions</p>
-            <p className="text-2xl font-bold text-slate-800">{stats.active_subs}</p>
+            <p className="text-xl sm:text-2xl font-bold text-slate-800">{stats.active_subs}</p>
           </div>
         </div>
         <div className="glass rounded-xl p-6 flex items-center gap-4 border-l-4 border-amber-500">
           <div className="p-4 bg-amber-100 text-amber-600 rounded-full shrink-0"><Trophy size={26} /></div>
           <div>
             <p className="text-sm font-semibold text-slate-500">Badges Earned</p>
-            <p className="text-2xl font-bold text-slate-800">{badges.length}</p>
+            <p className="text-xl sm:text-2xl font-bold text-slate-800">{badges.length}</p>
           </div>
         </div>
       </div>
@@ -599,7 +599,7 @@ function MyImpact() {
         ].map(c => (
           <div key={c.label} className={`rounded-xl border p-4 ${c.color}`}>
             <p className="text-xs text-slate-500 uppercase tracking-wide">{c.label}</p>
-            <p className="text-2xl font-bold text-slate-800 mt-1">{c.val}</p>
+            <p className="text-xl sm:text-2xl font-bold text-slate-800 mt-1">{c.val}</p>
           </div>
         ))}
       </div>

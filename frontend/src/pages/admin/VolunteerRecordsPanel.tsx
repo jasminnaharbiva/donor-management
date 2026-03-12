@@ -308,7 +308,7 @@ export default function VolunteerRecordsPanel() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Volunteer Records</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Volunteer Records</h2>
         <p className="text-slate-500 text-sm mt-1">Manage ID cards, certificates, and direct messages for volunteers</p>
       </div>
 

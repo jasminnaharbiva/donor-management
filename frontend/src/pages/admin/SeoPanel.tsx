@@ -101,7 +101,7 @@ export default function SeoPanel() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-800">SEO Manager</h2>
           <p className="text-sm text-slate-500 mt-0.5">Control meta tags, structured data, analytics tracking, and search engine visibility</p>
@@ -135,7 +135,7 @@ export default function SeoPanel() {
             {group.keys.map((key) => (
               <div key={key} className="px-6 py-4">
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <label className="text-sm font-semibold text-slate-700">{FRIENDLY_NAMES[key] || key}</label>
                     {saved === key && (
                       <span className="flex items-center gap-1 text-xs text-green-600 font-medium">

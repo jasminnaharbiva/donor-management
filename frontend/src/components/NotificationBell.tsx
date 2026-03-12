@@ -77,6 +77,12 @@ export default function NotificationBell() {
     return () => { socket.off('notification:new', handler); };
   }, [socket]);
 
+  // Lock body scroll when mobile drawer is open
+  useEffect(() => {
+    document.body.classList.toggle('drawer-open', open);
+    return () => { document.body.classList.remove('drawer-open'); };
+  }, [open]);
+
   // Close on outside click
   useEffect(() => {
     const handle = (e: MouseEvent) => {
@@ -146,13 +152,112 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* Dropdown */}
+      {/* ── Mobile: full-screen slide-up drawer ── */}
       {open && (
-        <div className="absolute right-0 top-12 w-[calc(100vw-2rem)] sm:w-96 max-w-sm sm:max-w-none bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden"
-          style={{ maxHeight: '520px', display: 'flex', flexDirection: 'column' }}>
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-[90] bg-black/40 backdrop-blur-sm sm:hidden"
+            onClick={() => setOpen(false)}
+          />
+          {/* Drawer — slides up from bottom on mobile */}
+          <div
+            className="fixed inset-x-0 bottom-0 z-[100] sm:hidden bg-white rounded-t-3xl shadow-2xl flex flex-col drawer-slide-up"
+            style={{ maxHeight: '85vh' }}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 bg-slate-200 rounded-full" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Bell size={18} className="text-primary-600" />
+                <span className="font-bold text-slate-800 text-base">Notifications</span>
+                {meta.unread > 0 && (
+                  <span className="bg-primary-100 text-primary-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                    {meta.unread} new
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {meta.unread > 0 && (
+                  <button onClick={markAllRead}
+                    className="text-xs text-primary-600 hover:text-primary-800 flex items-center gap-1 px-3 py-2 rounded-xl hover:bg-primary-50 transition-colors font-medium">
+                    <CheckCheck size={14} /> Mark all read
+                  </button>
+                )}
+                <button onClick={() => setOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="overflow-y-auto flex-1">
+              {loading && notifications.length === 0 ? (
+                <div className="p-10 text-center text-slate-400 text-sm">Loading…</div>
+              ) : notifications.length === 0 ? (
+                <div className="p-10 text-center">
+                  <Bell size={40} className="text-slate-200 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm font-medium">No notifications yet</p>
+                </div>
+              ) : (
+                notifications.map(notif => (
+                  <div
+                    key={notif.notification_id}
+                    onClick={() => handleClick(notif)}
+                    className={`flex items-start gap-3 px-5 py-4 border-b border-slate-50 cursor-pointer transition-colors active:bg-slate-100 group
+                      ${notif.is_read ? 'hover:bg-slate-50' : 'bg-primary-50/60 hover:bg-primary-50'}`}
+                  >
+                    <div className="mt-0.5 text-2xl flex-shrink-0">{TYPE_ICONS[notif.type] || '🔔'}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm leading-snug ${notif.is_read ? 'text-slate-600' : 'text-slate-900 font-semibold'}`}>
+                        {notif.title}
+                      </p>
+                      {notif.body && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{notif.body}</p>}
+                      <p className="text-[11px] text-slate-400 mt-1">{timeAgo(notif.sent_at)}</p>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                      {!notif.is_read && <span className="w-2.5 h-2.5 bg-primary-500 rounded-full mt-1" />}
+                      <button
+                        onClick={(e) => deleteNotif(notif.notification_id, e)}
+                        className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer */}
+            {meta.total > 15 && (
+              <div className="px-5 py-4 border-t border-slate-100 bg-slate-50">
+                <button
+                  onClick={() => { setOpen(false); navigate('/notifications'); }}
+                  className="w-full py-3 text-sm text-primary-600 hover:text-primary-800 font-semibold text-center rounded-xl hover:bg-primary-50 transition-colors"
+                >
+                  View all {meta.total} notifications →
+                </button>
+              </div>
+            )}
+
+            {/* Safe area spacer for iOS */}
+            <div className="h-safe-area-inset-bottom" style={{ height: 'env(safe-area-inset-bottom, 0px)' }} />
+          </div>
+        </>
+      )}
+
+      {/* ── Desktop: traditional dropdown ── */}
+      {open && (
+        <div className="hidden sm:flex absolute right-0 top-12 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-[100] overflow-hidden flex-col"
+          style={{ maxHeight: '520px' }}>
 
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50 shrink-0">
             <div className="flex items-center gap-2">
               <Bell size={16} className="text-primary-600" />
               <span className="font-semibold text-slate-800 text-sm">Notifications</span>
@@ -165,11 +270,11 @@ export default function NotificationBell() {
             <div className="flex items-center gap-1">
               {meta.unread > 0 && (
                 <button onClick={markAllRead}
-                  className="text-xs text-primary-600 hover:text-primary-800 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-primary-50 transition-colors">
+                  className="text-xs text-primary-600 hover:text-primary-800 flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-primary-50 transition-colors">
                   <CheckCheck size={13} /> Mark all read
                 </button>
               )}
-              <button onClick={() => setOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
+              <button onClick={() => setOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors">
                 <X size={16} />
               </button>
             </div>
@@ -192,22 +297,16 @@ export default function NotificationBell() {
                   className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 cursor-pointer transition-colors group
                     ${notif.is_read ? 'hover:bg-slate-50' : 'bg-primary-50/50 hover:bg-primary-50'}`}
                 >
-                  <div className="mt-0.5 text-xl flex-shrink-0">
-                    {TYPE_ICONS[notif.type] || '🔔'}
-                  </div>
+                  <div className="mt-0.5 text-xl flex-shrink-0">{TYPE_ICONS[notif.type] || '🔔'}</div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm leading-snug truncate ${notif.is_read ? 'text-slate-600' : 'text-slate-900 font-medium'}`}>
                       {notif.title}
                     </p>
-                    {notif.body && (
-                      <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{notif.body}</p>
-                    )}
+                    {notif.body && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{notif.body}</p>}
                     <p className="text-[10px] text-slate-400 mt-1">{timeAgo(notif.sent_at)}</p>
                   </div>
                   <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                    {!notif.is_read && (
-                      <span className="w-2 h-2 bg-primary-500 rounded-full mt-1" />
-                    )}
+                    {!notif.is_read && <span className="w-2 h-2 bg-primary-500 rounded-full mt-1" />}
                     <button
                       onClick={(e) => deleteNotif(notif.notification_id, e)}
                       className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-red-500 rounded transition-all"
@@ -222,7 +321,7 @@ export default function NotificationBell() {
 
           {/* Footer */}
           {meta.total > 15 && (
-            <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50 text-center">
+            <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50 text-center shrink-0">
               <button
                 onClick={() => { setOpen(false); navigate('/notifications'); }}
                 className="text-xs text-primary-600 hover:text-primary-800 font-medium"

@@ -228,9 +228,9 @@ export default function NotificationsAdminPanel() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Bell size={22} className="text-primary-600" /> Notification System
           </h2>
           <p className="text-sm text-slate-500 mt-1">Manage notification rules, email templates, and view the notification log</p>

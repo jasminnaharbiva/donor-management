@@ -70,7 +70,7 @@ export default function Register() {
               <CheckCircle className="text-green-500" size={40} />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Account Created!</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Account Created!</h2>
           <p className="text-slate-500 mb-6">
             Welcome to DFB Foundation. Your donor account is active and ready to use.
             Check your email for a welcome message.
@@ -95,7 +95,7 @@ export default function Register() {
             <Heart className="text-pink-400" fill="currentColor" size={20} />
             <span className="text-white font-bold text-lg">DFB Foundation</span>
           </div>
-          <h1 className="text-3xl font-bold text-white">Create your account</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Create your account</h1>
           <p className="text-slate-400 mt-1 text-sm">Join thousands of donors making a difference</p>
         </div>
 

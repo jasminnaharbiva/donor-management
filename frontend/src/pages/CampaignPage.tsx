@@ -41,7 +41,7 @@ export default function CampaignPage() {
 
   if (error || !campaign) return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
-      <h1 className="text-2xl font-bold text-slate-700">Campaign Not Found</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-slate-700">Campaign Not Found</h1>
       <p className="text-slate-500">This campaign may have ended or been removed.</p>
       <Link to="/" className="text-primary-600 hover:underline">← Back to Home</Link>
     </div>
@@ -108,7 +108,7 @@ export default function CampaignPage() {
         {/* Sidebar — fundraising progress */}
         <div className="space-y-4">
           <div className="bg-white rounded-2xl p-6 shadow-sm border sticky top-6">
-            <div className="text-3xl font-bold text-slate-900">${Number(campaign.raised_amount||0).toLocaleString()}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-slate-900">${Number(campaign.raised_amount||0).toLocaleString()}</div>
             <p className="text-sm text-slate-500 mt-1">raised of <strong>${Number(campaign.goal_amount||0).toLocaleString()}</strong> goal</p>
 
             {/* Thermometer */}
