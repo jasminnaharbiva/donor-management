@@ -67,7 +67,7 @@ export default function EmailTemplatesPanel() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg sm:text-xl font-bold text-slate-900 text-center sm:text-left">Email Templates</h2>
+        <h2 className="text-base sm:text-lg font-bold text-slate-900 text-center sm:text-left">Email Templates</h2>
         <p className="text-sm text-slate-500">{templates.length} template(s)</p>
       </div>
 

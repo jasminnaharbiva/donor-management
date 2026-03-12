@@ -120,7 +120,7 @@ export default function DashboardStats() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg sm:text-xl font-bold text-slate-800 text-center sm:text-left">Mission Control Overview</h2>
+        <h2 className="text-base sm:text-lg font-bold text-slate-800 text-center sm:text-left">Mission Control Overview</h2>
         <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">Live Data</span>
       </div>
 
