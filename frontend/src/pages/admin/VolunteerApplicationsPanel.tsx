@@ -39,7 +39,7 @@ export default function VolunteerApplicationsPanel() {
     setError('');
     try {
       const params = statusFilter ? `?status=${statusFilter}` : '';
-      const res = await api.get(`/api/v1/volunteer-applications${params}`);
+      const res = await api.get(`/volunteer-applications${params}`);
       setApps(res.data.data ?? []);
     } catch { setError('Failed to load applications'); }
     setLoading(false);
@@ -51,7 +51,7 @@ export default function VolunteerApplicationsPanel() {
     if (!selected) return;
     setReviewing(true);
     try {
-      await api.patch(`/api/v1/volunteer-applications/${selected.application_id}/review`, {
+      await api.patch(`/volunteer-applications/${selected.application_id}/review`, {
         status: reviewStatus, reviewNotes,
       });
       setSelected(null); setReviewNotes('');

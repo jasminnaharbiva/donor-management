@@ -64,7 +64,7 @@ export default function ShiftsPanel() {
   const loadShifts = useCallback(async () => {
     setLoading(true);
     try {
-      const [sRes, pRes] = await Promise.all([api.get('/api/v1/shifts'), api.get('/api/v1/projects')]);
+      const [sRes, pRes] = await Promise.all([api.get('/shifts'), api.get('/projects')]);
       setShifts(sRes.data.data);
       setProjects(pRes.data.data || []);
     } catch { setError('Failed to load shifts'); }
@@ -75,7 +75,7 @@ export default function ShiftsPanel() {
     setLoading(true);
     try {
       const params = tsFilter ? `?status=${tsFilter}` : '';
-      const res = await api.get(`/api/v1/shifts/timesheets${params}`);
+      const res = await api.get(`/shifts/timesheets${params}`);
       setTimesheets(res.data.data);
     } catch { setError('Failed to load timesheets'); }
     setLoading(false);
@@ -86,7 +86,7 @@ export default function ShiftsPanel() {
   const createShift = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/api/v1/shifts', {
+      await api.post('/shifts', {
         shiftTitle: form.shiftTitle, startDatetime: form.startDatetime, endDatetime: form.endDatetime,
         maxVolunteers: Number(form.maxVolunteers), locationName: form.locationName || undefined,
         description: form.description || undefined, status: form.status,
@@ -100,13 +100,13 @@ export default function ShiftsPanel() {
 
   const deleteShift = async (id: number) => {
     if (!confirm('Delete shift?')) return;
-    await api.delete(`/api/v1/shifts/${id}`);
+    await api.delete(`/shifts/${id}`);
     loadShifts();
   };
 
   const reviewTimesheet = async (status: 'approved'|'rejected') => {
     if (!reviewTs) return;
-    await api.patch(`/api/v1/shifts/timesheets/${reviewTs.timesheet_id}/review`, { status, adminNotes });
+    await api.patch(`/shifts/timesheets/${reviewTs.timesheet_id}/review`, { status, adminNotes });
     setReviewTs(null); setAdminNotes('');
     loadTimesheets();
   };

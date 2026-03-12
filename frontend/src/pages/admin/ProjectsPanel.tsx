@@ -49,9 +49,9 @@ export default function ProjectsPanel() {
     try {
       const params = statusFilter ? `?status=${statusFilter}` : '';
       const [pRes, fRes, cRes] = await Promise.all([
-        api.get(`/api/v1/projects${params}`),
-        api.get('/api/v1/funds'),
-        api.get('/api/v1/campaigns'),
+        api.get(`/projects${params}`),
+        api.get('/funds'),
+        api.get('/campaigns'),
       ]);
       setProjects(pRes.data.data);
       setFunds(fRes.data.data || []);
@@ -66,7 +66,7 @@ export default function ProjectsPanel() {
     e.preventDefault();
     try {
       if (editId) {
-        await api.patch(`/api/v1/projects/${editId}`, {
+        await api.patch(`/projects/${editId}`, {
           projectName: form.projectName, fundId: Number(form.fundId),
           campaignId: form.campaignId ? Number(form.campaignId) : undefined,
           budgetAllocated: form.budgetAllocated ? Number(form.budgetAllocated) : undefined,
@@ -76,7 +76,7 @@ export default function ProjectsPanel() {
           description: form.description,
         });
       } else {
-        await api.post('/api/v1/projects', {
+        await api.post('/projects', {
           projectName: form.projectName, fundId: Number(form.fundId),
           campaignId: form.campaignId ? Number(form.campaignId) : undefined,
           budgetAllocated: form.budgetAllocated ? Number(form.budgetAllocated) : undefined,
@@ -106,7 +106,7 @@ export default function ProjectsPanel() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this project?')) return;
-    await api.delete(`/api/v1/projects/${id}`);
+    await api.delete(`/projects/${id}`);
     load();
   };
 

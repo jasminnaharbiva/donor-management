@@ -36,7 +36,7 @@ export default function CustomFieldsPanel() {
     setLoading(true);
     try {
       const params = entityFilter ? `?entityType=${entityFilter}` : '';
-      const res = await api.get(`/api/v1/custom-fields${params}`);
+      const res = await api.get(`/custom-fields${params}`);
       setFields(res.data.data);
     } catch { setError('Failed to load custom fields'); }
     setLoading(false);
@@ -56,9 +56,9 @@ export default function CustomFieldsPanel() {
         isVisibleToDonor: form.isVisibleToDonor, isVisibleToVolunteer: form.isVisibleToVolunteer,
       };
       if (editId) {
-        await api.patch(`/api/v1/custom-fields/${editId}`, payload);
+        await api.patch(`/custom-fields/${editId}`, payload);
       } else {
-        await api.post('/api/v1/custom-fields', payload);
+        await api.post('/custom-fields', payload);
       }
       setShowForm(false); setEditId(null);
       setForm({ entityType:'donor',fieldName:'',fieldLabel:'',fieldType:'text',isRequired:false,displayOrder:'0',validationRegex:'',options:'',isVisibleToDonor:false,isVisibleToVolunteer:false });
@@ -80,7 +80,7 @@ export default function CustomFieldsPanel() {
 
   const deleteField = async (id: number) => {
     if (!confirm('Delete this custom field? All collected data for this field will also be deleted.')) return;
-    await api.delete(`/api/v1/custom-fields/${id}`);
+    await api.delete(`/custom-fields/${id}`);
     load();
   };
 

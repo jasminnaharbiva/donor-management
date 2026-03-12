@@ -25,7 +25,7 @@ export default function EmailTemplatesPanel() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/v1/email-templates');
+      const res = await api.get('/email-templates');
       setTemplates(res.data.data);
     } catch { setError('Failed to load email templates'); }
     setLoading(false);
@@ -43,7 +43,7 @@ export default function EmailTemplatesPanel() {
     if (!selected) return;
     setSaving(true);
     try {
-      await api.patch(`/api/v1/email-templates/${selected.template_slug}`, {
+      await api.patch(`/email-templates/${selected.template_slug}`, {
         subjectTemplate: editForm.subject_template,
         htmlBody:        editForm.html_body,
         isActive:        editForm.is_active,
@@ -57,7 +57,7 @@ export default function EmailTemplatesPanel() {
   const sendTest = async () => {
     if (!selected || !testEmail) return;
     try {
-      await api.post(`/api/v1/email-templates/${selected.template_slug}/test`, { to: testEmail });
+      await api.post(`/email-templates/${selected.template_slug}/test`, { to: testEmail });
       setTestSent(true);
     } catch { setError('Failed to send test email'); }
   };

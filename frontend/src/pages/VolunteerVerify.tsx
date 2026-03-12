@@ -22,7 +22,7 @@ export default function VolunteerVerify() {
 
   useEffect(() => {
     if (!badgeNumber) return;
-    api.get(`/api/v1/public/volunteers/verify/${badgeNumber}`)
+    api.get(`/public/volunteers/verify/${badgeNumber}`)
       .then(r => setVolunteer(r.data.data))
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));

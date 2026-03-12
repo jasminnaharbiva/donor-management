@@ -27,7 +27,7 @@ export default function CampaignPage() {
 
   useEffect(() => {
     if (!slug) return;
-    api.get(`/api/v1/public/campaigns/${slug}`)
+    api.get(`/public/campaigns/${slug}`)
       .then(r => setCampaign(r.data.data))
       .catch(() => setError('Campaign not found'))
       .finally(() => setLoading(false));

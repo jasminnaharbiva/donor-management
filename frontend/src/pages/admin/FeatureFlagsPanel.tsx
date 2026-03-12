@@ -18,7 +18,7 @@ export default function FeatureFlagsPanel() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/v1/feature-flags');
+      const res = await api.get('/feature-flags');
       setFlags(res.data.data);
     } catch { setError('Failed to load feature flags'); }
     setLoading(false);
@@ -29,7 +29,7 @@ export default function FeatureFlagsPanel() {
   const toggle = async (flag: Flag) => {
     setSaving(flag.flag_name);
     try {
-      await api.patch(`/api/v1/feature-flags/${flag.flag_name}`, { isEnabled: !flag.is_enabled });
+      await api.patch(`/feature-flags/${flag.flag_name}`, { isEnabled: !flag.is_enabled });
       setFlags(fs => fs.map(f => f.flag_name === flag.flag_name ? { ...f, is_enabled: !flag.is_enabled } : f));
     } catch { setError('Failed to update flag'); }
     setSaving(null);

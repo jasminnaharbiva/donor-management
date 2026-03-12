@@ -31,7 +31,7 @@ export default function P2PPanel() {
     setLoading(true);
     try {
       const params = statusFilter ? `?status=${statusFilter}` : '';
-      const res = await api.get(`/api/v1/p2p${params}`);
+      const res = await api.get(`/p2p${params}`);
       setCampaigns(res.data.data);
     } catch { setError('Failed to load P2P campaigns'); }
     setLoading(false);
@@ -42,7 +42,7 @@ export default function P2PPanel() {
   const handleApprove = async (id: number, status: 'active'|'rejected') => {
     if (!confirm(`${status === 'active' ? 'Approve' : 'Reject'} this P2P campaign?`)) return;
     try {
-      await api.patch(`/api/v1/p2p/${id}/approve`, { status });
+      await api.patch(`/p2p/${id}/approve`, { status });
       load();
     } catch { setError('Failed to update status'); }
   };
