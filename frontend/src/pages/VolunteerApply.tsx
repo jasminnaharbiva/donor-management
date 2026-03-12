@@ -343,11 +343,11 @@ export default function VolunteerApply() {
             required={required}
             value={String(value || '')}
             onChange={setText(field.name)}
-            className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary-400"
+            className="w-full bg-white border border-white/30 text-slate-900 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary-400"
           >
-            <option value="">Select division</option>
+            <option value="" className="text-slate-900">Select division</option>
             {divisions_en.map((division) => (
-              <option key={division.value} value={division.title}>{division.title}</option>
+              <option key={division.value} value={division.title} className="text-slate-900">{division.title}</option>
             ))}
           </select>
         </div>
@@ -363,11 +363,11 @@ export default function VolunteerApply() {
             value={String(value || '')}
             onChange={setText(field.name)}
             disabled={!selectedDivision}
-            className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary-400 disabled:opacity-60"
+            className="w-full bg-white border border-white/30 text-slate-900 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary-400 disabled:opacity-60"
           >
-            <option value="">{selectedDivision ? 'Select district' : 'Select division first'}</option>
+            <option value="" className="text-slate-900">{selectedDivision ? 'Select district' : 'Select division first'}</option>
             {districtOptions.map((district) => (
-              <option key={district.value} value={district.title}>{district.title}</option>
+              <option key={district.value} value={district.title} className="text-slate-900">{district.title}</option>
             ))}
           </select>
         </div>
@@ -383,11 +383,11 @@ export default function VolunteerApply() {
             value={String(value || '')}
             onChange={setText(field.name)}
             disabled={!selectedDistrict}
-            className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary-400 disabled:opacity-60"
+            className="w-full bg-white border border-white/30 text-slate-900 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary-400 disabled:opacity-60"
           >
-            <option value="">{selectedDistrict ? 'Select upazila' : 'Select district first'}</option>
+            <option value="" className="text-slate-900">{selectedDistrict ? 'Select upazila' : 'Select district first'}</option>
             {upazilaOptions.map((upazila) => (
-              <option key={upazila.value} value={upazila.title}>{upazila.title}</option>
+              <option key={upazila.value} value={upazila.title} className="text-slate-900">{upazila.title}</option>
             ))}
           </select>
         </div>
@@ -419,11 +419,11 @@ export default function VolunteerApply() {
             required={required}
             value={String(value || '')}
             onChange={setText(field.name)}
-            className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary-400"
+            className="w-full bg-white border border-white/30 text-slate-900 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary-400"
           >
-            <option value="">Select {label.toLowerCase()}</option>
+            <option value="" className="text-slate-900">Select {label.toLowerCase()}</option>
             {options.map((option) => (
-              <option key={`${field.name}-${option.value}`} value={option.value}>{option.label}</option>
+              <option key={`${field.name}-${option.value}`} value={option.value} className="text-slate-900">{option.label}</option>
             ))}
           </select>
         </div>

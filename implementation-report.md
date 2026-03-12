@@ -936,6 +936,19 @@ Implemented capture and storage for:
   - using stable polling transport configuration,
   - lowering repeated hard-error logging.
 
+### Volunteer Form UI Contrast Fix ✅
+
+- Fixed dropdown option text visibility issue on `/volunteer-apply` where option text appeared white/invisible on light native dropdown backgrounds.
+- Enforced high-contrast select styling (`bg-white` + dark text) and explicit option text color for:
+  - blood group,
+  - education level,
+  - division,
+  - district,
+  - upazila,
+  - other dynamic select fields.
+
+**File updated**: `frontend/src/pages/VolunteerApply.tsx`
+
 ### Database Alignment ✅
 
 Updated schema and live DB columns to support dynamic volunteer workflow:
