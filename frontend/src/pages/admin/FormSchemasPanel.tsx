@@ -136,8 +136,8 @@ export default function FormSchemasPanel() {
   const showPanel = isCreating || selected !== null;
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-3 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Form Schemas</h2>
           <p className="text-slate-500 text-sm mt-1">Customize fields for donation, registration, expense, and other forms</p>
@@ -209,7 +209,7 @@ export default function FormSchemasPanel() {
       {showPanel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b">
               <h3 className="text-lg font-bold text-slate-800">{isCreating ? 'Create Form Schema' : `Edit Schema #${selected?.schema_id}`}</h3>
               <button onClick={() => { setSelected(null); setIsCreating(false); }} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
             </div>

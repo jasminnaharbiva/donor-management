@@ -77,7 +77,7 @@ export default function EmailTemplatesPanel() {
       {selected && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-xl w-full max-w-3xl my-4 shadow-xl">
-            <div className="flex items-center justify-between p-5 border-b">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-5 border-b">
               <h3 className="text-lg font-bold">{slugLabel(selected.template_slug)}</h3>
               <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
             </div>

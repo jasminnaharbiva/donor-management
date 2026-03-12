@@ -306,7 +306,7 @@ export default function VolunteerRecordsPanel() {
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-3 sm:p-6">
       <div className="mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Volunteer Records</h2>
         <p className="text-slate-500 text-sm mt-1">Manage ID cards, certificates, and direct messages for volunteers</p>
@@ -323,10 +323,10 @@ export default function VolunteerRecordsPanel() {
       )}
 
       {/* Tab Nav */}
-      <div className="flex border-b border-slate-200 mb-6">
+      <div className="flex overflow-x-auto border-b border-slate-200 mb-6">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${tab === t.key ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+            className={`whitespace-nowrap flex-shrink-0 px-3 py-2.5 sm:px-5 sm:py-3 text-sm font-medium border-b-2 transition-colors ${tab === t.key ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
             {t.label}
           </button>
         ))}
@@ -335,7 +335,7 @@ export default function VolunteerRecordsPanel() {
       {/* =================== ID CARDS TAB =================== */}
       {tab === 'id-cards' && (
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <h3 className="font-semibold text-slate-700">ID Card Templates</h3>
             <button onClick={() => setShowNewIdTemplate(true)} className="text-sm px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
               + New Template
@@ -370,7 +370,7 @@ export default function VolunteerRecordsPanel() {
             </div>
           )}
 
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <h3 className="font-semibold text-slate-700">Issued ID Cards</h3>
             <button onClick={() => setShowIssueCard(true)} className="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700">
               Issue Card
@@ -421,7 +421,7 @@ export default function VolunteerRecordsPanel() {
       {/* =================== CERTIFICATES TAB =================== */}
       {tab === 'certificates' && (
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <h3 className="font-semibold text-slate-700">Certificate Templates</h3>
             <button onClick={() => setShowNewCertTemplate(true)} className="text-sm px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
               + New Template
@@ -452,7 +452,7 @@ export default function VolunteerRecordsPanel() {
             </div>
           )}
 
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <h3 className="font-semibold text-slate-700">Awarded Certificates</h3>
             <button onClick={() => setShowIssueCert(true)} className="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700">
               Award Certificate
@@ -492,7 +492,7 @@ export default function VolunteerRecordsPanel() {
       {/* =================== MESSAGES TAB =================== */}
       {tab === 'messages' && (
         <div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <h3 className="font-semibold text-slate-700">Sent Messages to Volunteers</h3>
             <button onClick={() => setShowSendMessage(true)} className="text-sm px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
               Send Message

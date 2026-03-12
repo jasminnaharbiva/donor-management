@@ -274,10 +274,10 @@ export default function NotificationsAdminPanel() {
       )}
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200">
+      <div className="flex overflow-x-auto border-b border-slate-200">
         {(['rules', 'log'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+            className={`whitespace-nowrap flex-shrink-0 flex items-center gap-2 px-3 py-2.5 sm:px-5 sm:py-3 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
             {t === 'rules' ? <Settings size={15} /> : <Bell size={15} />}
             {t === 'rules' ? 'Notification Rules' : 'Notification Log'}
           </button>

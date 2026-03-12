@@ -144,8 +144,8 @@ export default function PublicPagesPanel() {
   const showPanel = isCreating || selected !== null;
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-3 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Public Pages</h2>
           <p className="text-slate-500 text-sm mt-1">Manage website pages with SEO metadata and content sections</p>
@@ -212,10 +212,10 @@ export default function PublicPagesPanel() {
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b bg-slate-50">
+            <div className="flex overflow-x-auto border-b bg-slate-50">
               {(['meta', 'sections', 'css'] as const).map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)}
-                  className={`px-5 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${activeTab === tab ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+                  className={`whitespace-nowrap flex-shrink-0 px-3 py-2.5 sm:px-5 sm:py-3 text-sm font-medium capitalize border-b-2 transition-colors ${activeTab === tab ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                   {tab === 'meta' ? 'Meta & Settings' : tab === 'sections' ? 'Content (JSON)' : 'Custom CSS'}
                 </button>
               ))}
