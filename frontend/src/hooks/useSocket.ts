@@ -21,6 +21,56 @@ const getSocketUrl = () => {
 
 const SOCKET_URL = getSocketUrl();
 
+type ManagedSocket = {
+  socket: Socket;
+  refs: number;
+  token: string;
+};
+
+const socketPool = new Map<string, ManagedSocket>();
+
+function acquireSocket(namespace: string, token: string): Socket {
+  const key = namespace || '/';
+  const existing = socketPool.get(key);
+
+  if (existing) {
+    existing.refs += 1;
+    if (existing.token !== token) {
+      existing.token = token;
+      existing.socket.auth = { token };
+      if (existing.socket.connected) {
+        existing.socket.disconnect();
+      }
+      existing.socket.connect();
+    }
+    return existing.socket;
+  }
+
+  const socket = io(`${SOCKET_URL}${namespace}`, {
+    auth: { token },
+    transports: ['websocket'],
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    timeout: 30000,
+  });
+
+  socketPool.set(key, { socket, refs: 1, token });
+  return socket;
+}
+
+function releaseSocket(namespace: string): void {
+  const key = namespace || '/';
+  const existing = socketPool.get(key);
+  if (!existing) return;
+
+  existing.refs -= 1;
+  if (existing.refs <= 0) {
+    existing.socket.disconnect();
+    socketPool.delete(key);
+  }
+}
+
 export function useSocket(namespace = '') {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
@@ -35,35 +85,35 @@ export function useSocket(namespace = '') {
       return;
     }
     
-    // Auto-connect with standard Auth Bearer if token exists
-    const socketInstance = io(`${SOCKET_URL}${namespace}`, {
-      auth: { token },
-      transports: ['polling'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 30000,
-    });
+    const socketInstance = acquireSocket(namespace, token);
 
-    socketInstance.on('connect', () => {
+    const onConnect = () => {
       console.log(`[Socket] Connected to ${namespace || 'default'} namespace`);
       setConnected(true);
-    });
+    };
 
-    socketInstance.on('disconnect', (reason) => {
+    const onDisconnect = (reason: string) => {
       console.log(`[Socket] Disconnected from ${namespace || 'default'}: ${reason}`);
       setConnected(false);
-    });
+    };
 
-    socketInstance.on('connect_error', (err) => {
+    const onConnectError = (err: Error) => {
       console.warn(`[Socket] Connection warning: ${err.message}`);
       setConnected(false);
-    });
+    };
+
+    socketInstance.on('connect', onConnect);
+    socketInstance.on('disconnect', onDisconnect);
+    socketInstance.on('connect_error', onConnectError);
 
     setSocket(socketInstance);
+    setConnected(socketInstance.connected);
 
     return () => {
-      socketInstance.disconnect();
+      socketInstance.off('connect', onConnect);
+      socketInstance.off('disconnect', onDisconnect);
+      socketInstance.off('connect_error', onConnectError);
+      releaseSocket(namespace);
     };
   }, [namespace]);
 

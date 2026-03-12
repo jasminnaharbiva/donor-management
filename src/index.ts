@@ -58,7 +58,7 @@ const server = http.createServer(app);
 // ---------------------------------------------------------------------------
 const io = new SocketIOServer(server, {
   cors: { origin: config.cors.origins, credentials: true },
-  transports: ['websocket', 'polling'],
+  transports: ['websocket'],
 });
 
 io.on('connection', (socket) => {
