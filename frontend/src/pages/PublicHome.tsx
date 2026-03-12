@@ -17,42 +17,42 @@ export default function PublicHome() {
   const pct = (raised: number, goal: number) => goal > 0 ? Math.min(100, Math.round((raised / goal) * 100)) : 0;
 
   return (
-    <div className="min-h-screen bg-slate-50 overflow-hidden relative">
+    <div className="min-h-screen bg-slate-50 overflow-x-hidden relative">
       <div className="absolute top-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
         <div className="absolute top-[20%] right-[-10%] w-[50%] h-[50%] bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
         <div className="absolute bottom-[-10%] left-[20%] w-[30%] h-[30%] bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-4000"></div>
       </div>
 
-      <nav className="relative z-10 w-full px-6 py-4 flex justify-between items-center glass-dark">
-        <div className="flex items-center gap-2">
-          <Heart className="text-pink-400" fill="currentColor" />
-          <span className="font-bold text-xl tracking-tight text-white">DFB Portal</span>
+      <nav className="relative z-10 w-full px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center gap-3 glass-dark">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
+          <Heart size={18} className="text-pink-400 shrink-0" fill="currentColor" />
+          <span className="font-bold text-lg sm:text-xl tracking-tight text-white whitespace-nowrap">DFB Portal</span>
         </div>
-        <div>
-          <Link to="/login" className="text-white hover:text-primary-300 font-semibold px-4 py-2 transition-colors">Sign In</Link>
-          <button onClick={() => navigate('/login')} className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-2 px-6 rounded-full shadow-lg hover:shadow-primary-500/50 transition-all ml-4">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <Link to="/login" className="text-white hover:text-primary-300 font-semibold px-2 sm:px-3 py-2 text-sm sm:text-base transition-colors whitespace-nowrap">Sign In</Link>
+          <button onClick={() => navigate('/login')} className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-2 px-3 sm:px-6 rounded-full shadow-lg hover:shadow-primary-500/50 transition-all text-sm sm:text-base whitespace-nowrap">
             Donate Now
           </button>
         </div>
       </nav>
 
-      <main className="relative z-10 max-w-7xl mx-auto px-6 pt-32 pb-24 text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-8 text-primary-700 font-semibold text-sm">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-14 sm:pt-24 md:pt-32 pb-16 sm:pb-24 text-center">
+        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full glass mb-6 sm:mb-8 text-primary-700 font-semibold text-xs sm:text-sm max-w-full">
           <Sparkles size={16} className="text-amber-500" />
           <span>Empowering real-time generosity</span>
         </div>
-        <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-tight mb-6">
-          Fund the future, <br /><span className="bg-gradient-to-r from-primary-500 to-purple-600 bg-clip-text text-transparent">transparently.</span>
+        <h1 className="text-[2.35rem] sm:text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-[1.05] mb-5 sm:mb-6">
+          Fund the future, <br /><span className="bg-gradient-to-r from-primary-500 to-purple-600 bg-clip-text text-transparent break-words">transparently.</span>
         </h1>
-        <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-10">
+        <p className="text-base sm:text-xl text-slate-600 max-w-2xl mx-auto mb-8 sm:mb-10 px-1">
           Join donors who see the direct impact of their giving. Track allocations in real-time, earn badges, and manage volunteer shifts — all in one place.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
-          <button onClick={() => navigate('/login')} className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 px-8 rounded-full shadow-xl transition-all flex justify-center items-center gap-2 text-lg">
+          <button onClick={() => navigate('/login')} className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 px-6 sm:px-8 rounded-full shadow-xl transition-all flex justify-center items-center gap-2 text-base sm:text-lg">
             <Heart size={20} /> Make a Contribution
           </button>
-          <button onClick={() => navigate('/login')} className="glass hover:bg-white/90 text-slate-800 font-bold py-4 px-8 rounded-full shadow-lg transition-all flex justify-center items-center gap-2 text-lg">
+          <button onClick={() => navigate('/login')} className="glass hover:bg-white/90 text-slate-800 font-bold py-3.5 px-6 sm:px-8 rounded-full shadow-lg transition-all flex justify-center items-center gap-2 text-base sm:text-lg">
             <Users size={20} /> Become a Volunteer
           </button>
         </div>
@@ -68,7 +68,7 @@ export default function PublicHome() {
             ].map(({ label, value, icon }) => (
               <div key={label} className="glass rounded-2xl p-5 text-center">
                 <div className="flex justify-center mb-2">{icon}</div>
-                <div className="text-2xl font-extrabold text-slate-900">{value}</div>
+                <div className="text-xl sm:text-2xl font-extrabold text-slate-900">{value}</div>
                 <div className="text-sm text-slate-500">{label}</div>
               </div>
             ))}
@@ -79,7 +79,7 @@ export default function PublicHome() {
       {/* Active Campaigns */}
       {campaigns.length > 0 && (
         <div className="relative z-10 bg-white border-t border-slate-200">
-          <div className="max-w-7xl mx-auto px-6 py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-16">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 text-center mb-10">Active Campaigns</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {campaigns.map((c: any) => (
@@ -107,7 +107,7 @@ export default function PublicHome() {
       )}
 
       <div className="relative z-10 bg-white border-t border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 py-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-16 grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             { icon: <Activity className="w-12 h-12 text-primary-500 mx-auto mb-4" />, title: 'Real-Time Impact', desc: 'Live thermometers update the moment your payment clears.' },
             { icon: <Users className="w-12 h-12 text-purple-500 mx-auto mb-4" />, title: 'Peer to Peer', desc: 'Start your own sub-campaigns and leverage your network.' },
@@ -115,7 +115,7 @@ export default function PublicHome() {
           ].map(({ icon, title, desc }) => (
             <div key={title} className="text-center p-6 bg-slate-50 rounded-2xl border border-slate-100">
               {icon}
-              <h3 className="font-bold text-xl mb-2 text-slate-800">{title}</h3>
+              <h3 className="font-bold text-lg sm:text-xl mb-2 text-slate-800">{title}</h3>
               <p className="text-slate-500">{desc}</p>
             </div>
           ))}
