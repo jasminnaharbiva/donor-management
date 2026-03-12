@@ -335,7 +335,7 @@ export default function VolunteerRecordsPanel() {
       {/* =================== ID CARDS TAB =================== */}
       {tab === 'id-cards' && (
         <div>
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
             <h3 className="font-semibold text-slate-700">ID Card Templates</h3>
             <button onClick={() => setShowNewIdTemplate(true)} className="text-sm px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
               + New Template
@@ -370,7 +370,7 @@ export default function VolunteerRecordsPanel() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
             <h3 className="font-semibold text-slate-700">Issued ID Cards</h3>
             <button onClick={() => setShowIssueCard(true)} className="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700">
               Issue Card
@@ -421,7 +421,7 @@ export default function VolunteerRecordsPanel() {
       {/* =================== CERTIFICATES TAB =================== */}
       {tab === 'certificates' && (
         <div>
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
             <h3 className="font-semibold text-slate-700">Certificate Templates</h3>
             <button onClick={() => setShowNewCertTemplate(true)} className="text-sm px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
               + New Template
@@ -452,7 +452,7 @@ export default function VolunteerRecordsPanel() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
             <h3 className="font-semibold text-slate-700">Awarded Certificates</h3>
             <button onClick={() => setShowIssueCert(true)} className="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700">
               Award Certificate
@@ -492,7 +492,7 @@ export default function VolunteerRecordsPanel() {
       {/* =================== MESSAGES TAB =================== */}
       {tab === 'messages' && (
         <div>
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <h3 className="font-semibold text-slate-700">Sent Messages to Volunteers</h3>
             <button onClick={() => setShowSendMessage(true)} className="text-sm px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
               Send Message

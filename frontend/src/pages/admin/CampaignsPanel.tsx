@@ -96,11 +96,11 @@ export default function CampaignsPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2"><Target className="text-primary-500" /> Campaign Management</h2>
         <button
           onClick={() => setShowCreate(!showCreate)}
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          className="flex items-center justify-center sm:justify-start gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
         >
           <Plus size={16} /> New Campaign
         </button>

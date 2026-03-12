@@ -145,7 +145,7 @@ export default function PublicPagesPanel() {
 
   return (
     <div className="p-3 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Public Pages</h2>
           <p className="text-slate-500 text-sm mt-1">Manage website pages with SEO metadata and content sections</p>

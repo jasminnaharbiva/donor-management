@@ -150,7 +150,7 @@ export default function RolesPanelFull() {
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                 <h3 className="font-semibold text-slate-700">
                   Permissions for <span className="text-primary-600">{selectedRole.role_name}</span>
                 </h3>
