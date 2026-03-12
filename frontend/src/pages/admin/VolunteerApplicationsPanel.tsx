@@ -18,7 +18,7 @@ interface Application {
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
-  under_review: 'bg-blue-100 text-blue-800',
+  under_review: 'bg-primary-100 text-primary-800',
   approved: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',
   waitlisted: 'bg-purple-100 text-purple-800',
@@ -136,7 +136,7 @@ export default function VolunteerApplicationsPanel() {
                   <td className="px-4 py-3 text-slate-500">{new Date(a.submitted_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
                     <button onClick={() => { setSelected(a); setReviewStatus('approved'); setReviewNotes(a.review_notes || ''); }}
-                      className="text-blue-600 hover:underline text-xs">Review</button>
+                      className="text-xs text-primary-600 hover:text-primary-800 px-2 py-1.5 rounded-md hover:bg-primary-50 transition-colors">Review</button>
                   </td>
                 </tr>
               ))}

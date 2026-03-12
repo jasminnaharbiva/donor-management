@@ -96,7 +96,7 @@ export default function DonorsPanel() {
                   <td className="py-3 px-3 font-medium text-slate-800">{d.first_name} {d.last_name}</td>
                   <td className="py-3 px-3 text-slate-600 text-sm">{d.email}</td>
                   <td className="py-3 px-3">
-                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">{d.donor_type}</span>
+                    <span className="px-2 py-0.5 bg-primary-50 text-primary-700 rounded text-xs">{d.donor_type}</span>
                   </td>
                   <td className="py-3 px-3 font-semibold text-green-700">{fmt(d.lifetime_value)}</td>
                   <td className="py-3 px-3 text-slate-500">{fmtDate(d.last_donation_date)}</td>
@@ -113,9 +113,9 @@ export default function DonorsPanel() {
         <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
           <span>{total} total donors</span>
           <div className="flex gap-2">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1 border rounded disabled:opacity-40">Prev</button>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-2 text-sm border border-slate-300 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors">Prev</button>
             <span className="px-3 py-1">Page {page}</span>
-            <button onClick={() => setPage(p => p + 1)} disabled={donors.length < 25} className="px-3 py-1 border rounded disabled:opacity-40">Next</button>
+            <button onClick={() => setPage(p => p + 1)} disabled={donors.length < 25} className="px-3 py-2 text-sm border border-slate-300 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors">Next</button>
           </div>
         </div>
       </div>

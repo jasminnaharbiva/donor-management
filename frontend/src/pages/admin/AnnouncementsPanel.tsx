@@ -106,7 +106,7 @@ export default function AnnouncementsPanel() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${a.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
                     {a.is_active ? 'Active' : 'Hidden'}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">{audienceLabel[a.audience] || a.audience}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 font-medium">{audienceLabel[a.audience] || a.audience}</span>
                 </div>
                 <p className="text-sm text-slate-600 mt-1">{a.body}</p>
                 <p className="text-xs text-slate-400 mt-2">{new Date(a.created_at).toLocaleDateString()}</p>

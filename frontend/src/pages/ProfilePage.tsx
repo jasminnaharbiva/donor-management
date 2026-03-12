@@ -147,7 +147,7 @@ export default function ProfilePage() {
         {/* 2FA Security Section */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <h2 className="text-base font-semibold text-slate-700 flex items-center gap-2 mb-4">
-            <Smartphone size={16} className="text-indigo-600" /> Two-Factor Authentication (2FA)
+            <Smartphone size={16} className="text-primary-600" /> Two-Factor Authentication (2FA)
           </h2>
           
           {twoFaSuccess && (
@@ -157,8 +157,8 @@ export default function ProfilePage() {
           )}
 
           {(user as any)?.two_fa_enabled || twoFaSuccess ? (
-            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl flex items-start gap-3 text-indigo-800 text-sm">
-              <Shield size={20} className="shrink-0 text-indigo-600 mt-0.5" />
+            <div className="p-4 bg-primary-50 border border-primary-200 rounded-xl flex items-start gap-3 text-primary-800 text-sm">
+              <Shield size={20} className="shrink-0 text-primary-600 mt-0.5" />
               <div>
                 <strong className="block mb-1">2FA is Enabled</strong>
                 Your account is secured with Two-Factor Authentication. A Time-based One Time Password (TOTP) from your authenticator app will be required during login.

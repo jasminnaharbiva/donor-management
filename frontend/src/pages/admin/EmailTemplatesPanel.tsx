@@ -83,9 +83,9 @@ export default function EmailTemplatesPanel() {
             </div>
             <div className="p-5 space-y-4">
               {selected.available_variables && (
-                <div className="bg-blue-50 rounded-lg p-3 text-sm">
-                  <p className="font-medium text-blue-800 mb-1">Available Variables:</p>
-                  <code className="text-blue-700">{selected.available_variables}</code>
+                <div className="bg-primary-50 rounded-lg p-3 text-sm">
+                  <p className="font-medium text-primary-800 mb-1">Available Variables:</p>
+                  <code className="text-primary-700">{selected.available_variables}</code>
                 </div>
               )}
               <div>
@@ -125,7 +125,7 @@ export default function EmailTemplatesPanel() {
       {loading ? <div className="text-center py-12 text-slate-500">Loading...</div> : (
         <div className="grid gap-3">
           {templates.map(t => (
-            <div key={t.template_id} className="bg-white border rounded-xl p-4 shadow-sm flex items-center justify-between hover:border-blue-300 transition-colors">
+            <div key={t.template_id} className="bg-white border rounded-xl p-4 shadow-sm flex items-center justify-between hover:border-primary-300 transition-colors">
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-medium text-slate-900">{slugLabel(t.template_slug)}</h3>
@@ -136,7 +136,7 @@ export default function EmailTemplatesPanel() {
                 <p className="text-sm text-slate-500 mt-0.5">{t.subject_template}</p>
                 <p className="text-xs text-slate-400 mt-0.5">Locale: {t.locale} · Updated: {new Date(t.updated_at).toLocaleDateString()}</p>
               </div>
-              <button onClick={() => openTemplate(t)} className="text-blue-600 hover:underline text-sm ml-4">Edit</button>
+              <button onClick={() => openTemplate(t)} className="text-sm text-primary-600 hover:text-primary-800 px-2 py-1.5 rounded-md hover:bg-primary-50 transition-colors ml-4">Edit</button>
             </div>
           ))}
           {templates.length === 0 && <div className="text-center py-12 text-slate-500">No email templates found.</div>}

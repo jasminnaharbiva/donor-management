@@ -22,7 +22,7 @@ interface Fund { fund_id: number; fund_name: string; }
 interface Campaign { campaign_id: number; title: string; }
 
 const statusColors: Record<string, string> = {
-  planning: 'bg-blue-100 text-blue-800',
+  planning: 'bg-primary-100 text-primary-800',
   active: 'bg-green-100 text-green-800',
   on_hold: 'bg-yellow-100 text-yellow-800',
   completed: 'bg-slate-100 text-slate-800',
@@ -182,14 +182,14 @@ export default function ProjectsPanel() {
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[p.status] || 'bg-slate-100 text-slate-800'}`}>{p.status}</span>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-4 text-sm">
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                 <div><span className="text-slate-500">Allocated</span><br/><strong>${Number(p.budget_allocated||0).toLocaleString()}</strong></div>
                 <div><span className="text-slate-500">Spent</span><br/><strong>${Number(p.budget_spent||0).toLocaleString()}</strong></div>
                 <div><span className="text-slate-500">Remaining</span><br/><strong>${Number(p.budget_remaining||0).toLocaleString()}</strong></div>
               </div>
               <div className="flex gap-2 mt-3">
-                <button onClick={() => openEdit(p)} className="text-sm text-blue-600 hover:underline">Edit</button>
-                <button onClick={() => handleDelete(p.project_id)} className="text-sm text-red-600 hover:underline">Delete</button>
+                <button onClick={() => openEdit(p)} className="text-sm text-primary-600 hover:text-primary-800 px-2 py-1.5 rounded-md hover:bg-primary-50 transition-colors">Edit</button>
+                <button onClick={() => handleDelete(p.project_id)} className="text-sm text-red-600 hover:text-red-800 px-2 py-1.5 rounded-md hover:bg-red-50 transition-colors">Delete</button>
               </div>
             </div>
           ))}

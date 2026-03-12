@@ -80,7 +80,7 @@ export default function AuditLogs() {
                       log.action_type === 'UPDATE' ? 'bg-amber-100 text-amber-800' :
                       log.action_type === 'INSERT' ? 'bg-emerald-100 text-emerald-800' :
                       log.action_type === 'DELETE' ? 'bg-rose-100 text-rose-800' :
-                      log.action_type === 'LOGIN'  ? 'bg-blue-100 text-blue-800' :
+                      log.action_type === 'LOGIN'  ? 'bg-primary-100 text-primary-800' :
                       'bg-slate-100 text-slate-800'
                     }`}>
                       {log.action_type}

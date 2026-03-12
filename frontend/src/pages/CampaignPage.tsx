@@ -35,7 +35,7 @@ export default function CampaignPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
     </div>
   );
 
@@ -43,7 +43,7 @@ export default function CampaignPage() {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
       <h1 className="text-2xl font-bold text-slate-700">Campaign Not Found</h1>
       <p className="text-slate-500">This campaign may have ended or been removed.</p>
-      <Link to="/" className="text-blue-600 hover:underline">← Back to Home</Link>
+      <Link to="/" className="text-primary-600 hover:underline">← Back to Home</Link>
     </div>
   );
 
@@ -53,19 +53,19 @@ export default function CampaignPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Hero */}
-      <div className="relative bg-gradient-to-br from-blue-900 to-blue-700 text-white">
+      <div className="relative bg-gradient-to-br from-primary-900 to-primary-700 text-white">
         {campaign.cover_image_url && (
           <img src={campaign.cover_image_url} alt={campaign.title} className="absolute inset-0 w-full h-full object-cover opacity-20" />
         )}
         <div className="relative max-w-4xl mx-auto px-6 py-16">
-          <Link to="/" className="inline-flex items-center gap-2 text-blue-200 hover:text-white text-sm mb-6 transition-colors">
+          <Link to="/" className="inline-flex items-center gap-2 text-primary-200 hover:text-white text-sm mb-6 transition-colors">
             ← Back to Home
           </Link>
           <div className="inline-block bg-white/20 backdrop-blur px-3 py-1 rounded-full text-xs font-medium mb-4">
             {campaign.fund_name}
           </div>
           <h1 className="text-3xl md:text-4xl font-bold mb-4">{campaign.title}</h1>
-          {campaign.description && <p className="text-blue-100 text-lg max-w-2xl">{campaign.description}</p>}
+          {campaign.description && <p className="text-primary-100 text-lg max-w-2xl">{campaign.description}</p>}
         </div>
       </div>
 
@@ -80,7 +80,7 @@ export default function CampaignPage() {
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border">
             <h2 className="text-lg font-bold text-slate-900 mb-4">Campaign Details</h2>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div className="bg-slate-50 rounded-xl p-4">
                 <p className="text-slate-500">Campaign Status</p>
                 <p className="font-semibold text-slate-900 mt-1 capitalize">{campaign.status}</p>
@@ -119,7 +119,7 @@ export default function CampaignPage() {
               </div>
               <div className="w-full bg-slate-100 rounded-full h-4 overflow-hidden">
                 <div
-                  className="h-4 rounded-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-1000"
+                  className="h-4 rounded-full bg-gradient-to-r from-primary-500 to-green-500 transition-all duration-1000"
                   style={{ width: `${pct}%` }}
                 />
               </div>

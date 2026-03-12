@@ -53,9 +53,9 @@ export default function ReportsPanel() {
           <div className="flex items-center gap-3 mb-2"><Clock className="text-amber-500" size={20} /><span className="text-sm text-slate-500 font-medium">Pending Expenses</span></div>
           <p className="text-2xl font-bold text-amber-600">{fmt(s.pendingExpenses)}</p>
         </div>
-        <div className="glass rounded-xl p-5 border-l-4 border-blue-500">
-          <div className="flex items-center gap-3 mb-2"><TrendingUp className="text-blue-600" size={20} /><span className="text-sm text-slate-500 font-medium">Net Balance</span></div>
-          <p className={`text-2xl font-bold ${s.netBalance >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{fmt(s.netBalance)}</p>
+        <div className="glass rounded-xl p-5 border-l-4 border-primary-500">
+          <div className="flex items-center gap-3 mb-2"><TrendingUp className="text-primary-600" size={20} /><span className="text-sm text-slate-500 font-medium">Net Balance</span></div>
+          <p className={`text-2xl font-bold ${s.netBalance >= 0 ? 'text-primary-700' : 'text-red-600'}`}>{fmt(s.netBalance)}</p>
         </div>
       </div>
 

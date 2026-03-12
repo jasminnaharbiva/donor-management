@@ -326,7 +326,7 @@ export default function VolunteerRecordsPanel() {
       <div className="flex border-b border-slate-200 mb-6">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${tab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+            className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${tab === t.key ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
             {t.label}
           </button>
         ))}
@@ -479,7 +479,7 @@ export default function VolunteerRecordsPanel() {
                     <td className="px-4 py-3 text-sm text-slate-600 max-w-[200px] truncate">{c.custom_note ?? '—'}</td>
                     <td className="px-4 py-3 text-xs text-slate-500">{c.hours_served != null ? `${c.hours_served}h` : '—'}</td>
                     <td className="px-4 py-3 text-xs text-slate-400">{new Date(c.issue_date).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-indigo-700 bg-indigo-50 rounded">{c.verification_code}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-primary-700 bg-primary-50 rounded">{c.verification_code}</td>
                   </tr>
                 ))}
               </tbody>
@@ -522,7 +522,7 @@ export default function VolunteerRecordsPanel() {
                       <td className="px-4 py-3 text-sm text-slate-600 max-w-[250px] truncate">{m.body}</td>
                       <td className="px-4 py-3 text-xs text-slate-500 capitalize">{m.channel.replace('_', ' ')}</td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${m.is_read ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${m.is_read ? 'bg-primary-100 text-primary-700' : 'bg-yellow-100 text-yellow-700'}`}>
                           {m.is_read ? 'Read' : 'Unread'}
                         </span>
                       </td>

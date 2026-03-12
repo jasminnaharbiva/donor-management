@@ -13,7 +13,7 @@ interface Application {
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',
-  under_review: 'bg-blue-100 text-blue-700',
+  under_review: 'bg-primary-100 text-primary-700',
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
   waitlisted: 'bg-purple-100 text-purple-700',

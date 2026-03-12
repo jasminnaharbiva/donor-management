@@ -253,17 +253,17 @@ function Overview() {
 
         {/* Notifications */}
         <div className="glass rounded-xl p-6">
-          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><Bell className="text-blue-500" /> Notifications</h3>
+          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><Bell className="text-primary-500" /> Notifications</h3>
           {notifications.length === 0 ? (
             <p className="text-slate-500 text-center py-8">No notifications yet.</p>
           ) : (
             <ul className="space-y-3">
               {notifications.map(n => (
-                <li key={n.id} className={`p-3 rounded-lg border text-sm transition cursor-pointer ${n.is_read ? 'bg-slate-50 border-slate-100 text-slate-500' : 'bg-blue-50 border-blue-200 text-slate-700'}`}
+                <li key={n.id} className={`p-3 rounded-lg border text-sm transition cursor-pointer ${n.is_read ? 'bg-slate-50 border-slate-100 text-slate-500' : 'bg-primary-50 border-primary-200 text-slate-700'}`}
                   onClick={() => !n.is_read && markRead(n.id)}>
                   <p className="font-semibold">{n.title}</p>
                   <p className="text-xs mt-0.5">{n.message}</p>
-                  {!n.is_read && <span className="text-xs text-blue-600 font-medium">Click to mark read</span>}
+                  {!n.is_read && <span className="text-xs text-primary-600 font-medium">Click to mark read</span>}
                 </li>
               ))}
             </ul>
@@ -291,7 +291,8 @@ function DonationHistory() {
     <div className="space-y-4">
       <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Heart className="text-primary-500" /> My Donation History</h2>
       <div className="glass rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[600px]">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
               <th className="text-left py-3 px-4 font-semibold text-slate-600">Date</th>
@@ -314,6 +315,7 @@ function DonationHistory() {
             {donations.length === 0 && <tr><td colSpan={5} className="text-center py-8 text-slate-400">No donations yet.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -542,14 +544,14 @@ function NotificationsPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Bell className="text-blue-500" /> All Notifications</h2>
+        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Bell className="text-primary-500" /> All Notifications</h2>
         {notes.some(n => !n.is_read) && (
-          <button onClick={markAll} className="text-sm text-blue-600 hover:underline flex items-center gap-1"><CheckCircle size={14} /> Mark all read</button>
+          <button onClick={markAll} className="text-sm text-primary-600 hover:underline flex items-center gap-1"><CheckCircle size={14} /> Mark all read</button>
         )}
       </div>
       <div className="space-y-2">
         {notes.map(n => (
-          <div key={n.id} className={`glass rounded-lg p-4 border-l-4 ${n.is_read ? 'border-slate-200' : 'border-blue-400'}`}>
+          <div key={n.id} className={`glass rounded-lg p-4 border-l-4 ${n.is_read ? 'border-slate-200' : 'border-primary-400'}`}>
             <p className="font-semibold text-slate-800 text-sm">{n.title}</p>
             <p className="text-sm text-slate-500 mt-0.5">{n.message}</p>
             <p className="text-xs text-slate-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
@@ -591,7 +593,7 @@ function MyImpact() {
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: 'Total Donated', val: fmt(summary.total_donated), color: 'bg-blue-50 border-blue-200' },
+          { label: 'Total Donated', val: fmt(summary.total_donated), color: 'bg-primary-50 border-primary-200' },
           { label: 'Deployed to Programs', val: fmt(summary.total_deployed), color: 'bg-green-50 border-green-200' },
           { label: 'Pending Deployment', val: fmt(summary.total_pending), color: 'bg-yellow-50 border-yellow-200' },
         ].map(c => (
@@ -633,7 +635,7 @@ function MyImpact() {
                   {al.expense && (
                     <p className="text-xs text-slate-500 mt-0.5">
                       {al.expense.purpose} {al.expense.vendor_name ? `• ${al.expense.vendor_name}` : ''} {al.expense.spent_on ? `• ${new Date(al.expense.spent_on).toLocaleDateString()}` : ''}
-                      {al.expense.receipt_url && (<> • <a href={al.expense.receipt_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Receipt</a></>)}
+                      {al.expense.receipt_url && (<> • <a href={al.expense.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary-500 underline">Receipt</a></>)}
                     </p>
                   )}
                 </div>
@@ -696,7 +698,7 @@ function P2PFundraiser() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Globe className="text-blue-500"/> Create a Fundraiser</h2>
+      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Globe className="text-primary-500"/> Create a Fundraiser</h2>
 
       {/* Create form */}
       <div className="glass rounded-xl border border-slate-200 p-6">
@@ -754,7 +756,7 @@ function P2PFundraiser() {
                   <div className="flex justify-between text-xs text-slate-500 mb-1">
                     <span>{fmt(Number(c.raised_amount || 0))} raised</span><span>Goal: {fmt(Number(c.goal_amount))}</span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${pct}%` }}/></div>
+                  <div className="w-full bg-slate-200 rounded-full h-2"><div className="bg-primary-500 h-2 rounded-full" style={{ width: `${pct}%` }}/></div>
                 </div>
               </div>
             );
@@ -810,13 +812,13 @@ function MyAccount() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Shield className="text-indigo-500"/> My Account &amp; Data Rights</h2>
+      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Shield className="text-primary-500"/> My Account &amp; Data Rights</h2>
 
       {message && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm flex items-center gap-2"><CheckCircle size={16}/>{message}</div>}
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2"><XCircle size={16}/>{error}</div>}
 
       {/* GDPR Article 20 — Data portability */}
-      <div className="glass rounded-xl border border-indigo-200 p-6">
+      <div className="glass rounded-xl border border-primary-200 p-6">
         <h3 className="font-semibold text-slate-800 mb-2">📦 Download Your Data</h3>
         <p className="text-sm text-slate-600 mb-4">Under GDPR Article 20, you have the right to receive all personal data we hold about you in a portable, machine-readable format (JSON). This includes your profile, donation history, pledges, and notification history.</p>
         <button onClick={downloadData} disabled={exporting} className="px-5 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center gap-2">

@@ -17,7 +17,7 @@ const GROUPS = [
   {
     label: 'Basic SEO',
     icon: <Globe size={16} />,
-    color: 'text-blue-600 bg-blue-50',
+    color: 'text-primary-600 bg-primary-50',
     keys: ['seo.site_title', 'seo.site_description', 'seo.org_name', 'seo.org_url', 'seo.og_image_url', 'seo.twitter_handle'],
   },
   {

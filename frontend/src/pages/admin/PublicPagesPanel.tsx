@@ -190,7 +190,7 @@ export default function PublicPagesPanel() {
                 <td className="px-4 py-3 text-xs text-slate-400">{new Date(p.updated_at).toLocaleDateString()}</td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
-                    <button onClick={() => openPage(p)} className="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
+                    <button onClick={() => openPage(p)} className="text-primary-600 hover:text-primary-800 text-xs font-medium">Edit</button>
                     <a href={`/${p.page_slug}`} target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-slate-700 text-xs font-medium">View</a>
                     <button onClick={() => deletePage(p.page_id, p.page_title)} className="text-red-500 hover:text-red-700 text-xs font-medium">Delete</button>
                   </div>
@@ -215,7 +215,7 @@ export default function PublicPagesPanel() {
             <div className="flex border-b bg-slate-50">
               {(['meta', 'sections', 'css'] as const).map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)}
-                  className={`px-5 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${activeTab === tab ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+                  className={`px-5 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${activeTab === tab ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                   {tab === 'meta' ? 'Meta & Settings' : tab === 'sections' ? 'Content (JSON)' : 'Custom CSS'}
                 </button>
               ))}
@@ -224,7 +224,7 @@ export default function PublicPagesPanel() {
             <div className="p-6 overflow-y-auto flex-1">
               {activeTab === 'meta' && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Page Slug *</label>
                       <input value={form.page_slug} onChange={e => setForm(f => ({ ...f, page_slug: e.target.value }))}

@@ -93,7 +93,7 @@ export default function DashboardStats() {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-8 bg-slate-200 rounded w-64" />
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => <div key={i} className="h-28 bg-slate-200 rounded-xl" />)}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -127,13 +127,13 @@ export default function DashboardStats() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard label="Total Raised" value={fmt(totalRaised)} sub={fmtFull(totalRaised)} icon={<TrendingUp className="text-green-600" size={22} />} colorClass="border-green-500" trend="↑ All time" />
-        <StatCard label="Total Donors" value={String(stats?.total_donors || 0)} sub="Registered" icon={<Users className="text-blue-600" size={22} />} colorClass="border-blue-500" />
+        <StatCard label="Total Donors" value={String(stats?.total_donors || 0)} sub="Registered" icon={<Users className="text-primary-600" size={22} />} colorClass="border-primary-500" />
         <StatCard label="Active Campaigns" value={String(stats?.active_campaigns || 0)} sub="Running now" icon={<Target className="text-purple-600" size={22} />} colorClass="border-purple-500" />
         <StatCard label="Pending Expenses" value={fmtFull(pendingExp)} sub="Awaiting approval" icon={<CreditCard className="text-amber-600" size={22} />} colorClass="border-amber-500" />
         <StatCard label="Volunteers" value={String(stats?.total_volunteers || 0)} sub="Active members" icon={<UserCheck className="text-cyan-600" size={22} />} colorClass="border-cyan-500" />
         <StatCard label="Donations" value={String(stats?.total_donations || 0)} sub="All transactions" icon={<Heart className="text-rose-500" size={22} />} colorClass="border-rose-500" />
         <StatCard label="Approved Expenses" value={fmtFull(approvedExp)} sub="Disbursed" icon={<CheckCircle className="text-emerald-600" size={22} />} colorClass="border-emerald-500" />
-        <StatCard label="Net Balance" value={fmt(netBalance)} sub={fmtFull(netBalance)} icon={<DollarSign className="text-indigo-600" size={22} />} colorClass="border-indigo-500" />
+        <StatCard label="Net Balance" value={fmt(netBalance)} sub={fmtFull(netBalance)} icon={<DollarSign className="text-primary-600" size={22} />} colorClass="border-primary-500" />
       </div>
 
       {/* Charts Row */}

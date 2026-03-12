@@ -62,7 +62,7 @@ export default function PublicHome() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
             {[
               { label: 'Total Raised', value: fmt(impact.total_raised), icon: <TrendingUp className="text-green-500" size={24} /> },
-              { label: 'Total Donors', value: impact.total_donors?.toLocaleString() || '0', icon: <Users className="text-blue-500" size={24} /> },
+              { label: 'Total Donors', value: impact.total_donors?.toLocaleString() || '0', icon: <Users className="text-primary-500" size={24} /> },
               { label: 'Funds Active', value: impact.active_funds || '0', icon: <Target className="text-purple-500" size={24} /> },
               { label: 'Volunteers', value: impact.total_volunteers || '0', icon: <Activity className="text-amber-500" size={24} /> },
             ].map(({ label, value, icon }) => (

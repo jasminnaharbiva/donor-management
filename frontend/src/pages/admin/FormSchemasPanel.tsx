@@ -186,7 +186,7 @@ export default function FormSchemasPanel() {
                         <td className="px-4 py-3 text-xs text-slate-400">{new Date(s.updated_at).toLocaleDateString()}</td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
-                            <button onClick={() => openSchema(s)} className="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
+                            <button onClick={() => openSchema(s)} className="text-primary-600 hover:text-primary-800 text-xs font-medium">Edit</button>
                             <button onClick={() => deleteSchema(s.schema_id)} className="text-red-500 hover:text-red-700 text-xs font-medium">Delete</button>
                           </div>
                         </td>

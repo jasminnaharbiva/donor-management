@@ -85,7 +85,7 @@ function RuleEditModal({ rule, onClose, onSaved }: { rule: NotifRule; onClose: (
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Edit2 size={18} className="text-blue-600" /> Edit: {rule.label}
+            <Edit2 size={18} className="text-primary-600" /> Edit: {rule.label}
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
         </div>
@@ -95,7 +95,7 @@ function RuleEditModal({ rule, onClose, onSaved }: { rule: NotifRule; onClose: (
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Recipients</label>
             <select value={form.recipients} onChange={e => setForm(f => ({ ...f, recipients: e.target.value as any }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-blue-500">
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
               <option value="user">User only</option>
               <option value="admin">Admin only</option>
               <option value="both">Both user & admin</option>
@@ -108,7 +108,7 @@ function RuleEditModal({ rule, onClose, onSaved }: { rule: NotifRule; onClose: (
               Email Subject <span className="text-slate-400 normal-case font-normal">(supports {'{{variable}}'} placeholders)</span>
             </label>
             <input value={form.email_subject} onChange={e => setForm(f => ({ ...f, email_subject: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-blue-500"
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               placeholder="e.g. ✅ Your donation of {{formattedAmount}} is confirmed" />
           </div>
 
@@ -117,12 +117,12 @@ function RuleEditModal({ rule, onClose, onSaved }: { rule: NotifRule; onClose: (
             <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
               Email Body <span className="text-slate-400 normal-case font-normal">(HTML supported)</span>
             </label>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5 mb-2 text-xs text-blue-700">
+            <div className="bg-primary-50 border border-primary-200 rounded-lg p-2.5 mb-2 text-xs text-primary-700">
               <strong>Available variables:</strong> {'{{firstName}}'} {'{{formattedAmount}}'} {'{{amount}}'} {'{{currency}}'} {'{{transactionId}}'} {'{{campaignName}}'} {'{{fundName}}'} {'{{date}}'} {'{{purpose}}'} {'{{reason}}'} {'{{status}}'} {'{{title}}'} {'{{message}}'} {'{{resetUrl}}'}
             </div>
             <textarea value={form.email_body} onChange={e => setForm(f => ({ ...f, email_body: e.target.value }))}
               rows={10}
-              className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-primary-500 focus:border-blue-500"
+              className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               placeholder="<p>Hi {{firstName}},</p><p>Your donation of <strong>{{formattedAmount}}</strong> has been received.</p>" />
           </div>
 
@@ -231,7 +231,7 @@ export default function NotificationsAdminPanel() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Bell size={22} className="text-blue-600" /> Notification System
+            <Bell size={22} className="text-primary-600" /> Notification System
           </h2>
           <p className="text-sm text-slate-500 mt-1">Manage notification rules, email templates, and view the notification log</p>
         </div>
@@ -277,7 +277,7 @@ export default function NotificationsAdminPanel() {
       <div className="flex border-b border-slate-200">
         {(['rules', 'log'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
             {t === 'rules' ? <Settings size={15} /> : <Bell size={15} />}
             {t === 'rules' ? 'Notification Rules' : 'Notification Log'}
           </button>
@@ -290,7 +290,7 @@ export default function NotificationsAdminPanel() {
       {tab === 'rules' && (
         <div className="space-y-4">
           {rulesLoading ? (
-            <div className="flex justify-center py-16"><Loader2 size={32} className="animate-spin text-blue-500"/></div>
+            <div className="flex justify-center py-16"><Loader2 size={32} className="animate-spin text-primary-500"/></div>
           ) : (
             <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
@@ -337,7 +337,7 @@ export default function NotificationsAdminPanel() {
                         <td className="px-4 py-3.5 text-center">
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium
                             ${rule.recipients === 'admin' ? 'bg-purple-100 text-purple-700' :
-                              rule.recipients === 'both'  ? 'bg-blue-100 text-blue-700' :
+                              rule.recipients === 'both'  ? 'bg-primary-100 text-primary-700' :
                               'bg-green-100 text-green-700'}`}>
                             {rule.recipients}
                           </span>
@@ -389,7 +389,7 @@ export default function NotificationsAdminPanel() {
           </div>
 
           {logLoading ? (
-            <div className="flex justify-center py-16"><Loader2 size={32} className="animate-spin text-blue-500"/></div>
+            <div className="flex justify-center py-16"><Loader2 size={32} className="animate-spin text-primary-500"/></div>
           ) : (
             <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
               <div className="px-5 py-3 border-b bg-slate-50 text-sm text-slate-500">
@@ -420,7 +420,7 @@ export default function NotificationsAdminPanel() {
                           <p className="text-xs text-slate-400">{log.recipient_email || ''}</p>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium capitalize">
+                          <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium capitalize">
                             {log.type?.replace(/_/g, ' ')}
                           </span>
                         </td>

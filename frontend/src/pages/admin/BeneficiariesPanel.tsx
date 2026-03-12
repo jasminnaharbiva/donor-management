@@ -17,7 +17,7 @@ const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 text-green-700',
   inactive: 'bg-slate-100 text-slate-600',
   pending: 'bg-yellow-100 text-yellow-700',
-  served: 'bg-blue-100 text-blue-700',
+  served: 'bg-primary-100 text-primary-700',
 };
 
 export default function BeneficiariesPanel() {

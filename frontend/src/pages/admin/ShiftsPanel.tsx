@@ -174,7 +174,7 @@ export default function ShiftsPanel() {
               {reviewTs.receipt_url && (
                 <p>
                   <strong>Attachment:</strong>{' '}
-                  <a href={reviewTs.receipt_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  <a href={reviewTs.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">
                     View Receipt
                   </a>
                 </p>
@@ -220,7 +220,7 @@ export default function ShiftsPanel() {
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[s.status] || ''}`}>{s.status}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => deleteShift(s.shift_id)} className="text-red-600 hover:underline text-xs">Delete</button>
+                    <button onClick={() => deleteShift(s.shift_id)} className="text-xs text-red-600 hover:text-red-800 px-2 py-1.5 rounded-md hover:bg-red-50 transition-colors">Delete</button>
                   </td>
                 </tr>
               ))}
@@ -264,7 +264,7 @@ export default function ShiftsPanel() {
                     <td className="px-4 py-3 text-slate-500 text-xs">{new Date(t.submitted_at).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       {t.status === 'pending' && (
-                        <button onClick={() => { setReviewTs(t); setAdminNotes(''); }} className="text-blue-600 hover:underline text-xs">Review</button>
+                        <button onClick={() => { setReviewTs(t); setAdminNotes(''); }} className="text-xs text-primary-600 hover:text-primary-800 px-2 py-1.5 rounded-md hover:bg-primary-50 transition-colors">Review</button>
                       )}
                     </td>
                   </tr>

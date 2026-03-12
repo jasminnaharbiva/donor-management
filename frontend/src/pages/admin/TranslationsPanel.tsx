@@ -175,14 +175,14 @@ export default function TranslationsPanel() {
                 <tr><td colSpan={6} className="text-center py-8 text-slate-400">No translations found</td></tr>
               ) : rows.map(t => (
                 <tr key={t.translation_id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3"><span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded">{t.locale}</span></td>
+                  <td className="px-4 py-3"><span className="bg-primary-100 text-primary-800 text-xs font-semibold px-2 py-0.5 rounded">{t.locale}</span></td>
                   <td className="px-4 py-3 text-xs text-slate-600">{t.namespace}</td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-800 max-w-[200px] break-all">{t.key}</td>
                   <td className="px-4 py-3 text-sm text-slate-700 max-w-[300px] truncate">{t.value}</td>
                   <td className="px-4 py-3 text-xs text-slate-400">{new Date(t.updated_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      <button onClick={() => openEdit(t)} className="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
+                      <button onClick={() => openEdit(t)} className="text-primary-600 hover:text-primary-800 text-xs font-medium">Edit</button>
                       <button onClick={() => deleteRow(t.translation_id)} className="text-red-500 hover:text-red-700 text-xs font-medium">Delete</button>
                     </div>
                   </td>
@@ -198,8 +198,8 @@ export default function TranslationsPanel() {
         <div className="flex items-center justify-between mt-4">
           <p className="text-sm text-slate-500">Page {page} of {totalPages}</p>
           <div className="flex gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1 border rounded text-sm disabled:opacity-40 hover:bg-slate-50">Prev</button>
-            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1 border rounded text-sm disabled:opacity-40 hover:bg-slate-50">Next</button>
+            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-2 text-sm border border-slate-300 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors">Prev</button>
+            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-2 text-sm border border-slate-300 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors">Next</button>
           </div>
         </div>
       )}
@@ -227,7 +227,7 @@ export default function TranslationsPanel() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
             <h3 className="text-lg font-bold mb-4 text-slate-800">Add Translation</h3>
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Locale</label>
                 <input value={addForm.locale} onChange={e => setAddForm(f => ({ ...f, locale: e.target.value }))}
@@ -262,7 +262,7 @@ export default function TranslationsPanel() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6">
             <h3 className="text-lg font-bold mb-4 text-slate-800">Bulk Import Translations (JSON)</h3>
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Locale</label>
                 <input value={importLocale} onChange={e => setImportLocale(e.target.value)}

@@ -148,16 +148,16 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-12 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden"
+        <div className="absolute right-0 top-12 w-[calc(100vw-2rem)] sm:w-96 max-w-sm sm:max-w-none bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden"
           style={{ maxHeight: '520px', display: 'flex', flexDirection: 'column' }}>
 
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
             <div className="flex items-center gap-2">
-              <Bell size={16} className="text-blue-600" />
+              <Bell size={16} className="text-primary-600" />
               <span className="font-semibold text-slate-800 text-sm">Notifications</span>
               {meta.unread > 0 && (
-                <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                <span className="bg-primary-100 text-primary-700 text-xs font-bold px-2 py-0.5 rounded-full">
                   {meta.unread} new
                 </span>
               )}
@@ -190,7 +190,7 @@ export default function NotificationBell() {
                   key={notif.notification_id}
                   onClick={() => handleClick(notif)}
                   className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 cursor-pointer transition-colors group
-                    ${notif.is_read ? 'hover:bg-slate-50' : 'bg-blue-50/50 hover:bg-primary-50'}`}
+                    ${notif.is_read ? 'hover:bg-slate-50' : 'bg-primary-50/50 hover:bg-primary-50'}`}
                 >
                   <div className="mt-0.5 text-xl flex-shrink-0">
                     {TYPE_ICONS[notif.type] || '🔔'}

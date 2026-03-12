@@ -173,14 +173,14 @@ export default function CustomFieldsPanel() {
                   </td>
                   <td className="px-4 py-3 text-slate-600">{f.is_required ? '✓' : '—'}</td>
                   <td className="px-4 py-3 text-xs text-slate-500 space-x-1">
-                    {f.is_visible_to_donor    && <span className="bg-blue-100 text-blue-700 px-1 rounded">donor</span>}
+                    {f.is_visible_to_donor    && <span className="bg-primary-100 text-primary-700 px-1 rounded">donor</span>}
                     {f.is_visible_to_volunteer && <span className="bg-purple-100 text-purple-700 px-1 rounded">volunteer</span>}
                     <span className="bg-slate-100 text-slate-600 px-1 rounded">admin</span>
                   </td>
                   <td className="px-4 py-3 text-slate-600">{f.display_order}</td>
                   <td className="px-4 py-3 flex gap-2">
-                    <button onClick={() => openEdit(f)} className="text-blue-600 hover:underline text-xs">Edit</button>
-                    <button onClick={() => deleteField(f.field_id)} className="text-red-600 hover:underline text-xs">Delete</button>
+                    <button onClick={() => openEdit(f)} className="text-xs text-primary-600 hover:text-primary-800 px-2 py-1.5 rounded-md hover:bg-primary-50 transition-colors">Edit</button>
+                    <button onClick={() => deleteField(f.field_id)} className="text-xs text-red-600 hover:text-red-800 px-2 py-1.5 rounded-md hover:bg-red-50 transition-colors">Delete</button>
                   </td>
                 </tr>
               ))}
