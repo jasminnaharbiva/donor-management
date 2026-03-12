@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 
-type FormType = 'donation' | 'registration' | 'expense' | 'campaign' | 'beneficiary_intake';
-const FORM_TYPES: FormType[] = ['donation', 'registration', 'expense', 'campaign', 'beneficiary_intake'];
+type FormType = 'donation' | 'registration' | 'expense' | 'campaign' | 'beneficiary_intake' | 'volunteer_application';
+const FORM_TYPES: FormType[] = ['donation', 'registration', 'expense', 'campaign', 'beneficiary_intake', 'volunteer_application'];
 
 interface FormSchema {
   schema_id: number;
@@ -131,6 +131,7 @@ export default function FormSchemasPanel() {
     expense: 'Expense Form',
     campaign: 'Campaign Form',
     beneficiary_intake: 'Beneficiary Intake',
+    volunteer_application: 'Volunteer Application',
   };
 
   const showPanel = isCreating || selected !== null;

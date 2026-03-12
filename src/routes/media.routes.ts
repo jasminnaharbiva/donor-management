@@ -38,6 +38,19 @@ const upload = multer({
   }
 });
 
+const publicUpload = multer({
+  storage,
+  limits: { fileSize: 500 * 1024 }, // 500KB limit for public volunteer form docs
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG, WEBP, and PDF are allowed.'));
+    }
+  }
+});
+
 // ---------------------------------------------------------------------------
 // POST /api/v1/media/upload
 // ---------------------------------------------------------------------------
@@ -88,6 +101,62 @@ mediaRouter.post(
       });
     } catch (error) {
       console.error('Media upload error:', error);
+      res.status(500).json({ success: false, message: 'Database error saving media registry' });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/media/public-upload
+// Public upload endpoint for volunteer application files (max 500KB)
+// ---------------------------------------------------------------------------
+mediaRouter.post(
+  '/public-upload',
+  publicUpload.single('file'),
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.file) {
+      res.status(400).json({ success: false, message: 'No file uploaded' });
+      return;
+    }
+
+    try {
+      const mediaId = uuidv4();
+      const relativePath = `/uploads/${req.file.filename}`;
+      const cdnUrl = `${process.env.APP_URL || 'http://localhost:3000'}${relativePath}`;
+
+      const rawPurpose = String(req.body.purpose || 'kyc_document');
+      const purpose = ['kyc_document', 'other'].includes(rawPurpose) ? rawPurpose : 'kyc_document';
+      const referenceType = req.body.referenceType || 'volunteer_application';
+      const referenceId = req.body.referenceId || null;
+
+      await db('dfb_media').insert({
+        media_id: mediaId,
+        uploader_user_id: null,
+        file_name: req.file.originalname,
+        file_path: relativePath,
+        mime_type: req.file.mimetype,
+        file_size_bytes: req.file.size,
+        purpose,
+        reference_type: referenceType,
+        reference_id: referenceId,
+        is_public: false,
+        cdn_url: cdnUrl,
+        storage_provider: 'local',
+        virus_scan_status: 'clean',
+        created_at: new Date()
+      });
+
+      res.status(201).json({
+        success: true,
+        data: {
+          mediaId,
+          url: cdnUrl,
+          fileName: req.file.originalname,
+          sizeBytes: req.file.size
+        }
+      });
+    } catch (error) {
+      console.error('Public media upload error:', error);
       res.status(500).json({ success: false, message: 'Database error saving media registry' });
     }
   }

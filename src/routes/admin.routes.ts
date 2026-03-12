@@ -67,6 +67,30 @@ async function ensureUiSettings() {
 }
 ensureUiSettings().catch(() => {});
 
+async function ensureLegalSettings() {
+  const setting = {
+    key: 'legal.volunteer_application_consent_text',
+    value: 'I consent to data processing for volunteer application and verification.',
+    type: 'string',
+    category: 'legal',
+    isPublic: true,
+    desc: 'Volunteer application consent text',
+  };
+
+  const exists = await db('dfb_system_settings').where({ setting_key: setting.key }).first();
+  if (!exists) {
+    await db('dfb_system_settings').insert({
+      setting_key: setting.key,
+      setting_value: setting.value,
+      value_type: setting.type,
+      category: setting.category,
+      is_public: setting.isPublic,
+      description: setting.desc,
+    });
+  }
+}
+ensureLegalSettings().catch(() => {});
+
 // ---------------------------------------------------------------------------
 // 1. Settings Management (dfb_system_settings)
 // ---------------------------------------------------------------------------

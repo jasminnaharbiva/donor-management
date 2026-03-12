@@ -5,7 +5,7 @@ import { db } from '../config/database';
 
 export const formSchemasRouter = Router();
 
-const VALID_FORM_TYPES = ['donation', 'registration', 'expense', 'campaign', 'beneficiary_intake'] as const;
+const VALID_FORM_TYPES = ['donation', 'registration', 'expense', 'campaign', 'beneficiary_intake', 'volunteer_application'] as const;
 
 // GET /api/v1/form-schemas — list all
 formSchemasRouter.get(
