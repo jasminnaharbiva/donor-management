@@ -129,7 +129,7 @@ export default function DashboardLayout({ children, menuItems, title, role }: Da
             >
               <Menu size={22} />
             </button>
-            <h1 className="text-lg sm:text-xl font-semibold text-slate-800 truncate">{title}</h1>
+            <h1 className="text-base sm:text-lg font-semibold text-slate-800 truncate">{title}</h1>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
