@@ -1001,6 +1001,33 @@ INSERT IGNORE INTO `dfb_system_settings` (`setting_key`, `setting_value`, `value
 ('legal.volunteer_application_consent_text', 'I consent to data processing for volunteer application and verification.', 'string', 'legal', TRUE, 'Volunteer application consent text'),
 ('general.app_version',         '1.0.0',        'string',   'general',  FALSE, 'Current application version');
 
+-- Default volunteer application schema (active)
+INSERT INTO `dfb_form_schemas` (`form_type`, `schema_json`, `is_active`, `created_by`)
+SELECT
+  'volunteer_application',
+  JSON_ARRAY(
+    JSON_OBJECT('name','full_name','label','Name','type','text','required',TRUE,'placeholder','Enter your full name'),
+    JSON_OBJECT('name','father_name','label','Father''s Name','type','text','required',TRUE,'placeholder','Enter your father''s name'),
+    JSON_OBJECT('name','date_of_birth','label','Date of Birth','type','date','required',TRUE),
+    JSON_OBJECT('name','blood_group','label','Blood Group','type','select','required',TRUE,'options',JSON_ARRAY('A+','A-','B+','B-','AB+','AB-','O+','O-')),
+    JSON_OBJECT('name','education_level','label','Education Level','type','select','required',TRUE,'options',JSON_ARRAY('Primary','Secondary','SSC','HSC','Diploma','Graduate','Post Graduate','Other')),
+    JSON_OBJECT('name','mobile_number','label','Mobile Number','type','tel','required',TRUE,'placeholder','01XXXXXXXXX'),
+    JSON_OBJECT('name','email','label','Email','type','email','required',TRUE,'placeholder','you@example.com'),
+    JSON_OBJECT('name','nid_or_birth_certificate_no','label','NID/Birth Certificate Number','type','text','required',TRUE,'placeholder','NID or Birth Certificate Number'),
+    JSON_OBJECT('name','division','label','Division','type','bd_division','required',TRUE),
+    JSON_OBJECT('name','district','label','District','type','bd_district','required',TRUE),
+    JSON_OBJECT('name','upazila','label','Upazila','type','bd_upazila','required',TRUE),
+    JSON_OBJECT('name','full_address','label','Full Address','type','textarea','required',TRUE,'placeholder','Village/Road, Post Office, Thana/Upazila, District'),
+    JSON_OBJECT('name','passport_photo_url','label','Passport Size Photo (max 500KB)','type','file','required',TRUE),
+    JSON_OBJECT('name','identity_document_url','label','NID/Birth Certificate Copy (max 500KB)','type','file','required',TRUE),
+    JSON_OBJECT('name','consent','label','Consent','type','consent','required',TRUE)
+  ),
+  TRUE,
+  NULL
+WHERE NOT EXISTS (
+  SELECT 1 FROM `dfb_form_schemas` WHERE `form_type` = 'volunteer_application' AND `is_active` = TRUE
+);
+
 -- Default public impact page
 INSERT IGNORE INTO `dfb_public_pages` (`page_slug`, `page_title`, `meta_title`, `meta_description`, `is_published`, `sections_json`) VALUES
 ('impact', 'Live Impact Dashboard', 'Real-Time Impact - Donor Management', 'See exactly where every donated dollar goes in real time.', TRUE,
