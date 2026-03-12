@@ -12,12 +12,96 @@ export const adminRouter = Router();
 adminRouter.use(authenticate, requireRoles('Super Admin', 'Admin'));
 
 // ---------------------------------------------------------------------------
+// 0. Seed extended UI settings (INSERT IGNORE — safe to run on every boot)
+// ---------------------------------------------------------------------------
+async function ensureUiSettings() {
+  const newSettings = [
+    { key: 'ui.btn_primary_bg',       value: '#0284c7', type: 'color',  desc: 'Primary button background color' },
+    { key: 'ui.btn_primary_text',     value: '#ffffff', type: 'color',  desc: 'Primary button text color' },
+    { key: 'ui.btn_primary_hover_bg', value: '#0369a1', type: 'color',  desc: 'Primary button hover background' },
+    { key: 'ui.btn_secondary_bg',     value: '#f1f5f9', type: 'color',  desc: 'Secondary button background' },
+    { key: 'ui.btn_secondary_text',   value: '#334155', type: 'color',  desc: 'Secondary button text color' },
+    { key: 'ui.btn_border_radius',    value: '8px',     type: 'string', desc: 'Button border radius (e.g. 8px, 9999px for pill)' },
+    { key: 'ui.btn_font_weight',      value: '600',     type: 'string', desc: 'Button font weight (400/500/600/700/800)' },
+    { key: 'ui.btn_alignment',        value: 'center',  type: 'string', desc: 'Button content alignment (left/center/right)' },
+    { key: 'ui.h1_size',              value: '2rem',    type: 'string', desc: 'H1 font size (e.g. 2rem, 32px)' },
+    { key: 'ui.h1_weight',            value: '700',     type: 'string', desc: 'H1 font weight' },
+    { key: 'ui.h1_color',             value: '#0f172a', type: 'color',  desc: 'H1 text color' },
+    { key: 'ui.h2_size',              value: '1.5rem',  type: 'string', desc: 'H2 font size' },
+    { key: 'ui.h2_weight',            value: '700',     type: 'string', desc: 'H2 font weight' },
+    { key: 'ui.h2_color',             value: '#1e293b', type: 'color',  desc: 'H2 text color' },
+    { key: 'ui.h3_size',              value: '1.25rem', type: 'string', desc: 'H3 font size' },
+    { key: 'ui.h3_weight',            value: '600',     type: 'string', desc: 'H3 font weight' },
+    { key: 'ui.h3_color',             value: '#334155', type: 'color',  desc: 'H3 text color' },
+    { key: 'ui.h4_size',              value: '1rem',    type: 'string', desc: 'H4 font size' },
+    { key: 'ui.h4_weight',            value: '600',     type: 'string', desc: 'H4 font weight' },
+    { key: 'ui.h4_color',             value: '#475569', type: 'color',  desc: 'H4 text color' },
+    { key: 'ui.heading_alignment',    value: 'left',    type: 'string', desc: 'Heading text alignment (left/center/right)' },
+    { key: 'ui.body_font_size',       value: '1rem',    type: 'string', desc: 'Base body font size' },
+    { key: 'ui.font_family_heading',  value: "'Inter', sans-serif", type: 'string', desc: 'Heading font family' },
+    { key: 'ui.card_border_radius',   value: '12px',    type: 'string', desc: 'Card/panel border radius' },
+    { key: 'ui.sidebar_bg',           value: '#ffffff', type: 'color',  desc: 'Sidebar background color' },
+    { key: 'ui.sidebar_text',         value: '#334155', type: 'color',  desc: 'Sidebar text color' },
+    { key: 'ui.sidebar_active_bg',    value: '#eff6ff', type: 'color',  desc: 'Sidebar active item background' },
+    { key: 'ui.sidebar_active_text',  value: '#0284c7', type: 'color',  desc: 'Sidebar active item text color' },
+    { key: 'ui.table_header_bg',      value: '#f8fafc', type: 'color',  desc: 'Table header background color' },
+    { key: 'ui.table_row_hover_bg',   value: '#f0f9ff', type: 'color',  desc: 'Table row hover background' },
+    { key: 'ui.input_border_color',   value: '#cbd5e1', type: 'color',  desc: 'Form input border color' },
+    { key: 'ui.input_focus_color',    value: '#0284c7', type: 'color',  desc: 'Form input focus ring color' },
+    { key: 'ui.shadow_intensity',     value: 'md',      type: 'string', desc: 'Shadow intensity (none/sm/md/lg/xl)' },
+  ];
+
+  for (const s of newSettings) {
+    const exists = await db('dfb_system_settings').where({ setting_key: s.key }).first();
+    if (!exists) {
+      await db('dfb_system_settings').insert({
+        setting_key:   s.key,
+        setting_value: s.value,
+        value_type:    s.type,
+        category:      'ui',
+        is_public:     true,
+        description:   s.desc,
+      });
+    }
+  }
+}
+ensureUiSettings().catch(() => {});
+
+// ---------------------------------------------------------------------------
 // 1. Settings Management (dfb_system_settings)
 // ---------------------------------------------------------------------------
-adminRouter.get('/settings', async (_req: Request, res: Response) => {
-  const settings = await db('dfb_system_settings').select('*').orderBy('category', 'asc');
+adminRouter.get('/settings', async (req: Request, res: Response) => {
+  const q = db('dfb_system_settings').select('*').orderBy('category', 'asc');
+  if (req.query.category) q.where({ category: String(req.query.category) });
+  const settings = await q;
   res.json({ success: true, data: settings });
 });
+
+// PUT single setting key (convenience endpoint)
+adminRouter.put('/settings/:key',
+  [body('value').exists()],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
+    const key = String(req.params.key);
+    const existing = await db('dfb_system_settings').where({ setting_key: key }).first();
+    if (!existing) { res.status(404).json({ success: false, message: 'Setting not found' }); return; }
+
+    let strVal = req.body.value;
+    if (typeof strVal !== 'string') strVal = String(strVal);
+
+    await db('dfb_system_settings').where({ setting_key: key }).update({
+      setting_value: strVal,
+      updated_by: req.user!.userId,
+      updated_at: new Date(),
+    });
+
+    broadcastConfigChange(key, 'setting');
+    await writeAuditLog({ tableAffected: 'dfb_system_settings', recordId: key, actionType: 'UPDATE', newPayload: { key, value: strVal }, actorId: req.user!.userId, ipAddress: req.ip });
+    res.json({ success: true, message: 'Setting updated' });
+  }
+);
 
 adminRouter.put('/settings', 
   [

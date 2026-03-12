@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import Login from './pages/Login';
@@ -92,7 +93,9 @@ export default function App() {
     }
   };
 
+
   return (
+    <ThemeProvider>
     <ErrorBoundary>
     <AuthProvider>
       <BrowserRouter>
@@ -131,5 +134,6 @@ export default function App() {
       </BrowserRouter>
     </AuthProvider>
     </ErrorBoundary>
+    </ThemeProvider>
   );
 }

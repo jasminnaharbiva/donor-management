@@ -5,7 +5,7 @@ import {
   Settings, Shield, Activity, Users, Megaphone, BarChart3,
   Heart, DollarSign, Target, UserCheck, Layers, Globe, HandCoins,
   CalendarClock, Bell, UserRound, FolderOpen, ToggleLeft, ClipboardList,
-  Clock, Network, Mail, Sliders, Languages, FileText, FormInput, BadgeCheck
+  Clock, Network, Mail, Sliders, Languages, FileText, FormInput, BadgeCheck, Palette
 } from 'lucide-react';
 
 import SettingsPanel from './SettingsPanel';
@@ -36,6 +36,7 @@ import TranslationsPanel from './TranslationsPanel';
 import PublicPagesPanel from './PublicPagesPanel';
 import FormSchemasPanel from './FormSchemasPanel';
 import VolunteerRecordsPanel from './VolunteerRecordsPanel';
+import UIDesignPanel from './UIDesignPanel';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -69,6 +70,7 @@ export default function AdminDashboard() {
     { name: 'Public Pages', path: '/admin/public-pages', icon: <FileText size={20} /> },
     { name: 'Form Schemas', path: '/admin/form-schemas', icon: <FormInput size={20} /> },
     { name: 'Vol. Records', path: '/admin/vol-records', icon: <BadgeCheck size={20} /> },
+    { name: 'UI Design', path: '/admin/ui-design', icon: <Palette size={20} /> },
   ];
 
   return (
@@ -108,6 +110,7 @@ export default function AdminDashboard() {
           <Route path="public-pages" element={<PublicPagesPanel />} />
           <Route path="form-schemas" element={<FormSchemasPanel />} />
           <Route path="vol-records" element={<VolunteerRecordsPanel />} />
+          <Route path="ui-design" element={<UIDesignPanel />} />
         </Routes>
       </div>
     </DashboardLayout>
