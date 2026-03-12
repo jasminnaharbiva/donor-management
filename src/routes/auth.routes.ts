@@ -557,6 +557,7 @@ authRouter.post(
       userAgent:     req.get('User-Agent'),
     });
 
+    res.json({ success: true, message: 'Password has been reset successfully. You can now log in.' });
   }
 );
 

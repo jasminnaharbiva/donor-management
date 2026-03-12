@@ -97,9 +97,16 @@ publicRouter.get('/campaigns', async (req: Request, res: Response): Promise<void
 // GET /api/v1/public/campaigns/:slug
 // ---------------------------------------------------------------------------
 publicRouter.get('/campaigns/:slug', async (req: Request, res: Response): Promise<void> => {
-  const campaign = await db('dfb_campaigns')
-    .where({ slug: req.params.slug, is_public: true })
-    .first();
+  const campaign = await db('dfb_campaigns as c')
+    .leftJoin('dfb_funds as f', 'c.fund_id', 'f.fund_id')
+    .where({ 'c.slug': req.params.slug, 'c.is_public': true })
+    .first(
+      'c.campaign_id', 'c.title', 'c.slug', 'c.description', 'c.cover_image_url',
+      'c.goal_amount', 'c.raised_amount', 'c.donor_count', 'c.fund_id',
+      'c.start_date', 'c.end_date', 'c.status',
+      'c.meta_title', 'c.meta_description',
+      'f.fund_name'
+    );
 
   if (!campaign) { res.status(404).json({ success: false, message: 'Campaign not found' }); return; }
 
@@ -112,7 +119,7 @@ publicRouter.get('/campaigns/:slug', async (req: Request, res: Response): Promis
     .limit(10)
     .select('t.amount', 't.currency', 'a.allocated_at', 'd.first_name', 'd.donor_type');
 
-  const donors = recentDonors.map(r => ({
+  const donors = recentDonors.map((r: { amount: unknown; currency: unknown; allocated_at: unknown; first_name: string; donor_type: string }) => ({
     amount:       r.amount,
     currency:     r.currency,
     allocated_at: r.allocated_at,
@@ -142,24 +149,6 @@ publicRouter.get('/settings', async (_req: Request, res: Response): Promise<void
   flat['_features'] = Object.fromEntries(features.map(f => [f.flag_name, Boolean(f.is_enabled)]));
 
   res.json({ success: true, data: flat });
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/v1/public/campaigns/:slug — Public campaign detail
-// ---------------------------------------------------------------------------
-publicRouter.get('/campaigns/:slug', async (req: Request, res: Response): Promise<void> => {
-  const campaign = await db('dfb_campaigns as c')
-    .leftJoin('dfb_funds as f', 'c.fund_id', 'f.fund_id')
-    .where({ 'c.slug': req.params.slug, 'c.is_public': true })
-    .first(
-      'c.campaign_id', 'c.title', 'c.slug', 'c.description', 'c.cover_image_url',
-      'c.goal_amount', 'c.raised_amount', 'c.donor_count',
-      'c.start_date', 'c.end_date', 'c.status',
-      'c.meta_title', 'c.meta_description',
-      'f.fund_name'
-    );
-  if (!campaign) { res.status(404).json({ success: false, message: 'Campaign not found' }); return; }
-  res.json({ success: true, data: campaign });
 });
 
 // ---------------------------------------------------------------------------

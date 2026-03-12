@@ -86,10 +86,11 @@ export async function invalidateRuleCache(eventType: string): Promise<void> {
 // Get admin emails
 // ---------------------------------------------------------------------------
 async function getAdminEmails(): Promise<string[]> {
-  const admins = await db('dfb_users')
-    .whereIn('role', ['Super Admin', 'Admin'])
-    .where({ is_active: true })
-    .select('email');
+  const admins = await db('dfb_users as u')
+    .join('dfb_roles as r', 'u.role_id', 'r.role_id')
+    .whereIn('r.role_name', ['Super Admin', 'Admin'])
+    .where({ 'u.is_active': true })
+    .select('u.email');
   return admins
     .map((a: { email: string }) => { try { return decrypt(a.email); } catch { return ''; } })
     .filter(Boolean);
@@ -237,11 +238,14 @@ export async function broadcastNotification(opts: {
   target: 'all' | 'donors' | 'volunteers';
   actionUrl?: string;
 }): Promise<{ count: number }> {
-  let query = db('dfb_users').where({ is_active: true }).select('user_id', 'role');
+  let query = db('dfb_users as u')
+    .join('dfb_roles as r', 'u.role_id', 'r.role_id')
+    .where({ 'u.is_active': true })
+    .select('u.user_id', 'r.role_name');
   if (opts.target === 'donors') {
-    query = query.whereIn('role', ['Donor']);
+    query = query.whereIn('r.role_name', ['Donor']);
   } else if (opts.target === 'volunteers') {
-    query = query.whereIn('role', ['Volunteer']);
+    query = query.whereIn('r.role_name', ['Volunteer']);
   }
 
   const users = await query;
