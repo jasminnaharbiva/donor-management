@@ -16,7 +16,31 @@ export default function Login() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionExpired = searchParams.get('expired') === '1';
+  const panel = searchParams.get('panel') || 'general';
   const { login } = useAuth();
+
+  const panelTitle = panel === 'admin'
+    ? 'Admin Panel Sign In'
+    : panel === 'volunteer'
+      ? 'Volunteer Panel Sign In'
+      : panel === 'donor'
+        ? 'Donor Panel Sign In'
+        : 'Sign in to your account';
+
+  const panelSubtitle = panel === 'admin'
+    ? 'Restricted access for admins only'
+    : panel === 'volunteer'
+      ? 'Access volunteer dashboard and assigned projects'
+      : panel === 'donor'
+        ? 'Access donor dashboard and impact tracking'
+        : 'Donor & Volunteer Management System';
+
+  const isRoleAllowedForPanel = (role: string) => {
+    if (panel === 'admin') return role === 'Super Admin' || role === 'Admin';
+    if (panel === 'volunteer') return role === 'Volunteer';
+    if (panel === 'donor') return role === 'Donor';
+    return true;
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +57,12 @@ export default function Login() {
       }
 
       if (response.data.success) {
+        const role = response.data.user.role;
+        if (!isRoleAllowedForPanel(role)) {
+          setError(`This page is for ${panel} accounts. Please choose the correct panel login.`);
+          return;
+        }
+
         // Store both tokens
         if (response.data.refreshToken) {
           localStorage.setItem('refreshToken', response.data.refreshToken);
@@ -40,7 +70,6 @@ export default function Login() {
         login(response.data.token || response.data.accessToken, response.data.user);
         
         // Route based on role
-        const role = response.data.user.role;
         if (role === 'Super Admin' || role === 'Admin') navigate('/admin');
         else if (role === 'Volunteer') navigate('/volunteer');
         else navigate('/donor');
@@ -61,12 +90,17 @@ export default function Login() {
       const response = await api.post('/auth/2fa/login', { userId: tempUserId, token: twoFaToken });
       
       if (response.data.success) {
+        const role = response.data.user.role;
+        if (!isRoleAllowedForPanel(role)) {
+          setError(`This page is for ${panel} accounts. Please choose the correct panel login.`);
+          return;
+        }
+
         if (response.data.refreshToken) {
           localStorage.setItem('refreshToken', response.data.refreshToken);
         }
         login(response.data.token || response.data.accessToken, response.data.user);
         
-        const role = response.data.user.role;
         if (role === 'Super Admin' || role === 'Admin') navigate('/admin');
         else if (role === 'Volunteer') navigate('/volunteer');
         else navigate('/donor');
@@ -94,7 +128,7 @@ export default function Login() {
             <Heart size={32} className="text-white" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary-300">DFB Portal</h1>
-          <p className="text-slate-300 mt-1">Donor & Volunteer Management System</p>
+          <p className="text-slate-300 mt-1">{panelSubtitle}</p>
         </div>
 
         {/* Session expired notice */}
@@ -107,7 +141,7 @@ export default function Login() {
 
         {/* Login Card */}
         <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8 shadow-2xl">
-          <h2 className="text-xl font-semibold text-white mb-6">Sign in to your account</h2>
+          <h2 className="text-xl font-semibold text-white mb-6">{panelTitle}</h2>
 
           {error && (
             <div className="mb-4 flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/30 text-red-300 text-sm rounded-xl">
@@ -185,7 +219,7 @@ export default function Login() {
               </div>
 
               <div className="flex justify-end -mt-2 mb-1">
-                <Link to="/forgot-password" className="text-sm text-primary-400 hover:text-primary-300">Forgot password?</Link>
+                <Link to={`/forgot-password${panel !== 'general' ? `?panel=${panel}` : ''}`} className="text-sm text-primary-400 hover:text-primary-300">Forgot password?</Link>
               </div>
 
               <button
@@ -205,10 +239,25 @@ export default function Login() {
           {!twoFaRequired && (
             <div className="mt-6 pt-6 border-t border-white/10">
               <p className="text-center text-slate-400 text-sm">
-                Don't have an account?{' '}
-                <Link to="/register" className="text-primary-400 hover:text-primary-300 font-medium">
-                  Register here
-                </Link>
+                {panel === 'admin' ? (
+                  <>
+                    Need a different panel?{' '}
+                    <Link to="/auth?mode=login" className="text-primary-400 hover:text-primary-300 font-medium">Choose panel</Link>
+                  </>
+                ) : panel === 'volunteer' ? (
+                  <>
+                    New volunteer?{' '}
+                    <Link to="/volunteer-apply" className="text-primary-400 hover:text-primary-300 font-medium">Apply here</Link>
+                  </>
+                ) : (
+                  <>
+                    Don't have an account?{' '}
+                    <Link to="/register?panel=donor" className="text-primary-400 hover:text-primary-300 font-medium">Register here</Link>
+                  </>
+                )}
+              </p>
+              <p className="text-center mt-2 text-xs text-slate-500">
+                <Link to="/auth?mode=login" className="hover:text-slate-300">Switch panel login</Link>
               </p>
             </div>
           )}

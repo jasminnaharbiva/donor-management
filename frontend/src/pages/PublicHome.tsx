@@ -30,9 +30,9 @@ export default function PublicHome() {
           <span className="font-bold text-lg sm:text-xl tracking-tight text-white whitespace-nowrap">DFB Portal</span>
         </div>
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          <Link to="/login" className="text-white hover:text-primary-300 font-semibold px-2 sm:px-3 py-2 text-sm sm:text-base transition-colors whitespace-nowrap">Sign In</Link>
-          <button onClick={() => navigate('/login')} className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-2 px-3 sm:px-6 rounded-full shadow-lg hover:shadow-primary-500/50 transition-all text-sm sm:text-base whitespace-nowrap">
-            Donate Now
+          <Link to="/auth?mode=login" className="text-white hover:text-primary-300 font-semibold px-2 sm:px-3 py-2 text-sm sm:text-base transition-colors whitespace-nowrap">Sign In</Link>
+          <button onClick={() => navigate('/auth?mode=register')} className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-2 px-3 sm:px-6 rounded-full shadow-lg hover:shadow-primary-500/50 transition-all text-sm sm:text-base whitespace-nowrap">
+            Register
           </button>
         </div>
       </nav>
@@ -49,10 +49,10 @@ export default function PublicHome() {
           Join donors who see the direct impact of their giving. Track allocations in real-time, earn badges, and manage volunteer shifts — all in one place.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
-          <button onClick={() => navigate('/login')} className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 px-6 sm:px-8 rounded-full shadow-xl transition-all flex justify-center items-center gap-2 text-base sm:text-lg">
+          <button onClick={() => navigate('/register?panel=donor')} className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 px-6 sm:px-8 rounded-full shadow-xl transition-all flex justify-center items-center gap-2 text-base sm:text-lg">
             <Heart size={20} /> Make a Contribution
           </button>
-          <button onClick={() => navigate('/login')} className="glass hover:bg-white/90 text-slate-800 font-bold py-3.5 px-6 sm:px-8 rounded-full shadow-lg transition-all flex justify-center items-center gap-2 text-base sm:text-lg">
+          <button onClick={() => navigate('/volunteer-apply')} className="glass hover:bg-white/90 text-slate-800 font-bold py-3.5 px-6 sm:px-8 rounded-full shadow-lg transition-all flex justify-center items-center gap-2 text-base sm:text-lg">
             <Users size={20} /> Become a Volunteer
           </button>
         </div>
@@ -96,7 +96,7 @@ export default function PublicHome() {
                     </div>
                     <p className="text-xs text-slate-400 mt-1 text-right">{pct(c.raised_amount, c.goal_amount)}% funded</p>
                   </div>
-                  <button onClick={() => navigate('/login')} className="mt-2 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2 px-4 rounded-xl text-sm">
+                  <button onClick={() => navigate('/register?panel=donor')} className="mt-2 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2 px-4 rounded-xl text-sm">
                     Donate to this campaign
                   </button>
                 </div>

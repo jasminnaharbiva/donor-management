@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Heart, Eye, EyeOff, Loader2, CheckCircle, AlertCircle, User, Mail, Lock } from 'lucide-react';
 import api from '../services/api';
 
 export default function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const panel = searchParams.get('panel') || 'donor';
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -61,6 +63,36 @@ export default function Register() {
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
 
+  if (panel === 'admin') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-slate-900 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Admin Registration Disabled</h2>
+          <p className="text-slate-500 mb-6 text-sm">Admin accounts are created by system administrators only.</p>
+          <div className="flex flex-col gap-2">
+            <Link to="/login?panel=admin" className="w-full bg-primary-500 hover:bg-primary-400 text-white font-bold py-3 px-6 rounded-xl transition-all">Admin Login</Link>
+            <Link to="/auth?mode=register" className="text-slate-600 text-sm hover:text-slate-800">Choose another panel</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (panel === 'volunteer') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-slate-900 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Volunteer Registration</h2>
+          <p className="text-slate-500 mb-6 text-sm">Please submit a volunteer application first. After approval, you can log in to the volunteer panel.</p>
+          <div className="flex flex-col gap-2">
+            <Link to="/volunteer-apply" className="w-full bg-primary-500 hover:bg-primary-400 text-white font-bold py-3 px-6 rounded-xl transition-all">Apply as Volunteer</Link>
+            <Link to="/login?panel=volunteer" className="text-slate-600 text-sm hover:text-slate-800">Already approved? Volunteer login</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-slate-900 flex items-center justify-center p-4">
@@ -76,7 +108,7 @@ export default function Register() {
             Check your email for a welcome message.
           </p>
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/login?panel=donor')}
             className="w-full bg-primary-500 hover:bg-primary-400 text-white font-bold py-3 px-6 rounded-xl transition-all"
           >
             Sign In Now
@@ -96,7 +128,7 @@ export default function Register() {
             <span className="text-white font-bold text-lg">DFB Foundation</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white">Create your account</h1>
-          <p className="text-slate-400 mt-1 text-sm">Join thousands of donors making a difference</p>
+          <p className="text-slate-400 mt-1 text-sm">Donor Registration — join thousands of donors making a difference</p>
         </div>
 
         <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 shadow-2xl">
@@ -229,7 +261,10 @@ export default function Register() {
 
           <p className="text-center text-slate-400 text-sm mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="text-primary-400 hover:text-primary-300 font-semibold">Sign in</Link>
+            <Link to="/login?panel=donor" className="text-primary-400 hover:text-primary-300 font-semibold">Sign in</Link>
+          </p>
+          <p className="text-center mt-2 text-xs text-slate-500">
+            <Link to="/auth?mode=register" className="hover:text-slate-300">Choose another panel</Link>
           </p>
         </div>
 

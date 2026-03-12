@@ -14,6 +14,8 @@ import DonorDashboard from './pages/donor/DonorDashboard';
 import VolunteerDashboard from './pages/volunteer/VolunteerDashboard';
 import PublicHome from './pages/PublicHome';
 import ProfilePage from './pages/ProfilePage';
+import AuthPortal from './pages/AuthPortal';
+import VolunteerApply from './pages/VolunteerApply';
 
 import { useEffect } from 'react';
 import { useSocket } from './hooks/useSocket';
@@ -101,8 +103,10 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<PublicHome />} />
+          <Route path="/auth" element={<AuthPortal />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/volunteer-apply" element={<VolunteerApply />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/campaigns/:slug" element={<CampaignPage />} />
