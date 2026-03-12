@@ -120,7 +120,7 @@ export default function DashboardStats() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-base sm:text-lg font-bold text-slate-800 text-center sm:text-left">Mission Control Overview</h2>
+        <h2 className="text-sm sm:text-base font-semibold text-slate-800 text-center sm:text-left">Mission Control Overview</h2>
         <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">Live Data</span>
       </div>
 
@@ -151,7 +151,7 @@ export default function DashboardStats() {
 
         {/* Monthly Trend - Area Chart */}
         <div className="lg:col-span-2 glass rounded-xl p-6">
-          <h3 className="text-base font-bold text-slate-800 mb-4">Monthly Donation Trend</h3>
+        <h3 className="text-sm font-semibold text-slate-800 mb-4">Monthly Donation Trend</h3>
           {monthlyData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={monthlyData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -175,7 +175,7 @@ export default function DashboardStats() {
 
         {/* Fund Distribution - Pie Chart */}
         <div className="glass rounded-xl p-6">
-          <h3 className="text-base font-bold text-slate-800 mb-4">Fund Distribution</h3>
+        <h3 className="text-sm font-semibold text-slate-800 mb-4">Fund Distribution</h3>
           {fundBreakdown.length > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={160}>
@@ -211,7 +211,7 @@ export default function DashboardStats() {
 
         {/* Donation Count Bar Chart */}
         <div className="lg:col-span-2 glass rounded-xl p-6">
-          <h3 className="text-base font-bold text-slate-800 mb-4">Donations per Month (Count)</h3>
+        <h3 className="text-sm font-semibold text-slate-800 mb-4">Donations per Month (Count)</h3>
           {monthlyData.length > 0 ? (
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={monthlyData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -229,7 +229,7 @@ export default function DashboardStats() {
 
         {/* Live Feed */}
         <div className="glass rounded-xl p-6">
-          <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
             <Activity className="text-green-500" size={18} /> Live Feed
           </h3>
           <div className="space-y-2 overflow-y-auto max-h-48">

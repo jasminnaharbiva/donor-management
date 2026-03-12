@@ -37,7 +37,7 @@ export default function ReportsPanel() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-base sm:text-lg font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><BarChart3 className="text-primary-500" /> Reports & Analytics</h2>
+      <h2 className="text-sm sm:text-base font-semibold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><BarChart3 className="text-primary-500" /> Reports & Analytics</h2>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

@@ -248,7 +248,7 @@ export default function UIDesignPanel() {
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h2 className="text-base sm:text-lg font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2">
+        <h2 className="text-sm sm:text-base font-semibold text-slate-800 flex items-center justify-center sm:justify-start gap-2">
           <Palette className="text-primary-500" /> UI Design Studio
         </h2>
         <div className="flex flex-wrap gap-2 justify-center sm:justify-start">

@@ -124,7 +124,7 @@ export default function TranslationsPanel() {
     <div className="p-3 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-base sm:text-lg font-bold text-slate-800 text-center sm:text-left">Translations Manager</h2>
+          <h2 className="text-sm sm:text-base font-semibold text-slate-800 text-center sm:text-left">Translations Manager</h2>
           <p className="text-slate-500 text-sm mt-1">{total} entries across {locales.length} locale(s)</p>
         </div>
         <div className="flex flex-wrap gap-2 justify-center sm:justify-start">

@@ -36,7 +36,7 @@ export default function RolesPanel() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2">
+          <h2 className="text-sm sm:text-base font-semibold text-slate-800 flex items-center justify-center sm:justify-start gap-2">
             <Shield className="text-primary-600" size={24} />
             Role Management
           </h2>
@@ -53,7 +53,7 @@ export default function RolesPanel() {
           <div key={role.role_id} className="glass rounded-xl p-6 border border-slate-200 hover:border-primary-200 transition-all group flex flex-col h-full">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-semibold text-slate-800 flex items-center gap-2">
                   {role.role_name}
                   {role.is_system_role && (
                     <span className="bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1">

@@ -48,7 +48,7 @@ export default function SettingsPanel() {
   return (
     <div className="space-y-6">
       <div className="glass rounded-xl p-6">
-        <h2 className="text-xl font-bold text-slate-800 mb-6 border-b border-slate-200 pb-4">Global System Configurations</h2>
+        <h2 className="text-sm sm:text-base font-semibold text-slate-800 mb-6 border-b border-slate-200 pb-4">Global System Configurations</h2>
         
         <div className="space-y-6">
           {settings.map((setting) => (

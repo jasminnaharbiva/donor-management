@@ -148,7 +148,7 @@ export default function ExpensesAdminPanel() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h2 className="text-base sm:text-lg font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><BarChart3 className="text-primary-500" /> Expense Approval</h2>
+        <h2 className="text-sm sm:text-base font-semibold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><BarChart3 className="text-primary-500" /> Expense Approval</h2>
         <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
           <button onClick={openCreateForm} className="flex items-center gap-2 text-sm bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-lg">
             <Plus size={14} /> New Expense

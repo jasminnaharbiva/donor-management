@@ -87,7 +87,7 @@ export default function CustomFieldsPanel() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h2 className="text-base sm:text-lg font-bold text-slate-900 text-center sm:text-left">Custom Fields</h2>
+        <h2 className="text-sm sm:text-base font-semibold text-slate-900 text-center sm:text-left">Custom Fields</h2>
         <button onClick={() => { setShowForm(true); setEditId(null); }} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm">
           + Add Field
         </button>
