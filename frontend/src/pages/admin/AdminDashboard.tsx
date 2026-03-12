@@ -79,7 +79,7 @@ export default function AdminDashboard() {
       role={user?.role || 'Admin'}
       menuItems={menuItems}
     >
-      <div className="animate-in fade-in duration-500">
+      <div className="animate-in fade-in duration-500 dfb-admin-panel">
         <Routes>
           <Route path="/" element={<Navigate to="overview" replace />} />
           <Route path="overview" element={<DashboardStats />} />

@@ -225,6 +225,7 @@ export default function UIDesignPanel() {
       'ui.body_font_size': '1rem',
       'ui.h1_size': '2rem', 'ui.h1_weight': '700', 'ui.h1_color': '#0f172a',
       'ui.h2_size': '1.5rem', 'ui.h2_weight': '700', 'ui.h2_color': '#1e293b',
+      'ui.admin_h2_size': '1rem', 'ui.admin_h2_weight': '600',
       'ui.h3_size': '1.25rem', 'ui.h3_weight': '600', 'ui.h3_color': '#334155',
       'ui.h4_size': '1rem', 'ui.h4_weight': '600', 'ui.h4_color': '#475569',
       'ui.heading_alignment': 'left',
@@ -318,6 +319,14 @@ export default function UIDesignPanel() {
             <SelectPicker label="H2 Weight" settingKey="ui.h2_weight" value={g('ui.h2_weight','700')} onChange={change}
               options={WEIGHT_OPTIONS.map(w => ({ label: w, value: w }))} />
             <ColorPicker label="H2 Color" settingKey="ui.h2_color" value={g('ui.h2_color')} onChange={change} />
+          </div>
+        </div>
+        {/* Admin H2 */}
+        <div className="col-span-full"><p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Admin Section Heading (H2)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <TextPicker label="Admin H2 Size" settingKey="ui.admin_h2_size" value={g('ui.admin_h2_size','1rem')} onChange={change} placeholder="1rem" />
+            <SelectPicker label="Admin H2 Weight" settingKey="ui.admin_h2_weight" value={g('ui.admin_h2_weight','600')} onChange={change}
+              options={WEIGHT_OPTIONS.map(w => ({ label: w, value: w }))} />
           </div>
         </div>
         {/* H3 */}

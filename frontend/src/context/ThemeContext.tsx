@@ -31,6 +31,8 @@ export interface UiSettings {
   'ui.h2_size': string;
   'ui.h2_weight': string;
   'ui.h2_color': string;
+  'ui.admin_h2_size': string;
+  'ui.admin_h2_weight': string;
   'ui.h3_size': string;
   'ui.h3_weight': string;
   'ui.h3_color': string;
@@ -81,6 +83,8 @@ const DEFAULTS: UiSettings = {
   'ui.h2_size':               '1.5rem',
   'ui.h2_weight':             '700',
   'ui.h2_color':              '#1e293b',
+  'ui.admin_h2_size':         '1rem',
+  'ui.admin_h2_weight':       '600',
   'ui.h3_size':               '1.25rem',
   'ui.h3_weight':             '600',
   'ui.h3_color':              '#334155',
@@ -182,6 +186,8 @@ function buildCss(s: UiSettings): string {
   --dfb-h2-size: ${s['ui.h2_size']};
   --dfb-h2-weight: ${s['ui.h2_weight']};
   --dfb-h2-color: ${s['ui.h2_color']};
+  --dfb-admin-h2-size: ${s['ui.admin_h2_size']};
+  --dfb-admin-h2-weight: ${s['ui.admin_h2_weight']};
   --dfb-h3-size: ${s['ui.h3_size']};
   --dfb-h3-weight: ${s['ui.h3_weight']};
   --dfb-h3-color: ${s['ui.h3_color']};
@@ -214,11 +220,17 @@ body {
   background-color: var(--dfb-bg, ${s['ui.background_color']});
 }
 
-/* Headings — #root scoped for specificity 1-0-1 (beats Tailwind 0-1-0) */
-#root h1 { font-size: var(--dfb-h1-size); font-weight: var(--dfb-h1-weight); color: var(--dfb-h1-color); font-family: var(--dfb-font-heading); text-align: var(--dfb-heading-align); }
-#root h2 { font-size: var(--dfb-h2-size); font-weight: var(--dfb-h2-weight); color: var(--dfb-h2-color); font-family: var(--dfb-font-heading); text-align: var(--dfb-heading-align); }
-#root h3 { font-size: var(--dfb-h3-size); font-weight: var(--dfb-h3-weight); color: var(--dfb-h3-color); font-family: var(--dfb-font-heading); text-align: var(--dfb-heading-align); }
-#root h4 { font-size: var(--dfb-h4-size); font-weight: var(--dfb-h4-weight); color: var(--dfb-h4-color); font-family: var(--dfb-font-heading); text-align: var(--dfb-heading-align); }
+/* Headings — only apply global theme values when a heading doesn't already use Tailwind text utilities */
+#root h1:not([class*="text-"]) { font-size: var(--dfb-h1-size); font-weight: var(--dfb-h1-weight); color: var(--dfb-h1-color); font-family: var(--dfb-font-heading); text-align: var(--dfb-heading-align); }
+#root h2:not([class*="text-"]) { font-size: var(--dfb-h2-size); font-weight: var(--dfb-h2-weight); color: var(--dfb-h2-color); font-family: var(--dfb-font-heading); text-align: var(--dfb-heading-align); }
+#root h3:not([class*="text-"]) { font-size: var(--dfb-h3-size); font-weight: var(--dfb-h3-weight); color: var(--dfb-h3-color); font-family: var(--dfb-font-heading); text-align: var(--dfb-heading-align); }
+#root h4:not([class*="text-"]) { font-size: var(--dfb-h4-size); font-weight: var(--dfb-h4-weight); color: var(--dfb-h4-color); font-family: var(--dfb-font-heading); text-align: var(--dfb-heading-align); }
+
+/* Admin panel section headings (explicitly configurable from UI Design panel) */
+#root .dfb-admin-panel h2 {
+  font-size: var(--dfb-admin-h2-size) !important;
+  font-weight: var(--dfb-admin-h2-weight) !important;
+}
 
 /* Cards / panels */
 #root .glass,
