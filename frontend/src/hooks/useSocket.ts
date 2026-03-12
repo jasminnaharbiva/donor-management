@@ -48,7 +48,7 @@ function acquireSocket(namespace: string, token: string): Socket {
 
   const socket = io(`${SOCKET_URL}${namespace}`, {
     auth: { token },
-    transports: ['websocket'],
+    transports: ['polling', 'websocket'],
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,

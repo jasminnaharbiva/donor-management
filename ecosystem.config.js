@@ -3,7 +3,7 @@ module.exports = {
     {
       name:        'dfb-api',
       script:      './dist/index.js',
-      instances:   'max',          // Cluster mode — spawn one process per CPU core
+      instances:   1,
       exec_mode:   'cluster',
       cwd:         '/home/donor-management.nokshaojibon.com/public_html',
 
