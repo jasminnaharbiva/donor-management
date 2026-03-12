@@ -124,14 +124,14 @@ export default function TranslationsPanel() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Translations Manager</h2>
-          <p className="text-gray-500 text-sm mt-1">{total} entries across {locales.length} locale(s)</p>
+          <h2 className="text-2xl font-bold text-slate-800">Translations Manager</h2>
+          <p className="text-slate-500 text-sm mt-1">{total} entries across {locales.length} locale(s)</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowImport(true)} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
             Bulk Import JSON
           </button>
-          <button onClick={() => setShowAdd(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+          <button onClick={() => setShowAdd(true)} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium">
             + Add Translation
           </button>
         </div>
@@ -143,43 +143,43 @@ export default function TranslationsPanel() {
       {/* Filters */}
       <div className="flex gap-3 mb-4 flex-wrap">
         <select value={filterLocale} onChange={e => { setFilterLocale(e.target.value); setPage(1); }}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+          className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
           <option value="">All Locales</option>
           {locales.map(l => <option key={l} value={l}>{l}</option>)}
         </select>
         <select value={filterNamespace} onChange={e => { setFilterNamespace(e.target.value); setPage(1); }}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+          className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
           <option value="">All Namespaces</option>
           {namespaces.map(n => <option key={n} value={n}>{n}</option>)}
         </select>
         <input type="text" placeholder="Search key or value…" value={search}
           onChange={e => { setSearch(e.target.value); setPage(1); }}
-          className="flex-1 min-w-[200px] border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+          className="flex-1 min-w-[200px] border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
               <tr>
                 {['Locale', 'Namespace', 'Key', 'Value', 'Updated', 'Actions'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-8 text-gray-400">Loading…</td></tr>
+                <tr><td colSpan={6} className="text-center py-8 text-slate-400">Loading…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-8 text-gray-400">No translations found</td></tr>
+                <tr><td colSpan={6} className="text-center py-8 text-slate-400">No translations found</td></tr>
               ) : rows.map(t => (
-                <tr key={t.translation_id} className="hover:bg-gray-50">
+                <tr key={t.translation_id} className="hover:bg-slate-50">
                   <td className="px-4 py-3"><span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded">{t.locale}</span></td>
-                  <td className="px-4 py-3 text-xs text-gray-600">{t.namespace}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-800 max-w-[200px] break-all">{t.key}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700 max-w-[300px] truncate">{t.value}</td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{new Date(t.updated_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-xs text-slate-600">{t.namespace}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-800 max-w-[200px] break-all">{t.key}</td>
+                  <td className="px-4 py-3 text-sm text-slate-700 max-w-[300px] truncate">{t.value}</td>
+                  <td className="px-4 py-3 text-xs text-slate-400">{new Date(t.updated_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button onClick={() => openEdit(t)} className="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
@@ -196,10 +196,10 @@ export default function TranslationsPanel() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-4">
-          <p className="text-sm text-gray-500">Page {page} of {totalPages}</p>
+          <p className="text-sm text-slate-500">Page {page} of {totalPages}</p>
           <div className="flex gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1 border rounded text-sm disabled:opacity-40 hover:bg-gray-50">Prev</button>
-            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1 border rounded text-sm disabled:opacity-40 hover:bg-gray-50">Next</button>
+            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1 border rounded text-sm disabled:opacity-40 hover:bg-slate-50">Prev</button>
+            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1 border rounded text-sm disabled:opacity-40 hover:bg-slate-50">Next</button>
           </div>
         </div>
       )}
@@ -208,13 +208,13 @@ export default function TranslationsPanel() {
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-            <h3 className="text-lg font-bold mb-1 text-gray-800">Edit Translation</h3>
-            <p className="text-xs text-gray-500 mb-4 font-mono">[{editing.locale}] {editing.namespace} / {editing.key}</p>
+            <h3 className="text-lg font-bold mb-1 text-slate-800">Edit Translation</h3>
+            <p className="text-xs text-slate-500 mb-4 font-mono">[{editing.locale}] {editing.namespace} / {editing.key}</p>
             <textarea rows={5} value={editValue} onChange={e => setEditValue(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-blue-500" />
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-primary-500" />
             <div className="flex justify-end gap-3 mt-4">
-              <button onClick={() => setEditing(null)} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={saveEdit} disabled={saving} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              <button onClick={() => setEditing(null)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
+              <button onClick={saveEdit} disabled={saving} className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
@@ -226,32 +226,32 @@ export default function TranslationsPanel() {
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-            <h3 className="text-lg font-bold mb-4 text-gray-800">Add Translation</h3>
+            <h3 className="text-lg font-bold mb-4 text-slate-800">Add Translation</h3>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Locale</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Locale</label>
                 <input value={addForm.locale} onChange={e => setAddForm(f => ({ ...f, locale: e.target.value }))}
-                  placeholder="e.g. en, bn, ar" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+                  placeholder="e.g. en, bn, ar" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Namespace</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Namespace</label>
                 <input value={addForm.namespace} onChange={e => setAddForm(f => ({ ...f, namespace: e.target.value }))}
-                  placeholder="e.g. common, forms" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+                  placeholder="e.g. common, forms" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
               </div>
             </div>
             <div className="mb-3">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Key</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Key</label>
               <input value={addForm.key} onChange={e => setAddForm(f => ({ ...f, key: e.target.value }))}
-                placeholder="e.g. donate.button.label" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-blue-500" />
+                placeholder="e.g. donate.button.label" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-primary-500" />
             </div>
             <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Value</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Value</label>
               <textarea rows={3} value={addForm.value} onChange={e => setAddForm(f => ({ ...f, value: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
             </div>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowAdd(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={addTranslation} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Add</button>
+              <button onClick={() => setShowAdd(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
+              <button onClick={addTranslation} className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700">Add</button>
             </div>
           </div>
         </div>
@@ -261,27 +261,27 @@ export default function TranslationsPanel() {
       {showImport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6">
-            <h3 className="text-lg font-bold mb-4 text-gray-800">Bulk Import Translations (JSON)</h3>
+            <h3 className="text-lg font-bold mb-4 text-slate-800">Bulk Import Translations (JSON)</h3>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Locale</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Locale</label>
                 <input value={importLocale} onChange={e => setImportLocale(e.target.value)}
-                  placeholder="e.g. bn" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+                  placeholder="e.g. bn" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Namespace</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Namespace</label>
                 <input value={importNamespace} onChange={e => setImportNamespace(e.target.value)}
-                  placeholder="e.g. common" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+                  placeholder="e.g. common" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
               </div>
             </div>
             <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-700 mb-1">JSON (object of key → value strings)</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">JSON (object of key → value strings)</label>
               <textarea rows={10} value={importJson} onChange={e => setImportJson(e.target.value)}
                 placeholder={'{\n  "donate.button.label": "Donate Now",\n  "nav.home": "Home"\n}'}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-primary-500" />
             </div>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowImport(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={() => setShowImport(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
               <button onClick={bulkImport} disabled={importing} className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
                 {importing ? 'Importing…' : 'Import'}
               </button>

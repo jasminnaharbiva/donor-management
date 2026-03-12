@@ -165,7 +165,7 @@ export default function NotificationBell() {
             <div className="flex items-center gap-1">
               {meta.unread > 0 && (
                 <button onClick={markAllRead}
-                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors">
+                  className="text-xs text-primary-600 hover:text-primary-800 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-primary-50 transition-colors">
                   <CheckCheck size={13} /> Mark all read
                 </button>
               )}
@@ -190,7 +190,7 @@ export default function NotificationBell() {
                   key={notif.notification_id}
                   onClick={() => handleClick(notif)}
                   className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 cursor-pointer transition-colors group
-                    ${notif.is_read ? 'hover:bg-slate-50' : 'bg-blue-50/50 hover:bg-blue-50'}`}
+                    ${notif.is_read ? 'hover:bg-slate-50' : 'bg-blue-50/50 hover:bg-primary-50'}`}
                 >
                   <div className="mt-0.5 text-xl flex-shrink-0">
                     {TYPE_ICONS[notif.type] || '🔔'}
@@ -206,7 +206,7 @@ export default function NotificationBell() {
                   </div>
                   <div className="flex flex-col items-center gap-1 flex-shrink-0">
                     {!notif.is_read && (
-                      <span className="w-2 h-2 bg-blue-500 rounded-full mt-1" />
+                      <span className="w-2 h-2 bg-primary-500 rounded-full mt-1" />
                     )}
                     <button
                       onClick={(e) => deleteNotif(notif.notification_id, e)}
@@ -225,7 +225,7 @@ export default function NotificationBell() {
             <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50 text-center">
               <button
                 onClick={() => { setOpen(false); navigate('/notifications'); }}
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                className="text-xs text-primary-600 hover:text-primary-800 font-medium"
               >
                 View all {meta.total} notifications →
               </button>

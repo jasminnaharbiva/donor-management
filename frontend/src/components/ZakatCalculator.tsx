@@ -19,7 +19,7 @@ export default function ZakatCalculator() {
   const zakatPayable = isEligible ? netAssets * 0.025 : 0;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
       <div className="p-6 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white flex items-center gap-4">
         <div className="p-3 bg-white/20 rounded-xl">
           <Calculator className="h-6 w-6" />
@@ -32,61 +32,61 @@ export default function ZakatCalculator() {
 
       <div className="p-6 md:p-8 grid md:grid-cols-2 gap-8">
         <div className="space-y-6">
-          <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Your Assets</p>
+          <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Your Assets</p>
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Cash (Home & Bank)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Cash (Home & Bank)</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <DollarSign className="h-4 w-4 text-gray-400" />
+                  <DollarSign className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
                   type="number"
                   min="0"
                   value={cash || ''}
                   onChange={(e) => setCash(Number(e.target.value))}
-                  className="pl-9 w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+                  className="pl-9 w-full rounded-lg border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
                   placeholder="0"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Gold & Silver Value</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Gold & Silver Value</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <DollarSign className="h-4 w-4 text-gray-400" />
+                  <DollarSign className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
                   type="number"
                   min="0"
                   value={gold || ''}
                   onChange={(e) => setGold(Number(e.target.value))}
-                  className="pl-9 w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+                  className="pl-9 w-full rounded-lg border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
                   placeholder="0"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Investments & Shares</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Investments & Shares</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <DollarSign className="h-4 w-4 text-gray-400" />
+                  <DollarSign className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
                   type="number"
                   min="0"
                   value={investments || ''}
                   onChange={(e) => setInvestments(Number(e.target.value))}
-                  className="pl-9 w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+                  className="pl-9 w-full rounded-lg border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
                   placeholder="0"
                 />
               </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-100">
+            <div className="pt-4 border-t border-slate-100">
                <label className="block text-sm font-medium text-red-600 mb-1">Deductible Debts & Liabilities</label>
                <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -108,21 +108,21 @@ export default function ZakatCalculator() {
         <div className="bg-emerald-50/50 rounded-2xl border border-emerald-100 p-6 flex flex-col justify-center">
           <div className="space-y-6">
             <div className="flex justify-between items-center text-sm border-b border-emerald-100 pb-3">
-              <span className="text-gray-600">Total Net Assets</span>
-              <span className="font-semibold text-gray-900">${netAssets.toLocaleString()}</span>
+              <span className="text-slate-600">Total Net Assets</span>
+              <span className="font-semibold text-slate-900">${netAssets.toLocaleString()}</span>
             </div>
             
             <div className="flex justify-between items-center text-sm border-b border-emerald-100 pb-3">
-              <span className="text-gray-600 flex items-center gap-2">
+              <span className="text-slate-600 flex items-center gap-2">
                 Nisab Threshold
                 <div className="group relative">
                   <HandCoins className="h-4 w-4 text-emerald-600 cursor-help" />
-                  <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 text-white text-xs rounded-lg text-center z-10">
+                  <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg text-center z-10">
                     Using Silver Nisab (~595g) to maximize giving.
                   </div>
                 </div>
               </span>
-              <span className="font-semibold text-gray-900">${NISAB_SILVER_VALUE.toLocaleString()}</span>
+              <span className="font-semibold text-slate-900">${NISAB_SILVER_VALUE.toLocaleString()}</span>
             </div>
 
             <div className="pt-2 text-center space-y-2">

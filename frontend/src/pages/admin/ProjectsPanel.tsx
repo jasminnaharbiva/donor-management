@@ -25,7 +25,7 @@ const statusColors: Record<string, string> = {
   planning: 'bg-blue-100 text-blue-800',
   active: 'bg-green-100 text-green-800',
   on_hold: 'bg-yellow-100 text-yellow-800',
-  completed: 'bg-gray-100 text-gray-800',
+  completed: 'bg-slate-100 text-slate-800',
   cancelled: 'bg-red-100 text-red-800',
 };
 
@@ -113,8 +113,8 @@ export default function ProjectsPanel() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Projects</h2>
-        <button onClick={() => { setShowForm(true); setEditId(null); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+        <h2 className="text-2xl font-bold text-slate-900">Projects</h2>
+        <button onClick={() => { setShowForm(true); setEditId(null); }} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">
           + New Project
         </button>
       </div>
@@ -124,7 +124,7 @@ export default function ProjectsPanel() {
       <div className="flex gap-2">
         {['','planning','active','on_hold','completed','cancelled'].map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1 rounded-full text-sm ${statusFilter === s ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+            className={`px-3 py-1 rounded-full text-sm ${statusFilter === s ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
             {s || 'All'}
           </button>
         ))}
@@ -161,7 +161,7 @@ export default function ProjectsPanel() {
               <textarea placeholder="Description" value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} rows={3} className="w-full border rounded-lg px-3 py-2 text-sm" />
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Save</button>
+                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm">Save</button>
               </div>
             </form>
           </div>
@@ -169,23 +169,23 @@ export default function ProjectsPanel() {
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading...</div>
+        <div className="text-center py-12 text-slate-500">Loading...</div>
       ) : (
         <div className="grid gap-4">
           {projects.map(p => (
             <div key={p.project_id} className="bg-white border rounded-xl p-5 shadow-sm">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-semibold text-gray-900">{p.project_name}</h3>
-                  <p className="text-sm text-gray-500">{p.fund_name} {p.campaign_title && `· ${p.campaign_title}`} {p.location_city && `· ${p.location_city}, ${p.location_country}`}</p>
-                  {p.description && <p className="text-sm text-gray-600 mt-1">{p.description.slice(0, 100)}{p.description.length > 100 ? '…' : ''}</p>}
+                  <h3 className="font-semibold text-slate-900">{p.project_name}</h3>
+                  <p className="text-sm text-slate-500">{p.fund_name} {p.campaign_title && `· ${p.campaign_title}`} {p.location_city && `· ${p.location_city}, ${p.location_country}`}</p>
+                  {p.description && <p className="text-sm text-slate-600 mt-1">{p.description.slice(0, 100)}{p.description.length > 100 ? '…' : ''}</p>}
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[p.status] || 'bg-gray-100 text-gray-800'}`}>{p.status}</span>
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[p.status] || 'bg-slate-100 text-slate-800'}`}>{p.status}</span>
               </div>
               <div className="mt-3 grid grid-cols-3 gap-4 text-sm">
-                <div><span className="text-gray-500">Allocated</span><br/><strong>${Number(p.budget_allocated||0).toLocaleString()}</strong></div>
-                <div><span className="text-gray-500">Spent</span><br/><strong>${Number(p.budget_spent||0).toLocaleString()}</strong></div>
-                <div><span className="text-gray-500">Remaining</span><br/><strong>${Number(p.budget_remaining||0).toLocaleString()}</strong></div>
+                <div><span className="text-slate-500">Allocated</span><br/><strong>${Number(p.budget_allocated||0).toLocaleString()}</strong></div>
+                <div><span className="text-slate-500">Spent</span><br/><strong>${Number(p.budget_spent||0).toLocaleString()}</strong></div>
+                <div><span className="text-slate-500">Remaining</span><br/><strong>${Number(p.budget_remaining||0).toLocaleString()}</strong></div>
               </div>
               <div className="flex gap-2 mt-3">
                 <button onClick={() => openEdit(p)} className="text-sm text-blue-600 hover:underline">Edit</button>
@@ -193,7 +193,7 @@ export default function ProjectsPanel() {
               </div>
             </div>
           ))}
-          {projects.length === 0 && <div className="text-center py-12 text-gray-500">No projects found.</div>}
+          {projects.length === 0 && <div className="text-center py-12 text-slate-500">No projects found.</div>}
         </div>
       )}
     </div>

@@ -29,7 +29,7 @@ export default function VolunteerVerify() {
   }, [badgeNumber]);
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
     </div>
   );
@@ -96,7 +96,7 @@ export default function VolunteerVerify() {
                     <p className="text-slate-400 text-xs mb-2">Skills</p>
                     <div className="flex flex-wrap gap-1.5">
                       {(typeof volunteer.skills === 'string' ? volunteer.skills.split(',') : []).map((s: string, i: number) => (
-                        <span key={i} className="bg-blue-500/20 text-blue-300 text-xs px-2 py-0.5 rounded-full">{s.trim()}</span>
+                        <span key={i} className="bg-primary-500/20 text-primary-300 text-xs px-2 py-0.5 rounded-full">{s.trim()}</span>
                       ))}
                     </div>
                   </div>

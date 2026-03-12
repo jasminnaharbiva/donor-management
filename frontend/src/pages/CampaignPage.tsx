@@ -34,15 +34,15 @@ export default function CampaignPage() {
   }, [slug]);
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
     </div>
   );
 
   if (error || !campaign) return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
-      <h1 className="text-2xl font-bold text-gray-700">Campaign Not Found</h1>
-      <p className="text-gray-500">This campaign may have ended or been removed.</p>
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
+      <h1 className="text-2xl font-bold text-slate-700">Campaign Not Found</h1>
+      <p className="text-slate-500">This campaign may have ended or been removed.</p>
       <Link to="/" className="text-blue-600 hover:underline">← Back to Home</Link>
     </div>
   );
@@ -51,7 +51,7 @@ export default function CampaignPage() {
   const daysLeft = campaign.end_date ? Math.max(0, Math.ceil((new Date(campaign.end_date).getTime() - Date.now()) / 86400000)) : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Hero */}
       <div className="relative bg-gradient-to-br from-blue-900 to-blue-700 text-white">
         {campaign.cover_image_url && (
@@ -74,32 +74,32 @@ export default function CampaignPage() {
         {/* Campaign description */}
         <div className="md:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm border">
-            <h2 className="text-lg font-bold text-gray-900 mb-3">About This Campaign</h2>
-            <p className="text-gray-600 leading-relaxed">{campaign.description || 'No additional details provided.'}</p>
+            <h2 className="text-lg font-bold text-slate-900 mb-3">About This Campaign</h2>
+            <p className="text-slate-600 leading-relaxed">{campaign.description || 'No additional details provided.'}</p>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Campaign Details</h2>
+            <h2 className="text-lg font-bold text-slate-900 mb-4">Campaign Details</h2>
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-gray-500">Campaign Status</p>
-                <p className="font-semibold text-gray-900 mt-1 capitalize">{campaign.status}</p>
+              <div className="bg-slate-50 rounded-xl p-4">
+                <p className="text-slate-500">Campaign Status</p>
+                <p className="font-semibold text-slate-900 mt-1 capitalize">{campaign.status}</p>
               </div>
               {campaign.start_date && (
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-500">Start Date</p>
-                  <p className="font-semibold text-gray-900 mt-1">{new Date(campaign.start_date).toLocaleDateString()}</p>
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <p className="text-slate-500">Start Date</p>
+                  <p className="font-semibold text-slate-900 mt-1">{new Date(campaign.start_date).toLocaleDateString()}</p>
                 </div>
               )}
               {campaign.end_date && (
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-500">End Date</p>
-                  <p className="font-semibold text-gray-900 mt-1">{new Date(campaign.end_date).toLocaleDateString()}</p>
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <p className="text-slate-500">End Date</p>
+                  <p className="font-semibold text-slate-900 mt-1">{new Date(campaign.end_date).toLocaleDateString()}</p>
                 </div>
               )}
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-gray-500">Total Donors</p>
-                <p className="font-semibold text-gray-900 mt-1">{Number(campaign.donor_count||0).toLocaleString()}</p>
+              <div className="bg-slate-50 rounded-xl p-4">
+                <p className="text-slate-500">Total Donors</p>
+                <p className="font-semibold text-slate-900 mt-1">{Number(campaign.donor_count||0).toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -108,22 +108,22 @@ export default function CampaignPage() {
         {/* Sidebar — fundraising progress */}
         <div className="space-y-4">
           <div className="bg-white rounded-2xl p-6 shadow-sm border sticky top-6">
-            <div className="text-3xl font-bold text-gray-900">${Number(campaign.raised_amount||0).toLocaleString()}</div>
-            <p className="text-sm text-gray-500 mt-1">raised of <strong>${Number(campaign.goal_amount||0).toLocaleString()}</strong> goal</p>
+            <div className="text-3xl font-bold text-slate-900">${Number(campaign.raised_amount||0).toLocaleString()}</div>
+            <p className="text-sm text-slate-500 mt-1">raised of <strong>${Number(campaign.goal_amount||0).toLocaleString()}</strong> goal</p>
 
             {/* Thermometer */}
             <div className="mt-4 space-y-2">
-              <div className="flex justify-between text-xs text-gray-500">
+              <div className="flex justify-between text-xs text-slate-500">
                 <span>{pct}% funded</span>
                 {daysLeft !== null && <span>{daysLeft} days left</span>}
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden">
+              <div className="w-full bg-slate-100 rounded-full h-4 overflow-hidden">
                 <div
                   className="h-4 rounded-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-1000"
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <div className="flex justify-between text-xs text-gray-500">
+              <div className="flex justify-between text-xs text-slate-500">
                 <span>{Number(campaign.donor_count||0).toLocaleString()} donors</span>
                 <span>{100 - pct}% remaining</span>
               </div>
@@ -132,13 +132,13 @@ export default function CampaignPage() {
             <div className="mt-6 space-y-3">
               <Link
                 to="/register"
-                className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center font-semibold py-3 rounded-xl transition-colors"
+                className="block w-full bg-primary-600 hover:bg-primary-700 text-white text-center font-semibold py-3 rounded-xl transition-colors"
               >
                 Donate Now
               </Link>
               <button
                 onClick={() => navigator.share?.({ title: campaign.title, url: window.location.href })}
-                className="block w-full border border-gray-200 hover:bg-gray-50 text-gray-700 text-center font-medium py-3 rounded-xl transition-colors text-sm"
+                className="block w-full border border-slate-200 hover:bg-slate-50 text-slate-700 text-center font-medium py-3 rounded-xl transition-colors text-sm"
               >
                 Share Campaign
               </button>

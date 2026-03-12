@@ -15,7 +15,7 @@ interface P2PCampaign {
 }
 
 const statusColors: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-800',
+  draft: 'bg-slate-100 text-slate-800',
   active: 'bg-green-100 text-green-800',
   completed: 'bg-blue-100 text-blue-800',
   rejected: 'bg-red-100 text-red-800',
@@ -50,8 +50,8 @@ export default function P2PPanel() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Peer-to-Peer Campaigns</h2>
-        <p className="text-sm text-gray-500">Supporter-created fundraising pages</p>
+        <h2 className="text-2xl font-bold text-slate-900">Peer-to-Peer Campaigns</h2>
+        <p className="text-sm text-slate-500">Supporter-created fundraising pages</p>
       </div>
 
       {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg">{error}</div>}
@@ -59,13 +59,13 @@ export default function P2PPanel() {
       <div className="flex gap-2">
         {['','draft','active','completed','rejected'].map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1 rounded-full text-sm ${statusFilter === s ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+            className={`px-3 py-1 rounded-full text-sm ${statusFilter === s ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
             {s || 'All'}
           </button>
         ))}
       </div>
 
-      {loading ? <div className="text-center py-12 text-gray-500">Loading...</div> : (
+      {loading ? <div className="text-center py-12 text-slate-500">Loading...</div> : (
         <div className="grid gap-4">
           {campaigns.map(c => {
             const pct = c.goal_amount > 0 ? Math.min(100, Math.round((c.raised_amount / c.goal_amount) * 100)) : 0;
@@ -73,16 +73,16 @@ export default function P2PPanel() {
               <div key={c.p2p_id} className="bg-white border rounded-xl p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{c.title}</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">/{c.slug} · {c.parent_campaign_title}</p>
-                    {c.personal_story && <p className="text-sm text-gray-600 mt-1">{c.personal_story.slice(0, 120)}…</p>}
+                    <h3 className="font-semibold text-slate-900">{c.title}</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">/{c.slug} · {c.parent_campaign_title}</p>
+                    {c.personal_story && <p className="text-sm text-slate-600 mt-1">{c.personal_story.slice(0, 120)}…</p>}
                     <div className="mt-3">
-                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <div className="flex justify-between text-xs text-slate-500 mb-1">
                         <span>${Number(c.raised_amount||0).toLocaleString()} raised</span>
                         <span>Goal: ${Number(c.goal_amount||0).toLocaleString()} ({pct}%)</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                      <div className="w-full bg-slate-200 rounded-full h-2">
+                        <div className="bg-primary-600 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   </div>
@@ -99,7 +99,7 @@ export default function P2PPanel() {
               </div>
             );
           })}
-          {campaigns.length === 0 && <div className="text-center py-12 text-gray-500">No P2P campaigns found.</div>}
+          {campaigns.length === 0 && <div className="text-center py-12 text-slate-500">No P2P campaigns found.</div>}
         </div>
       )}
     </div>

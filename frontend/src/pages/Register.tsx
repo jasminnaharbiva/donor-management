@@ -77,7 +77,7 @@ export default function Register() {
           </p>
           <button
             onClick={() => navigate('/login')}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition-all"
+            className="w-full bg-primary-500 hover:bg-primary-400 text-white font-bold py-3 px-6 rounded-xl transition-all"
           >
             Sign In Now
           </button>
@@ -118,7 +118,7 @@ export default function Register() {
                     required
                     value={form.firstName}
                     onChange={set('firstName')}
-                    className="w-full bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+                    className="w-full bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent"
                     placeholder="John"
                   />
                 </div>
@@ -132,7 +132,7 @@ export default function Register() {
                     required
                     value={form.lastName}
                     onChange={set('lastName')}
-                    className="w-full bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+                    className="w-full bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent"
                     placeholder="Doe"
                   />
                 </div>
@@ -148,7 +148,7 @@ export default function Register() {
                   required
                   value={form.email}
                   onChange={set('email')}
-                  className="w-full bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl pl-9 pr-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+                  className="w-full bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl pl-9 pr-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent"
                   placeholder="john@example.com"
                 />
               </div>
@@ -160,7 +160,7 @@ export default function Register() {
                 type="tel"
                 value={form.phone}
                 onChange={set('phone')}
-                className="w-full bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+                className="w-full bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent"
                 placeholder="+1 234 567 8900"
               />
             </div>
@@ -174,7 +174,7 @@ export default function Register() {
                   required
                   value={form.password}
                   onChange={set('password')}
-                  className="w-full bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl pl-9 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+                  className="w-full bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl pl-9 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent"
                   placeholder="Create a strong password"
                 />
                 <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
@@ -202,7 +202,7 @@ export default function Register() {
                   required
                   value={form.confirmPassword}
                   onChange={set('confirmPassword')}
-                  className={`w-full bg-white/10 border text-white placeholder-slate-400 rounded-xl pl-9 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent ${
+                  className={`w-full bg-white/10 border text-white placeholder-slate-400 rounded-xl pl-9 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent ${
                     form.confirmPassword && form.confirmPassword !== form.password
                       ? 'border-red-400/50'
                       : 'border-white/20'
@@ -221,7 +221,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 mt-2 shadow-lg shadow-indigo-900/50"
+              className="w-full bg-primary-500 hover:bg-primary-400 disabled:bg-primary-800 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 mt-2 shadow-lg shadow-primary-900/50"
             >
               {loading ? <><Loader2 size={18} className="animate-spin" /> Creating Account…</> : 'Create Account'}
             </button>

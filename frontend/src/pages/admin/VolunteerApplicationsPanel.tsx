@@ -63,8 +63,8 @@ export default function VolunteerApplicationsPanel() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Volunteer Applications</h2>
-        <span className="text-sm text-gray-500">{apps.length} record(s)</span>
+        <h2 className="text-2xl font-bold text-slate-900">Volunteer Applications</h2>
+        <span className="text-sm text-slate-500">{apps.length} record(s)</span>
       </div>
 
       {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg">{error}</div>}
@@ -72,7 +72,7 @@ export default function VolunteerApplicationsPanel() {
       <div className="flex gap-2 flex-wrap">
         {['','pending','under_review','approved','rejected','waitlisted'].map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1 rounded-full text-sm ${statusFilter === s ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+            className={`px-3 py-1 rounded-full text-sm ${statusFilter === s ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
             {s || 'All'}
           </button>
         ))}
@@ -83,7 +83,7 @@ export default function VolunteerApplicationsPanel() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold">Review Application — {selected.applicant_name}</h3>
-            <div className="text-sm space-y-2 bg-gray-50 rounded-lg p-3">
+            <div className="text-sm space-y-2 bg-slate-50 rounded-lg p-3">
               <p><strong>Email:</strong> {selected.applicant_email}</p>
               <p><strong>Location:</strong> {selected.city}{selected.country && `, ${selected.country}`}</p>
               {selected.motivation_statement && <p><strong>Motivation:</strong> {selected.motivation_statement}</p>}
@@ -99,7 +99,7 @@ export default function VolunteerApplicationsPanel() {
             <textarea placeholder="Review notes (optional)" value={reviewNotes} onChange={e => setReviewNotes(e.target.value)} rows={3} className="w-full border rounded-lg px-3 py-2 text-sm" />
             <div className="flex gap-2 justify-end">
               <button onClick={() => setSelected(null)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-              <button onClick={handleReview} disabled={reviewing} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">
+              <button onClick={handleReview} disabled={reviewing} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm disabled:opacity-50">
                 {reviewing ? 'Saving...' : 'Submit Review'}
               </button>
             </div>
@@ -108,31 +108,32 @@ export default function VolunteerApplicationsPanel() {
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading...</div>
+        <div className="text-center py-12 text-slate-500">Loading...</div>
       ) : (
-        <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-slate-50 border-b">
               <tr>
-                <th className="px-4 py-3 text-left text-gray-600">Applicant</th>
-                <th className="px-4 py-3 text-left text-gray-600">Location</th>
-                <th className="px-4 py-3 text-left text-gray-600">Status</th>
-                <th className="px-4 py-3 text-left text-gray-600">Submitted</th>
+                <th className="px-4 py-3 text-left text-slate-600">Applicant</th>
+                <th className="px-4 py-3 text-left text-slate-600">Location</th>
+                <th className="px-4 py-3 text-left text-slate-600">Status</th>
+                <th className="px-4 py-3 text-left text-slate-600">Submitted</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {apps.map(a => (
-                <tr key={a.application_id} className="hover:bg-gray-50">
+                <tr key={a.application_id} className="hover:bg-slate-50">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">{a.applicant_name}</div>
-                    <div className="text-gray-500 text-xs">{a.applicant_email}</div>
+                    <div className="font-medium text-slate-900">{a.applicant_name}</div>
+                    <div className="text-slate-500 text-xs">{a.applicant_email}</div>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{a.city}{a.country && `, ${a.country}`}</td>
+                  <td className="px-4 py-3 text-slate-600">{a.city}{a.country && `, ${a.country}`}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[a.status] || 'bg-gray-100 text-gray-800'}`}>{a.status}</span>
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[a.status] || 'bg-slate-100 text-slate-800'}`}>{a.status}</span>
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{new Date(a.submitted_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-slate-500">{new Date(a.submitted_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
                     <button onClick={() => { setSelected(a); setReviewStatus('approved'); setReviewNotes(a.review_notes || ''); }}
                       className="text-blue-600 hover:underline text-xs">Review</button>
@@ -141,7 +142,8 @@ export default function VolunteerApplicationsPanel() {
               ))}
             </tbody>
           </table>
-          {apps.length === 0 && <div className="text-center py-12 text-gray-500">No applications found.</div>}
+          </div>
+          {apps.length === 0 && <div className="text-center py-12 text-slate-500">No applications found.</div>}
         </div>
       )}
     </div>

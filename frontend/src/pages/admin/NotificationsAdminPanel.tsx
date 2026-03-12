@@ -40,7 +40,7 @@ function Toggle({ checked, onChange, disabled = false }: { checked: boolean; onC
     <button
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
-      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${checked ? 'bg-green-500' : 'bg-gray-300'} ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${checked ? 'bg-green-500' : 'bg-slate-300'} ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
     >
       <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-[18px]' : 'translate-x-1'}`} />
     </button>
@@ -84,18 +84,18 @@ function RuleEditModal({ rule, onClose, onSaved }: { rule: NotifRule; onClose: (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <Edit2 size={18} className="text-blue-600" /> Edit: {rule.label}
           </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
         </div>
 
         <div className="p-6 overflow-y-auto flex-1 space-y-5">
           {/* Recipients */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Recipients</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Recipients</label>
             <select value={form.recipients} onChange={e => setForm(f => ({ ...f, recipients: e.target.value as any }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-blue-500">
               <option value="user">User only</option>
               <option value="admin">Admin only</option>
               <option value="both">Both user & admin</option>
@@ -104,39 +104,39 @@ function RuleEditModal({ rule, onClose, onSaved }: { rule: NotifRule; onClose: (
 
           {/* Email Subject */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
-              Email Subject <span className="text-gray-400 normal-case font-normal">(supports {'{{variable}}'} placeholders)</span>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
+              Email Subject <span className="text-slate-400 normal-case font-normal">(supports {'{{variable}}'} placeholders)</span>
             </label>
             <input value={form.email_subject} onChange={e => setForm(f => ({ ...f, email_subject: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-blue-500"
               placeholder="e.g. ✅ Your donation of {{formattedAmount}} is confirmed" />
           </div>
 
           {/* Email Body */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
-              Email Body <span className="text-gray-400 normal-case font-normal">(HTML supported)</span>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
+              Email Body <span className="text-slate-400 normal-case font-normal">(HTML supported)</span>
             </label>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5 mb-2 text-xs text-blue-700">
               <strong>Available variables:</strong> {'{{firstName}}'} {'{{formattedAmount}}'} {'{{amount}}'} {'{{currency}}'} {'{{transactionId}}'} {'{{campaignName}}'} {'{{fundName}}'} {'{{date}}'} {'{{purpose}}'} {'{{reason}}'} {'{{status}}'} {'{{title}}'} {'{{message}}'} {'{{resetUrl}}'}
             </div>
             <textarea value={form.email_body} onChange={e => setForm(f => ({ ...f, email_body: e.target.value }))}
               rows={10}
-              className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-primary-500 focus:border-blue-500"
               placeholder="<p>Hi {{firstName}},</p><p>Your donation of <strong>{{formattedAmount}}</strong> has been received.</p>" />
           </div>
 
           {msg && <div className={`p-3 rounded-lg text-sm ${msg.includes('fail') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
         </div>
 
-        <div className="flex gap-2 justify-end px-6 py-4 border-t bg-gray-50">
+        <div className="flex gap-2 justify-end px-6 py-4 border-t bg-slate-50">
           <button onClick={sendTest} disabled={testing}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-100 disabled:opacity-50">
+            className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-100 disabled:opacity-50">
             {testing ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Send Test
           </button>
           <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
           <button onClick={save} disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+            className="flex items-center gap-2 px-5 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50">
             {saving ? <Loader2 size={14} className="animate-spin" /> : null} Save Changes
           </button>
         </div>
@@ -230,10 +230,10 @@ export default function NotificationsAdminPanel() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Bell size={22} className="text-blue-600" /> Notification System
           </h2>
-          <p className="text-sm text-gray-500 mt-1">Manage notification rules, email templates, and view the notification log</p>
+          <p className="text-sm text-slate-500 mt-1">Manage notification rules, email templates, and view the notification log</p>
         </div>
         <button onClick={() => setShowBroadcast(true)}
           className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-xl text-sm font-medium hover:bg-orange-700 transition-colors">
@@ -274,10 +274,10 @@ export default function NotificationsAdminPanel() {
       )}
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200">
+      <div className="flex border-b border-slate-200">
         {(['rules', 'log'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
             {t === 'rules' ? <Settings size={15} /> : <Bell size={15} />}
             {t === 'rules' ? 'Notification Rules' : 'Notification Log'}
           </button>
@@ -295,23 +295,23 @@ export default function NotificationsAdminPanel() {
             <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
+                  <thead className="bg-slate-50 border-b">
                     <tr>
-                      <th className="px-5 py-3 text-left text-gray-600 font-semibold">Event</th>
-                      <th className="px-4 py-3 text-center text-gray-600 font-semibold">Enabled</th>
-                      <th className="px-4 py-3 text-center text-gray-600 font-semibold flex items-center gap-1 justify-center"><Smartphone size={13}/> In-App</th>
-                      <th className="px-4 py-3 text-center text-gray-600 font-semibold"><div className="flex items-center gap-1 justify-center"><Mail size={13}/> Email</div></th>
-                      <th className="px-4 py-3 text-center text-gray-600 font-semibold">Recipients</th>
-                      <th className="px-4 py-3 text-center text-gray-600 font-semibold">Actions</th>
+                      <th className="px-5 py-3 text-left text-slate-600 font-semibold">Event</th>
+                      <th className="px-4 py-3 text-center text-slate-600 font-semibold">Enabled</th>
+                      <th className="px-4 py-3 text-center text-slate-600 font-semibold flex items-center gap-1 justify-center"><Smartphone size={13}/> In-App</th>
+                      <th className="px-4 py-3 text-center text-slate-600 font-semibold"><div className="flex items-center gap-1 justify-center"><Mail size={13}/> Email</div></th>
+                      <th className="px-4 py-3 text-center text-slate-600 font-semibold">Recipients</th>
+                      <th className="px-4 py-3 text-center text-slate-600 font-semibold">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-slate-100">
                     {rules.map(rule => (
-                      <tr key={rule.rule_id} className={`hover:bg-gray-50 transition-colors ${!rule.is_enabled ? 'opacity-60' : ''}`}>
+                      <tr key={rule.rule_id} className={`hover:bg-slate-50 transition-colors ${!rule.is_enabled ? 'opacity-60' : ''}`}>
                         <td className="px-5 py-3.5">
-                          <p className="font-medium text-gray-900">{rule.label}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{rule.description}</p>
-                          <p className="text-xs text-gray-400 font-mono mt-0.5">{rule.event_type}</p>
+                          <p className="font-medium text-slate-900">{rule.label}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{rule.description}</p>
+                          <p className="text-xs text-slate-400 font-mono mt-0.5">{rule.event_type}</p>
                         </td>
                         <td className="px-4 py-3.5 text-center">
                           <Toggle
@@ -344,7 +344,7 @@ export default function NotificationsAdminPanel() {
                         </td>
                         <td className="px-4 py-3.5 text-center">
                           <button onClick={() => setEditRule(rule)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
                             <Edit2 size={12} /> Edit Template
                           </button>
                         </td>
@@ -353,7 +353,7 @@ export default function NotificationsAdminPanel() {
                   </tbody>
                 </table>
                 {rules.length === 0 && (
-                  <div className="py-16 text-center text-gray-400">No notification rules found</div>
+                  <div className="py-16 text-center text-slate-400">No notification rules found</div>
                 )}
               </div>
             </div>
@@ -368,13 +368,13 @@ export default function NotificationsAdminPanel() {
         <div className="space-y-4">
           <div className="flex gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
               <input value={logSearch} onChange={e => { setLogSearch(e.target.value); loadLog(1); }}
                 placeholder="Search title or email…"
-                className="w-full pl-9 pr-4 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-blue-500"/>
+                className="w-full pl-9 pr-4 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-primary-500"/>
             </div>
             <select value={logType} onChange={e => { setLogType(e.target.value); loadLog(1); }}
-              className="border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+              className="border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
               <option value="">All Types</option>
               <option value="donation_received">Donation Received</option>
               <option value="high_value_donation_alert">High-Value Donation</option>
@@ -383,7 +383,7 @@ export default function NotificationsAdminPanel() {
               <option value="announcement">Announcement</option>
               <option value="welcome">Welcome</option>
             </select>
-            <button onClick={() => loadLog(logMeta.page)} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl">
+            <button onClick={() => loadLog(logMeta.page)} className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl">
               <RefreshCw size={18}/>
             </button>
           </div>
@@ -392,32 +392,32 @@ export default function NotificationsAdminPanel() {
             <div className="flex justify-center py-16"><Loader2 size={32} className="animate-spin text-blue-500"/></div>
           ) : (
             <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
-              <div className="px-5 py-3 border-b bg-gray-50 text-sm text-gray-500">
+              <div className="px-5 py-3 border-b bg-slate-50 text-sm text-slate-500">
                 {logMeta.total} total notifications
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
+                  <thead className="bg-slate-50 border-b">
                     <tr>
-                      <th className="px-5 py-3 text-left text-gray-600 font-semibold">Title</th>
-                      <th className="px-4 py-3 text-left text-gray-600 font-semibold">Recipient</th>
-                      <th className="px-4 py-3 text-left text-gray-600 font-semibold">Type</th>
-                      <th className="px-4 py-3 text-left text-gray-600 font-semibold">Status</th>
-                      <th className="px-4 py-3 text-left text-gray-600 font-semibold">Sent</th>
+                      <th className="px-5 py-3 text-left text-slate-600 font-semibold">Title</th>
+                      <th className="px-4 py-3 text-left text-slate-600 font-semibold">Recipient</th>
+                      <th className="px-4 py-3 text-left text-slate-600 font-semibold">Type</th>
+                      <th className="px-4 py-3 text-left text-slate-600 font-semibold">Status</th>
+                      <th className="px-4 py-3 text-left text-slate-600 font-semibold">Sent</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-slate-100">
                     {logs.length === 0 ? (
-                      <tr><td colSpan={5} className="text-center py-16 text-gray-400">No notifications found</td></tr>
+                      <tr><td colSpan={5} className="text-center py-16 text-slate-400">No notifications found</td></tr>
                     ) : logs.map(log => (
-                      <tr key={log.notification_id} className="hover:bg-gray-50">
+                      <tr key={log.notification_id} className="hover:bg-slate-50">
                         <td className="px-5 py-3">
-                          <p className="font-medium text-gray-900 truncate max-w-xs">{log.title}</p>
-                          {log.body && <p className="text-xs text-gray-500 truncate max-w-xs mt-0.5">{log.body}</p>}
+                          <p className="font-medium text-slate-900 truncate max-w-xs">{log.title}</p>
+                          {log.body && <p className="text-xs text-slate-500 truncate max-w-xs mt-0.5">{log.body}</p>}
                         </td>
-                        <td className="px-4 py-3 text-gray-600">
+                        <td className="px-4 py-3 text-slate-600">
                           <p>{log.recipient_name || '—'}</p>
-                          <p className="text-xs text-gray-400">{log.recipient_email || ''}</p>
+                          <p className="text-xs text-slate-400">{log.recipient_email || ''}</p>
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium capitalize">
@@ -425,11 +425,11 @@ export default function NotificationsAdminPanel() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${log.is_read ? 'bg-gray-100 text-gray-600' : 'bg-yellow-100 text-yellow-700'}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${log.is_read ? 'bg-slate-100 text-slate-600' : 'bg-yellow-100 text-yellow-700'}`}>
                             {log.is_read ? 'Read' : 'Unread'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">
+                        <td className="px-4 py-3 text-slate-500 text-xs">
                           {new Date(log.sent_at).toLocaleString()}
                         </td>
                       </tr>
@@ -438,13 +438,13 @@ export default function NotificationsAdminPanel() {
                 </table>
               </div>
               {logMeta.total > 25 && (
-                <div className="flex items-center justify-between px-5 py-3 border-t text-sm text-gray-500">
+                <div className="flex items-center justify-between px-5 py-3 border-t text-sm text-slate-500">
                   <span>Page {logMeta.page} of {Math.ceil(logMeta.total / 25)}</span>
                   <div className="flex gap-2">
                     <button onClick={() => loadLog(logMeta.page - 1)} disabled={logMeta.page === 1}
-                      className="px-3 py-1 border rounded-lg hover:bg-gray-50 disabled:opacity-40">← Prev</button>
+                      className="px-3 py-1 border rounded-lg hover:bg-slate-50 disabled:opacity-40">← Prev</button>
                     <button onClick={() => loadLog(logMeta.page + 1)} disabled={logMeta.page >= Math.ceil(logMeta.total / 25)}
-                      className="px-3 py-1 border rounded-lg hover:bg-gray-50 disabled:opacity-40">Next →</button>
+                      className="px-3 py-1 border rounded-lg hover:bg-slate-50 disabled:opacity-40">Next →</button>
                   </div>
                 </div>
               )}

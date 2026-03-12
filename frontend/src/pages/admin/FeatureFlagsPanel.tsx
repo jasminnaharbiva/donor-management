@@ -48,32 +48,32 @@ export default function FeatureFlagsPanel() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Feature Flags</h2>
-        <p className="text-sm text-gray-500">Changes take effect within 30 seconds across all clients.</p>
+        <h2 className="text-2xl font-bold text-slate-900">Feature Flags</h2>
+        <p className="text-sm text-slate-500">Changes take effect within 30 seconds across all clients.</p>
       </div>
 
       {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg">{error}</div>}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading...</div>
+        <div className="text-center py-12 text-slate-500">Loading...</div>
       ) : (
         <div className="space-y-6">
           {Object.entries(grouped).map(([group, groupFlags]) => (
             <div key={group} className="bg-white border rounded-xl shadow-sm overflow-hidden">
-              <div className="px-5 py-3 bg-gray-50 border-b">
-                <h3 className="font-semibold text-gray-800">{group}</h3>
+              <div className="px-5 py-3 bg-slate-50 border-b">
+                <h3 className="font-semibold text-slate-800">{group}</h3>
               </div>
               <div className="divide-y">
                 {groupFlags.map(flag => (
                   <div key={flag.flag_id} className="flex items-center justify-between px-5 py-4">
                     <div>
-                      <p className="font-medium text-gray-900 font-mono text-sm">{flag.flag_name}</p>
-                      {flag.description && <p className="text-sm text-gray-500 mt-0.5">{flag.description}</p>}
+                      <p className="font-medium text-slate-900 font-mono text-sm">{flag.flag_name}</p>
+                      {flag.description && <p className="text-sm text-slate-500 mt-0.5">{flag.description}</p>}
                     </div>
                     <button
                       onClick={() => toggle(flag)}
                       disabled={saving === flag.flag_name}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${flag.is_enabled ? 'bg-green-500' : 'bg-gray-300'} ${saving === flag.flag_name ? 'opacity-50' : ''}`}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${flag.is_enabled ? 'bg-green-500' : 'bg-slate-300'} ${saving === flag.flag_name ? 'opacity-50' : ''}`}
                     >
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${flag.is_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
@@ -82,7 +82,7 @@ export default function FeatureFlagsPanel() {
               </div>
             </div>
           ))}
-          {flags.length === 0 && <div className="text-center py-12 text-gray-500">No feature flags found.</div>}
+          {flags.length === 0 && <div className="text-center py-12 text-slate-500">No feature flags found.</div>}
         </div>
       )}
     </div>

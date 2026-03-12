@@ -67,8 +67,8 @@ export default function EmailTemplatesPanel() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Email Templates</h2>
-        <p className="text-sm text-gray-500">{templates.length} template(s)</p>
+        <h2 className="text-2xl font-bold text-slate-900">Email Templates</h2>
+        <p className="text-sm text-slate-500">{templates.length} template(s)</p>
       </div>
 
       {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg">{error}</div>}
@@ -79,7 +79,7 @@ export default function EmailTemplatesPanel() {
           <div className="bg-white rounded-xl w-full max-w-3xl my-4 shadow-xl">
             <div className="flex items-center justify-between p-5 border-b">
               <h3 className="text-lg font-bold">{slugLabel(selected.template_slug)}</h3>
-              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+              <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
             </div>
             <div className="p-5 space-y-4">
               {selected.available_variables && (
@@ -89,32 +89,32 @@ export default function EmailTemplatesPanel() {
                 </div>
               )}
               <div>
-                <label className="text-sm font-medium text-gray-700">Subject</label>
+                <label className="text-sm font-medium text-slate-700">Subject</label>
                 <input value={editForm.subject_template} onChange={e => setEditForm(f => ({...f, subject_template: e.target.value}))}
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">HTML Body</label>
+                <label className="text-sm font-medium text-slate-700">HTML Body</label>
                 <textarea value={editForm.html_body} onChange={e => setEditForm(f => ({...f, html_body: e.target.value}))}
                   rows={14} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm font-mono" />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="active-toggle" checked={editForm.is_active} onChange={e => setEditForm(f => ({...f, is_active: e.target.checked}))} />
-                <label htmlFor="active-toggle" className="text-sm text-gray-700">Active (used by system)</label>
+                <label htmlFor="active-toggle" className="text-sm text-slate-700">Active (used by system)</label>
               </div>
               <div className="border-t pt-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">Send Test Email</p>
+                <p className="text-sm font-medium text-slate-700 mb-2">Send Test Email</p>
                 <div className="flex gap-2">
                   <input type="email" placeholder="admin@example.com" value={testEmail} onChange={e => setTestEmail(e.target.value)}
                     className="flex-1 border rounded-lg px-3 py-2 text-sm" />
-                  <button onClick={sendTest} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">Send Test</button>
+                  <button onClick={sendTest} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm hover:bg-slate-200">Send Test</button>
                 </div>
                 {testSent && <p className="text-green-600 text-xs mt-1">Test email sent!</p>}
               </div>
             </div>
             <div className="flex justify-end gap-2 px-5 pb-5">
               <button onClick={() => setSelected(null)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-              <button onClick={save} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">
+              <button onClick={save} disabled={saving} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm disabled:opacity-50">
                 {saving ? 'Saving...' : 'Save Template'}
               </button>
             </div>
@@ -122,24 +122,24 @@ export default function EmailTemplatesPanel() {
         </div>
       )}
 
-      {loading ? <div className="text-center py-12 text-gray-500">Loading...</div> : (
+      {loading ? <div className="text-center py-12 text-slate-500">Loading...</div> : (
         <div className="grid gap-3">
           {templates.map(t => (
             <div key={t.template_id} className="bg-white border rounded-xl p-4 shadow-sm flex items-center justify-between hover:border-blue-300 transition-colors">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-medium text-gray-900">{slugLabel(t.template_slug)}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${t.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                  <h3 className="font-medium text-slate-900">{slugLabel(t.template_slug)}</h3>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${t.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                     {t.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 mt-0.5">{t.subject_template}</p>
-                <p className="text-xs text-gray-400 mt-0.5">Locale: {t.locale} · Updated: {new Date(t.updated_at).toLocaleDateString()}</p>
+                <p className="text-sm text-slate-500 mt-0.5">{t.subject_template}</p>
+                <p className="text-xs text-slate-400 mt-0.5">Locale: {t.locale} · Updated: {new Date(t.updated_at).toLocaleDateString()}</p>
               </div>
               <button onClick={() => openTemplate(t)} className="text-blue-600 hover:underline text-sm ml-4">Edit</button>
             </div>
           ))}
-          {templates.length === 0 && <div className="text-center py-12 text-gray-500">No email templates found.</div>}
+          {templates.length === 0 && <div className="text-center py-12 text-slate-500">No email templates found.</div>}
         </div>
       )}
     </div>

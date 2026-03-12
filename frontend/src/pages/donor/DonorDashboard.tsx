@@ -707,29 +707,29 @@ function P2PFundraiser() {
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Campaign Title *</label>
-              <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none" placeholder="e.g. Running for Clean Water" required maxLength={200}/>
+              <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-400 outline-none" placeholder="e.g. Running for Clean Water" required maxLength={200}/>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Target Fund *</label>
-              <select value={form.fund_id} onChange={e => setForm(f => ({ ...f, fund_id: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none" required>
+              <select value={form.fund_id} onChange={e => setForm(f => ({ ...f, fund_id: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-400 outline-none" required>
                 <option value="">Select a fund…</option>
                 {funds.map((f: any) => <option key={f.fund_id} value={f.fund_id}>{f.fund_name}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Goal Amount (USD) *</label>
-              <input type="number" min={10} value={form.goal_amount} onChange={e => setForm(f => ({ ...f, goal_amount: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none" placeholder="1000" required/>
+              <input type="number" min={10} value={form.goal_amount} onChange={e => setForm(f => ({ ...f, goal_amount: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-400 outline-none" placeholder="1000" required/>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">End Date *</label>
-              <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none" required min={new Date().toISOString().split('T')[0]}/>
+              <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-400 outline-none" required min={new Date().toISOString().split('T')[0]}/>
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Your Personal Story</label>
-            <textarea rows={3} value={form.personal_story} onChange={e => setForm(f => ({ ...f, personal_story: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none" placeholder="Tell potential donors why this cause matters to you…" maxLength={2000}/>
+            <textarea rows={3} value={form.personal_story} onChange={e => setForm(f => ({ ...f, personal_story: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-400 outline-none" placeholder="Tell potential donors why this cause matters to you…" maxLength={2000}/>
           </div>
-          <button type="submit" disabled={submitting} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+          <button type="submit" disabled={submitting} className="px-6 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center gap-2">
             {submitting ? <><Loader2 size={14} className="animate-spin"/> Creating…</> : <><Plus size={14}/> Create Fundraiser</>}
           </button>
         </form>
@@ -819,7 +819,7 @@ function MyAccount() {
       <div className="glass rounded-xl border border-indigo-200 p-6">
         <h3 className="font-semibold text-slate-800 mb-2">📦 Download Your Data</h3>
         <p className="text-sm text-slate-600 mb-4">Under GDPR Article 20, you have the right to receive all personal data we hold about you in a portable, machine-readable format (JSON). This includes your profile, donation history, pledges, and notification history.</p>
-        <button onClick={downloadData} disabled={exporting} className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">
+        <button onClick={downloadData} disabled={exporting} className="px-5 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center gap-2">
           {exporting ? <><Loader2 size={14} className="animate-spin"/> Preparing…</> : '⬇️ Download My Data (JSON)'}
         </button>
       </div>

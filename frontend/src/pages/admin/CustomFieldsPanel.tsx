@@ -87,8 +87,8 @@ export default function CustomFieldsPanel() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Custom Fields</h2>
-        <button onClick={() => { setShowForm(true); setEditId(null); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
+        <h2 className="text-2xl font-bold text-slate-900">Custom Fields</h2>
+        <button onClick={() => { setShowForm(true); setEditId(null); }} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm">
           + Add Field
         </button>
       </div>
@@ -96,9 +96,9 @@ export default function CustomFieldsPanel() {
       {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg">{error}</div>}
 
       <div className="flex gap-2 flex-wrap">
-        <button onClick={() => setEntityFilter('')} className={`px-3 py-1 rounded-full text-sm ${entityFilter === '' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>All Entities</button>
+        <button onClick={() => setEntityFilter('')} className={`px-3 py-1 rounded-full text-sm ${entityFilter === '' ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-700'}`}>All Entities</button>
         {ENTITY_TYPES.map(e => (
-          <button key={e} onClick={() => setEntityFilter(e)} className={`px-3 py-1 rounded-full text-sm ${entityFilter === e ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+          <button key={e} onClick={() => setEntityFilter(e)} className={`px-3 py-1 rounded-full text-sm ${entityFilter === e ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
             {e.charAt(0).toUpperCase() + e.slice(1)}
           </button>
         ))}
@@ -138,45 +138,46 @@ export default function CustomFieldsPanel() {
               </div>
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Save</button>
+                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm">Save</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {loading ? <div className="text-center py-12 text-gray-500">Loading...</div> : (
-        <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+      {loading ? <div className="text-center py-12 text-slate-500">Loading...</div> : (
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-slate-50 border-b">
               <tr>
-                <th className="px-4 py-3 text-left text-gray-600">Field</th>
-                <th className="px-4 py-3 text-left text-gray-600">Entity</th>
-                <th className="px-4 py-3 text-left text-gray-600">Type</th>
-                <th className="px-4 py-3 text-left text-gray-600">Required</th>
-                <th className="px-4 py-3 text-left text-gray-600">Visibility</th>
-                <th className="px-4 py-3 text-left text-gray-600">Order</th>
+                <th className="px-4 py-3 text-left text-slate-600">Field</th>
+                <th className="px-4 py-3 text-left text-slate-600">Entity</th>
+                <th className="px-4 py-3 text-left text-slate-600">Type</th>
+                <th className="px-4 py-3 text-left text-slate-600">Required</th>
+                <th className="px-4 py-3 text-left text-slate-600">Visibility</th>
+                <th className="px-4 py-3 text-left text-slate-600">Order</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {fields.map(f => (
-                <tr key={f.field_id} className="hover:bg-gray-50">
+                <tr key={f.field_id} className="hover:bg-slate-50">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{f.field_label}</p>
-                    <p className="text-xs text-gray-500 font-mono">{f.field_name}</p>
+                    <p className="font-medium text-slate-900">{f.field_label}</p>
+                    <p className="text-xs text-slate-500 font-mono">{f.field_name}</p>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{f.entity_type}</td>
+                  <td className="px-4 py-3 text-slate-600">{f.entity_type}</td>
                   <td className="px-4 py-3">
-                    <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">{f.field_type}</span>
+                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-xs">{f.field_type}</span>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{f.is_required ? '✓' : '—'}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500 space-x-1">
+                  <td className="px-4 py-3 text-slate-600">{f.is_required ? '✓' : '—'}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500 space-x-1">
                     {f.is_visible_to_donor    && <span className="bg-blue-100 text-blue-700 px-1 rounded">donor</span>}
                     {f.is_visible_to_volunteer && <span className="bg-purple-100 text-purple-700 px-1 rounded">volunteer</span>}
-                    <span className="bg-gray-100 text-gray-600 px-1 rounded">admin</span>
+                    <span className="bg-slate-100 text-slate-600 px-1 rounded">admin</span>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{f.display_order}</td>
+                  <td className="px-4 py-3 text-slate-600">{f.display_order}</td>
                   <td className="px-4 py-3 flex gap-2">
                     <button onClick={() => openEdit(f)} className="text-blue-600 hover:underline text-xs">Edit</button>
                     <button onClick={() => deleteField(f.field_id)} className="text-red-600 hover:underline text-xs">Delete</button>
@@ -185,7 +186,8 @@ export default function CustomFieldsPanel() {
               ))}
             </tbody>
           </table>
-          {fields.length === 0 && <div className="text-center py-12 text-gray-500">No custom fields defined.</div>}
+          </div>
+          {fields.length === 0 && <div className="text-center py-12 text-slate-500">No custom fields defined.</div>}
         </div>
       )}
     </div>

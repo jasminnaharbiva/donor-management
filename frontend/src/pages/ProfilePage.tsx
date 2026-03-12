@@ -199,7 +199,7 @@ export default function ProfilePage() {
                         <button
                           onClick={verify2Fa}
                           disabled={twoFaToken.length !== 6 || twoFaEnabling}
-                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition"
+                          className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50 transition"
                         >
                           {twoFaEnabling ? <Loader2 size={16} className="animate-spin" /> : 'Verify'}
                         </button>
