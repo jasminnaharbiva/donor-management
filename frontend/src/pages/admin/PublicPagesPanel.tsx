@@ -48,7 +48,7 @@ export default function PublicPagesPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/v1/public-pages');
+      const res = await api.get('/public-pages');
       setPages(res.data);
     } catch { setError('Failed to load pages'); }
     setLoading(false);
@@ -59,7 +59,7 @@ export default function PublicPagesPanel() {
   const openPage = async (p: PublicPage) => {
     setError('');
     try {
-      const res = await api.get(`/api/v1/public-pages/${p.page_id}`);
+      const res = await api.get(`/public-pages/${p.page_id}`);
       const detail: PageDetail = res.data;
       setSelected(detail);
       setIsCreating(false);
@@ -107,10 +107,10 @@ export default function PublicPagesPanel() {
       };
 
       if (isCreating) {
-        await api.post('/api/v1/public-pages', payload);
+        await api.post('/public-pages', payload);
         setSuccess('Page created');
       } else if (selected) {
-        await api.put(`/api/v1/public-pages/${selected.page_id}`, payload);
+        await api.put(`/public-pages/${selected.page_id}`, payload);
         setSuccess('Page saved');
       }
 
@@ -127,7 +127,7 @@ export default function PublicPagesPanel() {
   const deletePage = async (id: number, title: string) => {
     if (!window.confirm(`Delete page "${title}"? This cannot be undone.`)) return;
     try {
-      await api.delete(`/api/v1/public-pages/${id}`);
+      await api.delete(`/public-pages/${id}`);
       setPages(p => p.filter(x => x.page_id !== id));
       setSuccess('Page deleted');
       setTimeout(() => setSuccess(''), 3000);
@@ -136,7 +136,7 @@ export default function PublicPagesPanel() {
 
   const togglePublish = async (p: PublicPage) => {
     try {
-      await api.put(`/api/v1/public-pages/${p.page_id}`, { is_published: !p.is_published });
+      await api.put(`/public-pages/${p.page_id}`, { is_published: !p.is_published });
       setPages(ps => ps.map(x => x.page_id === p.page_id ? { ...x, is_published: !p.is_published } : x));
     } catch { setError('Failed to update status'); }
   };

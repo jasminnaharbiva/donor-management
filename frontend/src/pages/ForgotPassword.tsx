@@ -12,7 +12,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     setLoading(true); setError('');
     try {
-      await api.post('/api/v1/auth/forgot-password', { email });
+      await api.post('/auth/forgot-password', { email });
       setSubmitted(true);
     } catch {
       setError('Something went wrong. Please try again.');

@@ -35,7 +35,7 @@ export default function ResetPassword() {
     if (s < 2) { setError('Password is too weak.'); return; }
     setLoading(true); setError('');
     try {
-      await api.post('/api/v1/auth/reset-password', { token, password });
+      await api.post('/auth/reset-password', { token, password });
       setSuccess(true);
       setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {

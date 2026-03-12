@@ -49,7 +49,7 @@ export default function FormSchemasPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/v1/form-schemas');
+      const res = await api.get('/form-schemas');
       setSchemas(res.data);
     } catch { setError('Failed to load form schemas'); }
     setLoading(false);
@@ -59,7 +59,7 @@ export default function FormSchemasPanel() {
 
   const openSchema = async (s: FormSchema) => {
     try {
-      const res = await api.get(`/api/v1/form-schemas/${s.schema_id}`);
+      const res = await api.get(`/form-schemas/${s.schema_id}`);
       const detail: FormSchemaDetail = res.data;
       setSelected(detail);
       setIsCreating(false);
@@ -89,10 +89,10 @@ export default function FormSchemasPanel() {
     setError('');
     try {
       if (isCreating) {
-        await api.post('/api/v1/form-schemas', { form_type: form.form_type, schema_json: form.schema_json, is_active: form.is_active });
+        await api.post('/form-schemas', { form_type: form.form_type, schema_json: form.schema_json, is_active: form.is_active });
         setSuccess('Schema created');
       } else if (selected) {
-        await api.put(`/api/v1/form-schemas/${selected.schema_id}`, { schema_json: form.schema_json, is_active: form.is_active });
+        await api.put(`/form-schemas/${selected.schema_id}`, { schema_json: form.schema_json, is_active: form.is_active });
         setSuccess('Schema saved');
       }
       setTimeout(() => setSuccess(''), 3000);
@@ -108,7 +108,7 @@ export default function FormSchemasPanel() {
   const deleteSchema = async (id: number) => {
     if (!window.confirm('Delete this form schema? This cannot be undone.')) return;
     try {
-      await api.delete(`/api/v1/form-schemas/${id}`);
+      await api.delete(`/form-schemas/${id}`);
       setSchemas(s => s.filter(x => x.schema_id !== id));
       setSuccess('Schema deleted');
       setTimeout(() => setSuccess(''), 3000);
@@ -117,7 +117,7 @@ export default function FormSchemasPanel() {
 
   const toggleActive = async (s: FormSchema) => {
     try {
-      await api.put(`/api/v1/form-schemas/${s.schema_id}`, { is_active: !s.is_active });
+      await api.put(`/form-schemas/${s.schema_id}`, { is_active: !s.is_active });
       setSchemas(ss => ss.map(x => {
         if (x.form_type === s.form_type) return { ...x, is_active: x.schema_id === s.schema_id ? !s.is_active : false };
         return x;

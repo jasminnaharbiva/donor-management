@@ -46,7 +46,7 @@ export default function TranslationsPanel() {
     setLoading(true);
     setError('');
     try {
-      const res = await api.get('/api/v1/translations', {
+      const res = await api.get('/translations', {
         params: { locale: filterLocale || undefined, namespace: filterNamespace || undefined, search: search || undefined, page, limit: PAGE_SIZE },
       });
       setRows(res.data.data);
@@ -65,7 +65,7 @@ export default function TranslationsPanel() {
     if (!editing) return;
     setSaving(true);
     try {
-      await api.put(`/api/v1/translations/${editing.translation_id}`, { value: editValue });
+      await api.put(`/translations/${editing.translation_id}`, { value: editValue });
       setRows(r => r.map(x => x.translation_id === editing.translation_id ? { ...x, value: editValue } : x));
       setEditing(null);
       setSuccess('Translation saved');
@@ -77,7 +77,7 @@ export default function TranslationsPanel() {
   const deleteRow = async (id: number) => {
     if (!window.confirm('Delete this translation?')) return;
     try {
-      await api.delete(`/api/v1/translations/${id}`);
+      await api.delete(`/translations/${id}`);
       setRows(r => r.filter(x => x.translation_id !== id));
       setTotal(t => t - 1);
     } catch { setError('Failed to delete'); }
@@ -87,7 +87,7 @@ export default function TranslationsPanel() {
     const { locale, namespace, key, value } = addForm;
     if (!locale || !namespace || !key || !value) return;
     try {
-      await api.post('/api/v1/translations', { locale, namespace, key, value });
+      await api.post('/translations', { locale, namespace, key, value });
       setShowAdd(false);
       setAddForm({ locale: '', namespace: '', key: '', value: '' });
       setSuccess('Translation added');
@@ -104,7 +104,7 @@ export default function TranslationsPanel() {
     try { parsed = JSON.parse(importJson); } catch { setError('Invalid JSON'); return; }
     setImporting(true);
     try {
-      const res = await api.post('/api/v1/translations/bulk-import', {
+      const res = await api.post('/translations/bulk-import', {
         locale: importLocale,
         namespace: importNamespace,
         translations: parsed,
