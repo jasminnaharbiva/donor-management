@@ -53,7 +53,7 @@ export default function AnnouncementsPanel() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2"><Megaphone className="text-primary-500" /> Announcements</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><Megaphone className="text-primary-500" /> Announcements</h2>
         <button onClick={() => setShowForm(true)} className="flex items-center justify-center sm:justify-start gap-2 bg-primary-600 hover:bg-primary-700 text-white text-sm px-4 py-2 rounded-lg">
           <Plus size={16} /> New Announcement
         </button>

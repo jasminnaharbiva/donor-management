@@ -147,7 +147,7 @@ export default function PublicPagesPanel() {
     <div className="p-3 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Public Pages</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-800 text-center sm:text-left">Public Pages</h2>
           <p className="text-slate-500 text-sm mt-1">Manage website pages with SEO metadata and content sections</p>
         </div>
         <button onClick={openCreate} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium">

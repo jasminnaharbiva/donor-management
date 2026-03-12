@@ -289,7 +289,7 @@ function DonationHistory() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Heart className="text-primary-500" /> My Donation History</h2>
+      <h2 className="text-xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><Heart className="text-primary-500" /> My Donation History</h2>
       <div className="glass rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[600px]">
@@ -344,7 +344,7 @@ function Subscriptions() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><RefreshCw className="text-purple-500" /> Recurring Subscriptions</h2>
+      <h2 className="text-xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><RefreshCw className="text-purple-500" /> Recurring Subscriptions</h2>
       <div className="space-y-3">
         {subs.map(s => (
           <div key={s.id} className={`glass rounded-xl p-5 flex justify-between items-center border-l-4 ${s.status === 'active' ? 'border-green-500' : 'border-slate-300'}`}>
@@ -458,7 +458,7 @@ function Pledges() {
         </div>
 
         <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2">
             <Calendar className="text-primary-500" /> My Active Pledges
           </h2>
           <div className="space-y-3">
@@ -544,7 +544,7 @@ function NotificationsPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Bell className="text-primary-500" /> All Notifications</h2>
+        <h2 className="text-xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><Bell className="text-primary-500" /> All Notifications</h2>
         {notes.some(n => !n.is_read) && (
           <button onClick={markAll} className="text-sm text-primary-600 hover:underline flex items-center gap-1"><CheckCircle size={14} /> Mark all read</button>
         )}
@@ -588,7 +588,7 @@ function MyImpact() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><TrendingUp className="text-green-500"/> Where Did My Money Go?</h2>
+      <h2 className="text-xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><TrendingUp className="text-green-500"/> Where Did My Money Go?</h2>
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -698,7 +698,7 @@ function P2PFundraiser() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Globe className="text-primary-500"/> Create a Fundraiser</h2>
+      <h2 className="text-xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><Globe className="text-primary-500"/> Create a Fundraiser</h2>
 
       {/* Create form */}
       <div className="glass rounded-xl border border-slate-200 p-6">
@@ -812,7 +812,7 @@ function MyAccount() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Shield className="text-primary-500"/> My Account &amp; Data Rights</h2>
+      <h2 className="text-xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><Shield className="text-primary-500"/> My Account &amp; Data Rights</h2>
 
       {message && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm flex items-center gap-2"><CheckCircle size={16}/>{message}</div>}
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2"><XCircle size={16}/>{error}</div>}

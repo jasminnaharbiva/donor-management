@@ -103,7 +103,7 @@ export default function SeoPanel() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">SEO Manager</h2>
+          <h2 className="text-xl font-bold text-slate-800 text-center sm:text-left">SEO Manager</h2>
           <p className="text-sm text-slate-500 mt-0.5">Control meta tags, structured data, analytics tracking, and search engine visibility</p>
         </div>
         <a

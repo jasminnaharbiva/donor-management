@@ -86,7 +86,7 @@ export default function RolesPanelFull() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2"><Shield className="text-primary-500" /> Role Management</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><Shield className="text-primary-500" /> Role Management</h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

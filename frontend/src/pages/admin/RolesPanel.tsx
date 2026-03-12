@@ -36,7 +36,7 @@ export default function RolesPanel() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2">
             <Shield className="text-primary-600" size={24} />
             Role Management
           </h2>
