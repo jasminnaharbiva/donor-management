@@ -13,7 +13,7 @@ export function useSocket(namespace = '') {
     
     // Auto-connect with standard Auth Bearer if token exists
     const socketInstance = io(`${SOCKET_URL}${namespace}`, {
-      auth: { token: token ? `Bearer ${token}` : undefined },
+      auth: { token: token || undefined },
       transports: ['websocket', 'polling'], // fallback gracefully
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

@@ -15,6 +15,7 @@ import { db } from './config/database';
 import { redis } from './config/redis';
 import { logger } from './utils/logger';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
+import { setNotificationIO } from './services/notification.engine';
 
 // Route imports
 import { authRouter }     from './routes/auth.routes';
@@ -63,6 +64,19 @@ const io = new SocketIOServer(server, {
 io.on('connection', (socket) => {
   logger.info('WebSocket client connected', { socketId: socket.id });
 
+  // Authenticate socket and join per-user room for targeted notifications
+  const token = (socket.handshake.auth?.token || socket.handshake.query?.token) as string | undefined;
+  if (token) {
+    try {
+      const jwt = require('jsonwebtoken');
+      const decoded: any = jwt.verify(token, config.jwt.accessSecret);
+      if (decoded?.userId) {
+        socket.join(`user:${decoded.userId}`);
+        logger.debug(`[WS] User ${decoded.userId} joined their notification room`);
+      }
+    } catch { /* Invalid token — skip room join */ }
+  }
+
   socket.on('subscribe:fund', (fundId: number) => {
     socket.join(`fund:${fundId}`);
   });
@@ -78,6 +92,9 @@ io.on('connection', (socket) => {
 
 // Export io so services can emit events
 export { io };
+
+// Wire io into notification engine for real-time push
+setNotificationIO(io);
 
 // ---------------------------------------------------------------------------
 // Security & request handling middleware

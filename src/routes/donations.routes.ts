@@ -4,7 +4,7 @@ import { db } from '../config/database';
 import { authenticate, requireRoles } from '../middleware/auth.middleware';
 import { writeAuditLog } from '../services/audit.service';
 import { createIntegrityHash } from '../services/integrity.service';
-import { sendDonationReceipt, sendHighValueDonationAlert } from '../services/email.service';
+import { fireNotification } from '../services/notification.engine';
 import { decrypt } from '../utils/crypto';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -121,7 +121,7 @@ donationRouter.post(
           const donorRow = await db('dfb_donors as d')
             .join('dfb_users as u', 'u.user_id', 'd.user_id')
             .where('d.donor_id', donorId)
-            .first('u.email_encrypted', 'd.first_name', 'd.last_name');
+            .first('u.email as email', 'u.user_id as userId', 'd.first_name', 'd.last_name');
           const fundRow = targetFundId
             ? await db('dfb_funds').where({ fund_id: targetFundId }).first('fund_name')
             : null;
@@ -129,36 +129,39 @@ donationRouter.post(
             ? await db('dfb_campaigns').where({ campaign_id: campaignId }).first('title')
             : null;
 
-          if (donorRow?.email_encrypted) {
-            const toEmail = decrypt(donorRow.email_encrypted);
-            await sendDonationReceipt({
+          if (donorRow?.email) {
+            const toEmail = decrypt(donorRow.email);
+            await fireNotification('donation_received', {
+              userId:  donorRow?.userId,
               toEmail,
-              firstName: donorRow.first_name || 'Donor',
-              amount: netAmount,
-              currency,
-              transactionId: txnId,
-              fundName: fundRow?.fund_name,
-              campaignName: campaignRow?.title,
-              date: new Date(),
+              variables: {
+                firstName:       donorRow.first_name || 'Donor',
+                formattedAmount: new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(netAmount),
+                transactionId:   txnId,
+                fundName:        fundRow?.fund_name || '',
+                campaignName:    campaignRow?.title || '',
+                date:            new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+                currency,
+                amount:          netAmount,
+              },
+              actionUrl:     '/donor',
+              referenceType: 'transaction',
+              referenceId:   txnId,
             });
           }
 
           // Alert admin for high-value donations (>= 10,000)
           if (netAmount >= 10000) {
-            const adminRow = await db('dfb_users')
-              .join('dfb_roles', 'dfb_roles.role_id', 'dfb_users.role_id')
-              .where('dfb_roles.role_name', 'Super Admin')
-              .first('dfb_users.email_encrypted', 'dfb_users.first_name');
-            if (adminRow?.email_encrypted) {
-              const adminEmail = decrypt(adminRow.email_encrypted);
-              await sendHighValueDonationAlert({
-                toEmail: adminEmail,
-                amount: netAmount,
+            await fireNotification('high_value_donation_alert', {
+              variables: {
+                donorName:       donorRow ? `${donorRow.first_name} ${donorRow.last_name}` : 'Anonymous',
+                formattedAmount: new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(netAmount),
+                transactionId:   txnId,
+                amount:          netAmount,
                 currency,
-                transactionId: txnId,
-                donorName: donorRow ? `${donorRow.first_name} ${donorRow.last_name}` : 'Anonymous',
-              });
-            }
+              },
+              actionUrl: '/admin/donations',
+            });
           }
         } catch (err) {
           // Non-fatal — log but never crash the request
