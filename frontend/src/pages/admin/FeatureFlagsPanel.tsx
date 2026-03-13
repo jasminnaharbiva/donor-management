@@ -61,7 +61,7 @@ export default function FeatureFlagsPanel() {
           {Object.entries(grouped).map(([group, groupFlags]) => (
             <div key={group} className="bg-white border rounded-xl shadow-sm overflow-hidden">
               <div className="px-5 py-3 bg-slate-50 border-b">
-                <h3 className="font-semibold text-slate-800">{group}</h3>
+                <h3 className="font-semibold text-slate-800 text-center sm:text-left">{group}</h3>
               </div>
               <div className="divide-y">
                 {groupFlags.map(flag => (

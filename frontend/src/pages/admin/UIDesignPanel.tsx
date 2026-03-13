@@ -117,7 +117,7 @@ function PreviewBanner({ vals }: { vals: Record<string, string> }) {
 
   return (
     <div className="glass rounded-xl p-6 space-y-4">
-      <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm">
+      <div className="flex items-center justify-center sm:justify-start gap-2 text-slate-700 font-semibold text-sm">
         <Eye size={16} /><span>Live Preview</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
