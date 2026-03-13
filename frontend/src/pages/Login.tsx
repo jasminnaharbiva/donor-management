@@ -263,28 +263,6 @@ export default function Login() {
           )}
         </div>
 
-        {/* Demo credentials */}
-        <div className="bg-white/5 backdrop-blur border border-white/10 rounded-xl p-4 text-xs text-slate-400 space-y-2">
-          <p className="font-semibold text-slate-300 flex items-center gap-1.5">
-            <Info size={13} /> Demo Credentials
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => { setEmail('admin@dfb.org'); setPassword('Admin@2026'); }}
-              className="text-left bg-white/5 hover:bg-white/10 rounded-lg p-2 transition-all border border-white/10 cursor-pointer">
-              <span className="block text-primary-400 font-medium">Admin</span>
-              <span className="block">admin@dfb.org</span>
-              <span className="block">Admin@2026</span>
-            </button>
-            <button type="button" onClick={() => { setEmail('volunteer@dfb.org'); setPassword('Volunteer@2026'); }}
-              className="text-left bg-white/5 hover:bg-white/10 rounded-lg p-2 transition-all border border-white/10 cursor-pointer">
-              <span className="block text-green-400 font-medium">Volunteer</span>
-              <span className="block">volunteer@dfb.org</span>
-              <span className="block">Volunteer@2026</span>
-            </button>
-          </div>
-          <p className="text-center text-slate-500">Click a role to auto-fill credentials</p>
-        </div>
-
         <p className="text-center text-slate-600 text-xs">
           © 2026 DFB Foundation. All rights reserved.
         </p>
