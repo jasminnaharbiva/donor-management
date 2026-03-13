@@ -338,7 +338,7 @@ volunteersRouter.get(
         't.status', 't.submitted_at', 's.shift_title', 'p.project_name'
       );
 
-    res.json({ success: true, data });
+    res.json({ success: true, data: sheets });
   }
 );
 
@@ -474,7 +474,7 @@ volunteersRouter.get(
     // Get total count for pagination
     const countQuery = query.clone().clearSelect().clearOrder().select(db.raw('COUNT(*) as total'));
     const countResult = await countQuery.first();
-    const total = Number(countResult.total);
+    const total = Number((countResult as any)?.total || 0);
 
     // Apply pagination
     query = query.limit(limitNum).offset(offset);
