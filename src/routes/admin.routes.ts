@@ -91,6 +91,42 @@ async function ensureLegalSettings() {
 }
 ensureLegalSettings().catch(() => {});
 
+async function ensureRegistrationSettings() {
+  const settings = [
+    {
+      key: 'registration.country_options',
+      value: JSON.stringify(['Bangladesh', 'India', 'United States', 'United Kingdom', 'Canada', 'Australia', 'UAE', 'Saudi Arabia', 'Qatar', 'Malaysia', 'Singapore']),
+      type: 'json',
+      category: 'registration',
+      isPublic: true,
+      desc: 'Available country options for donor and volunteer registration forms',
+    },
+    {
+      key: 'registration.profession_options',
+      value: JSON.stringify(['Student', 'Teacher', 'Doctor', 'Engineer', 'Business', 'Govt Service', 'Private Service', 'NGO Worker', 'Freelancer', 'Farmer', 'Other']),
+      type: 'json',
+      category: 'registration',
+      isPublic: true,
+      desc: 'Available profession options for donor and volunteer registration forms',
+    },
+  ];
+
+  for (const setting of settings) {
+    const exists = await db('dfb_system_settings').where({ setting_key: setting.key }).first();
+    if (!exists) {
+      await db('dfb_system_settings').insert({
+        setting_key: setting.key,
+        setting_value: setting.value,
+        value_type: setting.type,
+        category: setting.category,
+        is_public: setting.isPublic,
+        description: setting.desc,
+      });
+    }
+  }
+}
+ensureRegistrationSettings().catch(() => {});
+
 // ---------------------------------------------------------------------------
 // 1. Settings Management (dfb_system_settings)
 // ---------------------------------------------------------------------------

@@ -65,7 +65,7 @@ async function attachProjectInsights<T extends ProjectRow>(projects: T[]): Promi
 }
 
 // GET /api/v1/projects
-projectsRouter.get('/', authenticate, async (req: Request, res: Response): Promise<void> => {
+projectsRouter.get('/', authenticate, requireRoles('Super Admin', 'Admin'), async (req: Request, res: Response): Promise<void> => {
   const page   = Number(req.query.page  || 1);
   const limit  = Number(req.query.limit || 20);
   const offset = (page - 1) * limit;
@@ -96,7 +96,7 @@ projectsRouter.get('/', authenticate, async (req: Request, res: Response): Promi
 });
 
 // GET /api/v1/projects/:id
-projectsRouter.get('/:id', authenticate, param('id').isInt().toInt(), async (req: Request, res: Response): Promise<void> => {
+projectsRouter.get('/:id', authenticate, requireRoles('Super Admin', 'Admin'), param('id').isInt().toInt(), async (req: Request, res: Response): Promise<void> => {
   const project = await db('dfb_projects').where({ project_id: req.params.id as any }).first();
   if (!project) { res.status(404).json({ success: false, message: 'Project not found' }); return; }
 
@@ -193,7 +193,7 @@ projectsRouter.delete('/:id', authenticate, requireRoles('Super Admin'), param('
 // GET /api/v1/projects/:id/progress-logs — List project progress logs
 // POST /api/v1/projects/:id/progress-logs — Add append-only project progress update
 // ---------------------------------------------------------------------------
-projectsRouter.get('/:id/progress-logs', authenticate, param('id').isInt().toInt(), async (req: Request, res: Response): Promise<void> => {
+projectsRouter.get('/:id/progress-logs', authenticate, requireRoles('Super Admin', 'Admin'), param('id').isInt().toInt(), async (req: Request, res: Response): Promise<void> => {
   const project = await db('dfb_projects').where({ project_id: req.params.id as any }).first('project_id');
   if (!project) { res.status(404).json({ success: false, message: 'Project not found' }); return; }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Heart, Eye, EyeOff, Loader2, CheckCircle, AlertCircle, User, Mail, Lock } from 'lucide-react';
 import api from '../services/api';
@@ -7,6 +7,10 @@ export default function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const panel = searchParams.get('panel') || 'donor';
+  const defaultCountries = useMemo(() => ['Bangladesh', 'India', 'United States', 'United Kingdom', 'Canada', 'Australia', 'UAE', 'Saudi Arabia', 'Qatar', 'Malaysia', 'Singapore'], []);
+  const defaultProfessions = useMemo(() => ['Student', 'Teacher', 'Doctor', 'Engineer', 'Business', 'Govt Service', 'Private Service', 'NGO Worker', 'Freelancer', 'Farmer', 'Other'], []);
+  const [countryOptions, setCountryOptions] = useState<string[]>(defaultCountries);
+  const [professionOptions, setProfessionOptions] = useState<string[]>(defaultProfessions);
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -14,12 +18,34 @@ export default function Register() {
     password: '',
     confirmPassword: '',
     phone: '',
+    country: '',
+    profession: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    api.get('/public/settings')
+      .then((res) => {
+        const settings = res.data?.data || {};
+        const countries = settings['registration.country_options'];
+        const professions = settings['registration.profession_options'];
+
+        if (Array.isArray(countries) && countries.length > 0) {
+          setCountryOptions(countries.map((x) => String(x)).filter(Boolean));
+        }
+        if (Array.isArray(professions) && professions.length > 0) {
+          setProfessionOptions(professions.map((x) => String(x)).filter(Boolean));
+        }
+      })
+      .catch(() => {
+        setCountryOptions(defaultCountries);
+        setProfessionOptions(defaultProfessions);
+      });
+  }, [defaultCountries, defaultProfessions]);
 
   const passwordChecks = [
     { label: 'At least 8 characters', ok: form.password.length >= 8 },
@@ -45,11 +71,14 @@ export default function Register() {
     setLoading(true);
     try {
       await api.post('/auth/register', {
+        role: 'Donor',
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
         phone: form.phone.trim() || undefined,
+        country: form.country.trim() || undefined,
+        profession: form.profession.trim() || undefined,
       });
       setSuccess(true);
     } catch (err: any) {
@@ -195,6 +224,35 @@ export default function Register() {
                 className="w-full bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent"
                 placeholder="+1 234 567 8900"
               />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">Country (optional)</label>
+                <select
+                  value={form.country}
+                  onChange={(e) => setForm(f => ({ ...f, country: e.target.value }))}
+                  className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent"
+                >
+                  <option value="" className="text-slate-900">Select country</option>
+                  {countryOptions.map((country) => (
+                    <option key={country} value={country} className="text-slate-900">{country}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">Profession (optional)</label>
+                <select
+                  value={form.profession}
+                  onChange={(e) => setForm(f => ({ ...f, profession: e.target.value }))}
+                  className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent"
+                >
+                  <option value="" className="text-slate-900">Select profession</option>
+                  {professionOptions.map((profession) => (
+                    <option key={profession} value={profession} className="text-slate-900">{profession}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div>

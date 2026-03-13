@@ -10,7 +10,7 @@ const CACHE_TTL = 30; // seconds
 // ---------------------------------------------------------------------------
 // GET /api/v1/dashboard/stats — Super-fast dashboard KPIs
 // ---------------------------------------------------------------------------
-dashboardRouter.get('/stats', authenticate, async (req: Request, res: Response): Promise<void> => {
+dashboardRouter.get('/stats', authenticate, requireRoles('Super Admin', 'Admin'), async (req: Request, res: Response): Promise<void> => {
   const cacheKey = 'dashboard:stats:v2';
   const cached   = await redis.get(cacheKey);
   if (cached) {
@@ -90,7 +90,7 @@ dashboardRouter.get('/stats', authenticate, async (req: Request, res: Response):
 // ---------------------------------------------------------------------------
 // GET /api/v1/dashboard/live-feed — Recent 20 transactions (SSE-compatible)
 // ---------------------------------------------------------------------------
-dashboardRouter.get('/live-feed', authenticate, async (_req: Request, res: Response): Promise<void> => {
+dashboardRouter.get('/live-feed', authenticate, requireRoles('Super Admin', 'Admin'), async (_req: Request, res: Response): Promise<void> => {
   const recent = await db('dfb_transactions as t')
     .leftJoin('dfb_donors as d', 't.donor_id', 'd.donor_id')
     .where('t.status', 'Completed')
@@ -143,7 +143,7 @@ dashboardRouter.get(
 // ---------------------------------------------------------------------------
 // GET /api/v1/dashboard/sse — Server-Sent Events for real-time updates
 // ---------------------------------------------------------------------------
-dashboardRouter.get('/sse', authenticate, async (req: Request, res: Response): Promise<void> => {
+dashboardRouter.get('/sse', authenticate, requireRoles('Super Admin', 'Admin'), async (req: Request, res: Response): Promise<void> => {
   res.setHeader('Content-Type',  'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection',    'keep-alive');

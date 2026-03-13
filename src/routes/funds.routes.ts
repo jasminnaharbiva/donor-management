@@ -8,9 +8,34 @@ export const fundsRouter = Router();
 // ---------------------------------------------------------------------------
 // GET /api/v1/funds
 // ---------------------------------------------------------------------------
-fundsRouter.get('/', async (_req: Request, res: Response): Promise<void> => {
-  const funds = await db('dfb_funds').orderBy('fund_id', 'asc');
-  res.json({ success: true, data: funds });
+fundsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    const publicFunds = await db('dfb_funds').orderBy('fund_id', 'asc').select('fund_id', 'fund_name', 'fund_category');
+    res.json({ success: true, data: publicFunds });
+    return;
+  }
+
+  try {
+    const token = authHeader.slice(7);
+    const jwt = await import('jsonwebtoken');
+    const { config } = await import('../config');
+    const decoded = jwt.default.verify(token, config.jwt.accessSecret) as { roleId: number };
+    const role = await db('dfb_roles').where({ role_id: decoded.roleId }).first('role_name');
+    const isAdmin = role?.role_name === 'Super Admin' || role?.role_name === 'Admin' || role?.role_name === 'Finance';
+
+    if (isAdmin) {
+      const funds = await db('dfb_funds').orderBy('fund_id', 'asc');
+      res.json({ success: true, data: funds });
+      return;
+    }
+
+    const limitedFunds = await db('dfb_funds').orderBy('fund_id', 'asc').select('fund_id', 'fund_name', 'fund_category');
+    res.json({ success: true, data: limitedFunds });
+  } catch {
+    const publicFunds = await db('dfb_funds').orderBy('fund_id', 'asc').select('fund_id', 'fund_name', 'fund_category');
+    res.json({ success: true, data: publicFunds });
+  }
 });
 
 // ---------------------------------------------------------------------------

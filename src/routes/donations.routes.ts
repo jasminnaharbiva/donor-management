@@ -38,6 +38,12 @@ donationRouter.post(
       fundId, campaignId, gatewayTxnId, gatewayFee = 0,
     } = req.body;
 
+    let resolvedDonorId = donorId;
+    if (!resolvedDonorId) {
+      const currentUser = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
+      resolvedDonorId = currentUser?.donor_id;
+    }
+
     const netAmount  = amount - gatewayFee;
     const txnId      = uuidv4();
 
@@ -57,13 +63,13 @@ donationRouter.post(
       const hashId = await createIntegrityHash({
         recordType: 'transaction',
         recordId:   txnId,
-        payload:    { txnId, donorId, amount, currency, paymentMethod, fundId: targetFundId },
+        payload:    { txnId, donorId: resolvedDonorId, amount, currency, paymentMethod, fundId: targetFundId },
       });
 
       // Insert transaction
       await trx('dfb_transactions').insert({
         transaction_id:   txnId,
-        donor_id:         donorId || null,
+        donor_id:         resolvedDonorId || null,
         amount,
         currency,
         currency_type:    'fiat',
@@ -92,8 +98,8 @@ donationRouter.post(
       }
 
       // Update donor lifetime value
-      if (donorId) {
-        await trx('dfb_donors').where({ donor_id: donorId }).increment('lifetime_value', netAmount)
+      if (resolvedDonorId) {
+        await trx('dfb_donors').where({ donor_id: resolvedDonorId }).increment('lifetime_value', netAmount)
           .update({ last_donation_date: new Date(), updated_at: new Date() });
       }
 
@@ -115,12 +121,12 @@ donationRouter.post(
     });
 
     // Send email receipt to donor (non-blocking)
-    if (donorId) {
+    if (resolvedDonorId) {
       (async () => {
         try {
           const donorRow = await db('dfb_donors as d')
             .join('dfb_users as u', 'u.user_id', 'd.user_id')
-            .where('d.donor_id', donorId)
+            .where('d.donor_id', resolvedDonorId)
             .first('u.email as email', 'u.user_id as userId', 'd.first_name', 'd.last_name');
           const fundRow = targetFundId
             ? await db('dfb_funds').where({ fund_id: targetFundId }).first('fund_name')
@@ -277,25 +283,42 @@ donationRouter.get(
   '/my',
   authenticate,
   async (req: Request, res: Response): Promise<void> => {
-    const user = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
-    if (!user?.donor_id) {
-      res.json({ success: true, data: [] });
-      return;
+    try {
+      const user = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
+      if (!user?.donor_id) {
+        res.json({ success: true, data: [] });
+        return;
+      }
+
+      const page  = Number(req.query.page)  || 1;
+      const limit = Number(req.query.limit) || 50;
+      const offset = (page - 1) * limit;
+
+      const rows = await db('dfb_transactions as t')
+        .leftJoin(
+          db.raw('(SELECT transaction_id, MIN(fund_id) AS fund_id FROM dfb_allocations GROUP BY transaction_id) as af'),
+          't.transaction_id',
+          'af.transaction_id'
+        )
+        .leftJoin('dfb_funds as f', 'af.fund_id', 'f.fund_id')
+        .where('t.donor_id', user.donor_id)
+        .orderBy('t.created_at', 'desc')
+        .limit(limit)
+        .offset(offset)
+        .select(
+          't.transaction_id as id',
+          db.raw('COALESCE(t.net_amount, t.amount) as amount'),
+          't.payment_method',
+          db.raw('LOWER(t.status) as status'),
+          't.created_at',
+          'f.fund_name',
+          db.raw('NULL as campaign_title')
+        );
+
+      res.json({ success: true, data: rows });
+    } catch (error) {
+      console.error('[donations/my] Failed to fetch donation history:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch donation history' });
     }
-    const page  = Number(req.query.page)  || 1;
-    const limit = Number(req.query.limit) || 50;
-    const offset = (page - 1) * limit;
-    const rows = await db('dfb_transactions as t')
-      .leftJoin('dfb_funds as f', 't.fund_id', 'f.fund_id')
-      .leftJoin('dfb_campaigns as c', 't.campaign_id', 'c.campaign_id')
-      .where({ 't.donor_id': user.donor_id })
-      .orderBy('t.created_at', 'desc')
-      .limit(limit)
-      .offset(offset)
-      .select(
-        't.transaction_id as id', 't.net_amount as amount', 't.payment_method',
-        't.status', 't.created_at', 'f.fund_name', 'c.title as campaign_title'
-      );
-    res.json({ success: true, data: rows });
   }
 );

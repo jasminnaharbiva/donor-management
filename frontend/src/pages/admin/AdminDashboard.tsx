@@ -35,6 +35,7 @@ import PublicPagesPanel from './PublicPagesPanel';
 import FormSchemasPanel from './FormSchemasPanel';
 import UIDesignPanel from './UIDesignPanel';
 import VolunteerHubPanel from './VolunteerHubPanel';
+import DonorRecordsPanel from './DonorRecordsPanel';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -47,6 +48,7 @@ export default function AdminDashboard() {
     { name: 'Projects', path: '/admin/projects', icon: <FolderOpen size={20} /> },
     { name: 'Expenses', path: '/admin/expenses', icon: <BarChart3 size={20} /> },
     { name: 'Volunteer Hub', path: '/admin/volunteer-hub', icon: <UserCheck size={20} /> },
+    { name: 'Donor Records', path: '/admin/donor-records', icon: <FileText size={20} /> },
     { name: 'Shifts & Timesheets', path: '/admin/shifts', icon: <Clock size={20} /> },
     { name: 'P2P Campaigns', path: '/admin/p2p', icon: <Network size={20} /> },
     { name: 'Users', path: '/admin/users', icon: <Users size={20} /> },
@@ -85,6 +87,7 @@ export default function AdminDashboard() {
           <Route path="projects" element={<ProjectsPanel />} />
           <Route path="expenses" element={<ExpensesAdminPanel />} />
           <Route path="volunteer-hub" element={<VolunteerHubPanel />} />
+          <Route path="donor-records" element={<DonorRecordsPanel />} />
           <Route path="volunteers" element={<Navigate to="/admin/volunteer-hub?tab=people" replace />} />
           <Route path="vol-applications" element={<Navigate to="/admin/volunteer-hub?tab=applications" replace />} />
           <Route path="shifts" element={<ShiftsPanel />} />

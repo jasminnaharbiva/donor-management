@@ -163,77 +163,138 @@ donorRouter.delete(
 // GET /api/v1/donors/me/impact — "Where did my money go?" donor-facing provenance
 // ---------------------------------------------------------------------------
 donorRouter.get('/me/impact', authenticate, async (req: Request, res: Response): Promise<void> => {
-  // Resolve donor_id from authenticated user
-  const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
-  if (!userRow?.donor_id) {
-    res.status(403).json({ success: false, message: 'No donor account linked to this user' });
-    return;
-  }
-  const donorId = userRow.donor_id;
+  try {
+    const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
+    if (!userRow?.donor_id) {
+      res.status(403).json({ success: false, message: 'No donor account linked to this user' });
+      return;
+    }
+    const donorId = userRow.donor_id;
 
-  // Fetch all donations (transactions) for this donor
-  const donations = await db('dfb_transactions as t')
-    .join('dfb_funds as f', 't.fund_id', 'f.fund_id')
-    .where({ 't.donor_id': donorId })
-    .whereNull('t.deleted_at')
-    .orderBy('t.donated_at', 'desc')
-    .select(
-      't.transaction_id', 't.amount', 't.currency', 't.donated_at',
-      't.payment_method', 't.status',
-      'f.fund_id', 'f.fund_name', 'f.fund_type'
-    );
-
-  // For each donation, find allocations and their linked expenses
-  const impact = await Promise.all(donations.map(async (don: any) => {
-    const allocations = await db('dfb_allocations as a')
-      .leftJoin('dfb_expenses as e', 'a.expense_id', 'e.expense_id')
-      .where({ 'a.transaction_id': don.transaction_id })
+    const donations = await db('dfb_transactions as t')
+      .leftJoin('dfb_allocations as a', 't.transaction_id', 'a.transaction_id')
+      .leftJoin('dfb_funds as f', 'a.fund_id', 'f.fund_id')
+      .where({ 't.donor_id': donorId })
+      .orderBy('t.created_at', 'desc')
+      .groupBy('t.transaction_id', 't.net_amount', 't.amount', 't.currency', 't.created_at', 't.payment_method', 't.status')
       .select(
-        'a.allocation_id', 'a.allocated_amount', 'a.is_spent', 'a.allocated_at',
-        'e.expense_id', 'e.purpose', 'e.amount_spent', 'e.vendor_name',
-        'e.spent_timestamp', 'e.receipt_url', 'e.status as expense_status'
+        't.transaction_id',
+        db.raw('COALESCE(t.net_amount, t.amount) as amount'),
+        't.currency',
+        't.created_at as donated_at',
+        't.payment_method',
+        db.raw('LOWER(t.status) as status'),
+        db.raw('MAX(f.fund_id) as fund_id'),
+        db.raw('MAX(f.fund_name) as fund_name'),
+        db.raw('MAX(f.fund_category) as fund_type')
       );
 
-    const totalAllocated = allocations.reduce((s: number, a: any) => s + Number(a.allocated_amount), 0);
-    const totalSpent     = allocations.filter((a: any) => a.is_spent).reduce((s: number, a: any) => s + Number(a.allocated_amount), 0);
+    const impact = await Promise.all(donations.map(async (don: any) => {
+      const allocations = await db('dfb_allocations as a')
+        .leftJoin('dfb_expenses as e', 'a.expense_id', 'e.expense_id')
+        .where({ 'a.transaction_id': don.transaction_id })
+        .select(
+          'a.allocation_id', 'a.allocated_amount', 'a.is_spent', 'a.allocated_at',
+          'e.expense_id', 'e.purpose', 'e.amount_spent', 'e.vendor_name',
+          'e.spent_timestamp', 'e.receipt_url', 'e.status as expense_status'
+        );
 
-    return {
-      transaction_id:   don.transaction_id,
-      amount:           Number(don.amount),
-      currency:         don.currency,
-      donated_at:       don.donated_at,
-      payment_method:   don.payment_method,
-      status:           don.status,
-      fund:             { fund_id: don.fund_id, fund_name: don.fund_name, fund_type: don.fund_type },
-      total_allocated:  totalAllocated,
-      total_deployed:   totalSpent,
-      pending_amount:   Number(don.amount) - totalSpent,
-      allocations:      allocations.map((a: any) => ({
-        allocation_id:    a.allocation_id,
-        allocated_amount: Number(a.allocated_amount),
-        is_spent:         Boolean(a.is_spent),
-        allocated_at:     a.allocated_at,
-        expense:          a.expense_id ? {
-          expense_id:     a.expense_id,
-          purpose:        a.purpose,
-          amount_spent:   Number(a.amount_spent),
-          vendor_name:    a.vendor_name,
-          spent_on:       a.spent_timestamp,
-          receipt_url:    a.receipt_url,
-          status:         a.expense_status,
-        } : null,
-      })),
+      const totalAllocated = allocations.reduce((s: number, a: any) => s + Number(a.allocated_amount), 0);
+      const totalSpent = allocations.filter((a: any) => a.is_spent).reduce((s: number, a: any) => s + Number(a.allocated_amount), 0);
+      const amount = Number(don.amount || 0);
+
+      return {
+        transaction_id: don.transaction_id,
+        amount,
+        currency: don.currency,
+        donated_at: don.donated_at,
+        payment_method: don.payment_method,
+        status: don.status,
+        fund: {
+          fund_id: don.fund_id,
+          fund_name: don.fund_name,
+          fund_type: don.fund_type,
+        },
+        total_allocated: totalAllocated,
+        total_deployed: totalSpent,
+        pending_amount: Math.max(0, amount - totalSpent),
+        allocations: allocations.map((a: any) => ({
+          allocation_id: a.allocation_id,
+          allocated_amount: Number(a.allocated_amount),
+          is_spent: Boolean(a.is_spent),
+          allocated_at: a.allocated_at,
+          expense: a.expense_id ? {
+            expense_id: a.expense_id,
+            purpose: a.purpose,
+            amount_spent: Number(a.amount_spent),
+            vendor_name: a.vendor_name,
+            spent_on: a.spent_timestamp,
+            receipt_url: a.receipt_url,
+            status: a.expense_status,
+          } : null,
+        })),
+      };
+    }));
+
+    const summary = {
+      total_donated: donations.reduce((s: number, d: any) => s + Number(d.amount || 0), 0),
+      total_deployed: impact.reduce((s: number, i: any) => s + i.total_deployed, 0),
+      total_pending: impact.reduce((s: number, i: any) => s + i.pending_amount, 0),
+      donations_count: donations.length,
     };
-  }));
 
-  const summary = {
-    total_donated:  donations.reduce((s: number, d: any) => s + Number(d.amount), 0),
-    total_deployed: impact.reduce((s: number, i: any) => s + i.total_deployed, 0),
-    total_pending:  impact.reduce((s: number, i: any) => s + i.pending_amount, 0),
-    donations_count: donations.length,
-  };
+    res.json({ success: true, data: { summary, donations: impact } });
+  } catch (error) {
+    console.error('[donors/me/impact] Failed to build impact view:', error);
+    res.status(500).json({ success: false, message: 'Failed to load impact data' });
+  }
+});
 
-  res.json({ success: true, data: { summary, donations: impact } });
+donorRouter.get('/me/projects', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
+    if (!userRow?.donor_id) {
+      res.status(403).json({ success: false, message: 'No donor account linked to this user' });
+      return;
+    }
+
+    const donorId = userRow.donor_id;
+    const projects = await db('dfb_transactions as t')
+      .join('dfb_allocations as a', 't.transaction_id', 'a.transaction_id')
+      .join('dfb_expenses as e', 'a.expense_id', 'e.expense_id')
+      .join('dfb_projects as p', 'e.project_id', 'p.project_id')
+      .leftJoin('dfb_funds as f', 'p.fund_id', 'f.fund_id')
+      .where('t.donor_id', donorId)
+      .groupBy(
+        'p.project_id',
+        'p.project_name',
+        'p.description',
+        'p.status',
+        'p.location_country',
+        'p.location_city',
+        'p.start_date',
+        'p.target_completion_date',
+        'f.fund_name'
+      )
+      .select(
+        'p.project_id',
+        'p.project_name',
+        'p.description',
+        'p.status',
+        'p.location_country',
+        'p.location_city',
+        'p.start_date',
+        'p.target_completion_date',
+        'f.fund_name',
+        db.raw('SUM(a.allocated_amount) as allocated_amount')
+      )
+      .orderBy('p.updated_at', 'desc');
+
+    res.json({ success: true, data: projects });
+  } catch (error) {
+    console.error('[donors/me/projects] Failed to load donor projects:', error);
+    res.status(500).json({ success: false, message: 'Failed to load donor projects' });
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -249,9 +310,9 @@ donorRouter.get('/me/export', authenticate, async (req: Request, res: Response):
 
   const [donor, donations, pledges, notifications] = await Promise.all([
     db('dfb_donors').where({ donor_id: donorId }).first(),
-    db('dfb_transactions').where({ donor_id: donorId }).whereNull('deleted_at').orderBy('donated_at', 'desc'),
-    db('dfb_pledges').where({ donor_id: donorId }).whereNull('deleted_at'),
-    db('dfb_notifications').where({ recipient_user_id: req.user!.userId }).orderBy('created_at', 'desc').limit(200),
+    db('dfb_transactions').where({ donor_id: donorId }).orderBy('created_at', 'desc'),
+    db('dfb_pledges').where({ donor_id: donorId }),
+    db('dfb_notifications').where({ user_id: req.user!.userId }).orderBy('sent_at', 'desc').limit(200),
   ]);
 
   // Decrypt PII for export

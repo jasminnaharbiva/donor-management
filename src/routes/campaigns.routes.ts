@@ -9,7 +9,7 @@ export const campaignsRouter = Router();
 // ---------------------------------------------------------------------------
 // GET /api/v1/campaigns — Admin list all campaigns (auth required)
 // ---------------------------------------------------------------------------
-campaignsRouter.get('/', authenticate, async (req: Request, res: Response): Promise<void> => {
+campaignsRouter.get('/', authenticate, requireRoles('Super Admin', 'Admin'), async (req: Request, res: Response): Promise<void> => {
   const page = Number(req.query.page || 1);
   const limit = Number(req.query.limit || 20);
   const offset = (page - 1) * limit;
@@ -37,7 +37,7 @@ campaignsRouter.get('/', authenticate, async (req: Request, res: Response): Prom
 });
 
 // GET /api/v1/campaigns/:id — Get single campaign detail
-campaignsRouter.get('/:id', authenticate, param('id').isInt().toInt(), async (req: Request, res: Response): Promise<void> => {
+campaignsRouter.get('/:id', authenticate, requireRoles('Super Admin', 'Admin'), param('id').isInt().toInt(), async (req: Request, res: Response): Promise<void> => {
   const campaign = await db('dfb_campaigns').where({ campaign_id: req.params.id as any }).first();
   if (!campaign) { res.status(404).json({ success: false, message: 'Campaign not found' }); return; }
   res.json({ success: true, data: campaign });

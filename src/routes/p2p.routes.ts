@@ -12,11 +12,14 @@ p2pRouter.get('/', authenticate, async (req: Request, res: Response): Promise<vo
   const limit  = Number(req.query.limit || 20);
   const offset = (page - 1) * limit;
   const status = req.query.status as string | undefined;
+  const role = await db('dfb_roles').where({ role_id: req.user!.roleId }).first('role_name');
+  const isAdmin = role?.role_name === 'Super Admin' || role?.role_name === 'Admin';
 
   let qb = db('dfb_p2p_campaigns as p')
     .leftJoin('dfb_campaigns as c', 'p.parent_campaign_id', 'c.campaign_id');
 
   if (status) qb = qb.where('p.status', status);
+  if (!isAdmin) qb = qb.where('p.creator_user_id', req.user!.userId);
 
   const [{ total }] = await qb.clone().count('p.p2p_id as total');
   const campaigns = await qb.orderBy('p.created_at', 'desc').limit(limit).offset(offset)
@@ -27,7 +30,13 @@ p2pRouter.get('/', authenticate, async (req: Request, res: Response): Promise<vo
 
 // GET /api/v1/p2p/:id
 p2pRouter.get('/:id', authenticate, param('id').isInt().toInt(), async (req: Request, res: Response): Promise<void> => {
-  const p2p = await db('dfb_p2p_campaigns').where({ p2p_id: req.params.id as any }).first();
+  const role = await db('dfb_roles').where({ role_id: req.user!.roleId }).first('role_name');
+  const isAdmin = role?.role_name === 'Super Admin' || role?.role_name === 'Admin';
+
+  let qb = db('dfb_p2p_campaigns').where({ p2p_id: req.params.id as any });
+  if (!isAdmin) qb = qb.andWhere({ creator_user_id: req.user!.userId });
+
+  const p2p = await qb.first();
   if (!p2p) { res.status(404).json({ success: false, message: 'P2P campaign not found' }); return; }
   res.json({ success: true, data: p2p });
 });
@@ -46,18 +55,52 @@ p2pRouter.get('/by-slug/:slug', async (req: Request, res: Response): Promise<voi
 p2pRouter.post('/',
   authenticate,
   [
-    body('parentCampaignId').isInt({ min: 1 }).toInt(),
+    body('parentCampaignId').optional().isInt({ min: 1 }).toInt(),
+    body('fund_id').optional().isInt({ min: 1 }).toInt(),
     body('title').trim().notEmpty().isLength({ max: 200 }),
-    body('slug').trim().notEmpty().matches(/^[a-z0-9-]+$/).isLength({ max: 120 }),
+    body('slug').optional().trim().matches(/^[a-z0-9-]+$/).isLength({ max: 120 }),
     body('goalAmount').optional().isFloat({ min: 0 }).toFloat(),
+    body('goal_amount').optional().isFloat({ min: 0 }).toFloat(),
     body('personalStory').optional().isString(),
+    body('personal_story').optional().isString(),
     body('endDate').optional().isISO8601().toDate(),
+    body('end_date').optional().isISO8601().toDate(),
   ],
   async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
 
-    const { parentCampaignId, title, slug, goalAmount, personalStory, endDate, coverImageUrl } = req.body;
+    const title = String(req.body.title || '').trim();
+    const fundId = req.body.fund_id ? Number(req.body.fund_id) : null;
+
+    let parentCampaignId = req.body.parentCampaignId ? Number(req.body.parentCampaignId) : null;
+    if (!parentCampaignId && fundId) {
+      const campaignForFund = await db('dfb_campaigns')
+        .where({ fund_id: fundId, status: 'active' })
+        .orderBy('created_at', 'desc')
+        .first('campaign_id');
+      parentCampaignId = campaignForFund?.campaign_id || null;
+    }
+
+    if (!parentCampaignId) {
+      const fallbackCampaign = await db('dfb_campaigns')
+        .where({ status: 'active' })
+        .orderBy('created_at', 'desc')
+        .first('campaign_id');
+      parentCampaignId = fallbackCampaign?.campaign_id || null;
+    }
+
+    if (!parentCampaignId) {
+      res.status(400).json({ success: false, message: 'No eligible parent campaign found' });
+      return;
+    }
+
+    const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 90) || 'fundraiser';
+    const slug = String(req.body.slug || `${baseSlug}-${Date.now()}`);
+    const goalAmount = req.body.goalAmount ?? req.body.goal_amount ?? 0;
+    const personalStory = req.body.personalStory ?? req.body.personal_story;
+    const endDate = req.body.endDate ?? req.body.end_date;
+    const coverImageUrl = req.body.coverImageUrl ?? req.body.cover_image_url;
 
     // Unique slug check
     const existing = await db('dfb_p2p_campaigns').where({ slug }).first();

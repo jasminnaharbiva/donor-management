@@ -9,7 +9,7 @@ export const shiftsRouter = Router();
 // ─── SHIFTS ──────────────────────────────────────────────────────────────────
 
 // GET /api/v1/shifts
-shiftsRouter.get('/', authenticate, async (req: Request, res: Response): Promise<void> => {
+shiftsRouter.get('/', authenticate, requireRoles('Super Admin', 'Admin', 'Volunteer'), async (req: Request, res: Response): Promise<void> => {
   const page   = Number(req.query.page  || 1);
   const limit  = Number(req.query.limit || 20);
   const offset = (page - 1) * limit;
@@ -95,7 +95,7 @@ shiftsRouter.delete('/:id', authenticate, requireRoles('Super Admin'), param('id
 // ─── TIMESHEETS ──────────────────────────────────────────────────────────────
 
 // GET /api/v1/shifts/timesheets
-shiftsRouter.get('/timesheets', authenticate, async (req: Request, res: Response): Promise<void> => {
+shiftsRouter.get('/timesheets', authenticate, requireRoles('Super Admin', 'Admin'), async (req: Request, res: Response): Promise<void> => {
   const page   = Number(req.query.page  || 1);
   const limit  = Number(req.query.limit || 20);
   const offset = (page - 1) * limit;
@@ -144,6 +144,7 @@ shiftsRouter.patch('/timesheets/:id/review',
 // POST /api/v1/shifts/timesheets — Volunteer submits timesheet
 shiftsRouter.post('/timesheets',
   authenticate,
+  requireRoles('Super Admin', 'Admin', 'Volunteer'),
   [
     body('volunteerId').isInt({ min: 1 }).toInt(),
     body('startDatetime').isISO8601().toDate(),
@@ -156,7 +157,19 @@ shiftsRouter.post('/timesheets',
     const errors = validationResult(req);
     if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
 
-    const { volunteerId, startDatetime, endDatetime, activityDescription, projectId, shiftId } = req.body;
+    const userRole = await db('dfb_roles').where({ role_id: req.user!.roleId }).first('role_name');
+    let volunteerId = Number(req.body.volunteerId);
+
+    if (userRole?.role_name === 'Volunteer') {
+      const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id');
+      if (!userRow?.volunteer_id) {
+        res.status(403).json({ success: false, message: 'No volunteer profile linked to this account' });
+        return;
+      }
+      volunteerId = Number(userRow.volunteer_id);
+    }
+
+    const { startDatetime, endDatetime, activityDescription, projectId, shiftId } = req.body;
 
     const [id] = await db('dfb_timesheets').insert({
       volunteer_id:           volunteerId,

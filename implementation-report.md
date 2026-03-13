@@ -1043,3 +1043,154 @@ This section closes gaps between implemented fixes and documentation by mapping 
 - `frontend/src/pages/VolunteerApply.tsx`
 - `implementation-report.md`
 
+---
+
+## Phase 14 — Volunteer Platform Consolidation, Dynamic Document Engine, and Release Verification (March 13, 2026)
+
+**Release commit**: `0d7efc1`
+
+### Volunteer Navigation Consolidation ✅
+
+- Replaced fragmented volunteer sidebar entries with a single **Volunteer Hub** entry.
+- Added unified tabbed platform for:
+  - Volunteer Directory,
+  - Applications,
+  - Records / IDs / Certificates.
+- Added backward-compatible redirects:
+  - `/admin/volunteers` → `/admin/volunteer-hub?tab=people`
+  - `/admin/vol-applications` → `/admin/volunteer-hub?tab=applications`
+  - `/admin/vol-records` and `/admin/vms` → `/admin/volunteer-hub?tab=records`
+
+### Advanced ID Card + Certificate Engine (2026-grade) ✅
+
+Implemented dynamic generation pipeline end-to-end:
+
+- Template-level dynamic JSON fields and layout metadata.
+- Auto QR generation per issued ID card and certificate.
+- Issuance-time render payload snapshots.
+- Stored rendered HTML snapshots for audit and re-open/view workflows.
+- Template preview endpoints and issued render retrieval endpoints.
+- Template update/delete with in-use delete guards.
+
+### Schema Expansion & Compatibility ✅
+
+Confirmed migration chain and active DB state:
+
+- `20260313180000_create_vms_core_tables.ts`
+- `20260313210000_unify_volunteer_systems_and_modernize_certificates.ts`
+- `20260313224000_add_dynamic_generation_fields_to_volunteer_records.ts`
+
+All listed migrations are applied and no pending migration remains.
+
+### Tooling Reliability Hardening ✅
+
+Fixed a migration tooling runtime issue in `knexfile.ts`:
+
+- Replaced `__dirname`-based `.env` resolution with `process.cwd()` path resolution.
+- Result: `npx knex migrate:status --knexfile knexfile.ts` now works reliably in this runtime.
+
+### Verification Matrix (Executed) ✅
+
+1) **Static and build checks**
+- Backend build: pass
+- Frontend build: pass
+- IDE/runtime problems scan: no errors
+
+2) **Runtime and route smoke checks**
+- `/health` returns `200`
+- Public VMS settings endpoint returns `200`
+- Protected endpoints return `401` without token (expected)
+- Auth login returns `200` and access token
+
+3) **Authenticated E2E API checks (volunteer records)**
+- ID template create/update/preview: pass
+- ID card issue/render: pass
+- Certificate template create/update/preview: pass
+- Certificate issue/render: pass
+- Delete used template guard (`409`): pass
+- Delete unused template (`200`): pass
+
+### Deployment Status ✅
+
+- Branch: `main`
+- Remote: `origin` (`jasminnaharbiva/donor-management`)
+- Pushed successfully to GitHub main:
+  - `b20b1c6..0d7efc1  main -> main`
+- Post-push working tree: clean
+
+---
+
+## Phase 15 — Donor Records, Privacy Boundaries, and Access-Control Verification (March 13, 2026)
+
+### Donor Records Module (Admin + Donor) ✅
+
+Implemented a dedicated donor-records system with full admin issuance and donor self-service visibility.
+
+- New backend route module: `src/routes/donor-records.routes.ts`
+  - Donor ID template CRUD, preview, issue, render, revoke
+  - Donor certificate template CRUD, preview, issue, render
+  - Admin-to-donor messaging
+  - Donor self endpoints under `/api/v1/donor-records/my/*`
+- New migration: `20260313235900_add_donor_records_and_privacy_fields.ts`
+  - Added donor profile fields: `country`, `profession`
+  - Added donor record tables:
+    - `dfb_donor_id_card_templates`
+    - `dfb_donor_id_cards`
+    - `dfb_donor_certificate_templates`
+    - `dfb_donor_certificate_awards`
+    - `dfb_donor_messages`
+- API mounted in `src/index.ts` at `/api/v1/donor-records`.
+
+### Frontend Integration ✅
+
+- New admin panel: `frontend/src/pages/admin/DonorRecordsPanel.tsx`
+  - Template management, issuance workflows, render previews, donor messaging.
+- New donor page: `frontend/src/pages/donor/DonorRecordsPage.tsx`
+  - “My ID Cards”, “My Certificates”, “My Messages”.
+- Dashboard wiring:
+  - `frontend/src/pages/admin/AdminDashboard.tsx` → new `Donor Records` route/menu.
+  - `frontend/src/pages/donor/DonorDashboard.tsx` → new `My Records` route/menu.
+
+### Registration & Volunteer Flow Correction ✅
+
+Per user requirement, volunteer onboarding remains unchanged from prior approved flow.
+
+- Donor registration enhancements:
+  - `frontend/src/pages/Register.tsx` now submits donor-only registration payload (`role: Donor`) with optional country/profession dropdowns.
+  - `src/routes/auth.routes.ts` supports optional donor `phone`, `country`, `profession`.
+- Volunteer registration guard:
+  - `src/routes/auth.routes.ts` now rejects `role=Volunteer` on `/auth/register` with `403`, preserving volunteer application-and-approval onboarding.
+- Public registration option seeds added in `src/routes/admin.routes.ts`:
+  - `registration.country_options`
+  - `registration.profession_options`
+
+### Access-Control & Privacy Hardening ✅
+
+- Enforced stricter admin-only protection on global endpoints (`projects`, `campaigns`, selected dashboard and timesheet list endpoints).
+- Donor-facing self endpoints added for scope-safe reads:
+  - `/api/v1/donors/me/projects`
+  - `/api/v1/donors/me/impact`
+  - `/api/v1/donations/my`
+- Corrected donor self record route usage to `/donor-records/my/*` in frontend.
+
+### Verification Matrix (Executed) ✅
+
+1) **Build + migration**
+- `npm run migrate`: pass (`Batch 4 run: 1 migrations`)
+- Backend build: pass
+- Frontend build: pass
+
+2) **Runtime authorization matrix**
+- `donor -> /api/v1/donor-records/id-card-templates` = `403` (expected)
+- `admin -> /api/v1/donor-records/id-card-templates` = `200` (expected)
+- `donor -> /api/v1/projects` = `403` (expected)
+- `donor -> /api/v1/donors/me/projects` = `200` (expected)
+
+3) **Donor-record lifecycle checks**
+- Issue donor ID card = `201`
+- Issue donor certificate = `201`
+- Donor self ID cards (`/my/id-cards`) = `200`
+- Donor self certificates (`/my/certificates`) = `200`
+- Donor self messages (`/my/messages`) = `200`
+
+

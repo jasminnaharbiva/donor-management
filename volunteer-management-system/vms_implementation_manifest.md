@@ -2,17 +2,28 @@
 
 This file tracks where the implemented VMS module lives in the current software.
 
+## Release Snapshot
+- Date: March 13, 2026
+- Branch: `main`
+- Deployed commit: `0d7efc1`
+- Status: pushed to GitHub `jasminnaharbiva/donor-management`
+
 ## Implemented Source Files
 
 ## Backend
 - `src/routes/vms.routes.ts`
 - `migrations/20260313180000_create_vms_core_tables.ts`
 - `migrations/20260313210000_unify_volunteer_systems_and_modernize_certificates.ts`
+- `migrations/20260313224000_add_dynamic_generation_fields_to_volunteer_records.ts`
+- `src/routes/volunteer-records.routes.ts` (advanced dynamic ID/certificate generation endpoints)
 - `src/scripts/seed-unified-volunteer-demo.ts`
 - `src/index.ts` (VMS route + uploads static mount)
+- `knexfile.ts` (runtime-safe `.env` path resolution for Knex tooling)
 
 ## Frontend
 - `frontend/src/pages/admin/VmsPanel.tsx`
+- `frontend/src/pages/admin/VolunteerHubPanel.tsx`
+- `frontend/src/pages/admin/VolunteerRecordsPanel.tsx` (dynamic template/preview/render UX)
 - `frontend/src/pages/vms/VmsHome.tsx`
 - `frontend/src/pages/vms/VmsCertificatePage.tsx`
 - `frontend/src/pages/admin/AdminDashboard.tsx` (menu + route integration)
@@ -22,7 +33,11 @@ This file tracks where the implemented VMS module lives in the current software.
 - Public VMS UI: `/vms`
 - Public Certificate View: `/vms/certificate/:certificateId`
 - API Base: `/api/v1/vms`
-- Admin integration panel: `/admin/vms`
+- Admin unified volunteer platform: `/admin/volunteer-hub`
+- Legacy path compatibility:
+	- `/admin/volunteers` → `/admin/volunteer-hub?tab=people`
+	- `/admin/vol-applications` → `/admin/volunteer-hub?tab=applications`
+	- `/admin/vol-records` and `/admin/vms` → `/admin/volunteer-hub?tab=records`
 
 ## Unified API Additions (DFB + VMS)
 - `GET /api/v1/vms/admin/unified/volunteers`
@@ -33,6 +48,16 @@ This file tracks where the implemented VMS module lives in the current software.
 - Public certificate lookup now checks both systems via:
 	- `POST /api/v1/vms/public/verify-certificate`
 	- `GET /api/v1/vms/public/certificate/:certificateId`
+
+## Volunteer Records Advanced API Additions
+- `PUT /api/v1/volunteer-records/id-card-templates/:templateId`
+- `DELETE /api/v1/volunteer-records/id-card-templates/:templateId`
+- `POST /api/v1/volunteer-records/id-card-templates/:templateId/preview`
+- `GET /api/v1/volunteer-records/id-cards/:cardId/render`
+- `PUT /api/v1/volunteer-records/certificate-templates/:templateId`
+- `DELETE /api/v1/volunteer-records/certificate-templates/:templateId`
+- `POST /api/v1/volunteer-records/certificate-templates/:templateId/preview`
+- `GET /api/v1/volunteer-records/certificates/:awardId/render`
 
 ## Database Tables
 - `vms_admins`
@@ -54,8 +79,16 @@ Change this password immediately if used for standalone VMS auth.
 - Build frontend: `cd frontend && npm run build`
 - Seed unified demo data: `npm run seed:volunteer-demo`
 - Restart app: `pm2 restart dfb-api`
+- Migration status: `npx knex migrate:status --knexfile knexfile.ts`
 
 ## Smoke Test Endpoints
 - `GET /api/v1/vms/public/settings`
 - `POST /api/v1/vms/public/verify-certificate`
 - `GET /api/v1/vms/admin/dashboard/stats` (requires main admin token)
+
+## Verification Status
+- Backend build: pass
+- Frontend build: pass
+- Migration status: all applied, no pending
+- Runtime smoke: pass (`200/401/404` as expected by route type)
+- Authenticated volunteer-records E2E (template create/update/preview, issue, render, delete guards): pass

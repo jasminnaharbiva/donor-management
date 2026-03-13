@@ -26,6 +26,9 @@ authRouter.post(
     body('password').isLength({ min: 8 }).matches(/(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])/),
     body('firstName').trim().notEmpty().isLength({ max: 80 }),
     body('lastName').trim().notEmpty().isLength({ max: 80 }),
+    body('phone').optional().trim().isLength({ max: 30 }),
+    body('country').optional().trim().isLength({ max: 60 }),
+    body('profession').optional().trim().isLength({ max: 100 }),
   ],
   async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req);
@@ -34,9 +37,18 @@ authRouter.post(
       return;
     }
 
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, phone, country, profession } = req.body;
+
+    if (String(req.body.role || '').trim().toLowerCase() === 'volunteer') {
+      res.status(403).json({
+        success: false,
+        message: 'Volunteer accounts must be created via the volunteer application and approval workflow.',
+      });
+      return;
+    }
 
     const encryptedEmail = encrypt(email);
+    const encryptedPhone = phone ? encrypt(phone) : null;
 
     // Check for existing email — scan encrypted values is impractical at scale;
     // use a hash index instead (sha256 of normalised email for dedup)
@@ -51,27 +63,28 @@ authRouter.post(
 
     const passwordHash = await bcrypt.hash(password, 12);
     const userId       = uuidv4();
-    const donorRole    = await db('dfb_roles').where({ role_name: 'Donor' }).first('role_id');
+    const roleRec = await db('dfb_roles').where({ role_name: 'Donor' }).first('role_id');
 
     await db.transaction(async (trx) => {
-      // Create donor record
       const [donorId] = await trx('dfb_donors').insert({
         first_name: firstName,
         last_name:  lastName,
         email:      encryptedEmail,
         email_hash: emailHash,
+        phone:      encryptedPhone,
         donor_type: 'Individual',
+        country:    country || null,
+        profession: profession || null,
         created_at: new Date(),
         updated_at: new Date(),
       });
 
-      // Create user account
       await trx('dfb_users').insert({
         user_id:           userId,
         email:             encryptedEmail,
         email_hash:        emailHash,
         password_hash:     passwordHash,
-        role_id:           donorRole?.role_id || 5,
+        role_id:           roleRec?.role_id || 5,
         donor_id:          donorId,
         status:            'active',
         email_verified_at: new Date(),
@@ -89,13 +102,13 @@ authRouter.post(
       userAgent:     req.get('User-Agent'),
     });
 
-    // Send welcome email (non-blocking)
     sendWelcomeEmail({ toEmail: email, firstName, role: 'Donor' }).catch(() => {});
 
     res.status(201).json({
       success: true,
       message: 'Registration successful. Welcome to DFB Foundation!',
       userId,
+      role: 'Donor',
     });
   }
 );

@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Heart, Trophy, RefreshCw, Activity, Bell, Loader2, CheckCircle, XCircle, Plus, DollarSign, Calendar, Calculator, Globe, Shield, TrendingUp } from 'lucide-react';
 import api from '../../services/api';
 import ZakatCalculator from '../../components/ZakatCalculator';
+import DonorRecordsPage from './DonorRecordsPage';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -500,6 +501,7 @@ export default function DonorDashboard() {
     { name: 'Overview', path: '/donor/overview', icon: <Activity size={20} /> },
     { name: 'My Impact', path: '/donor/impact', icon: <TrendingUp size={20} /> },
     { name: 'Donation History', path: '/donor/history', icon: <Heart size={20} /> },
+    { name: 'My Records', path: '/donor/records', icon: <Trophy size={20} /> },
     { name: 'Pledges', path: '/donor/pledges', icon: <Calendar size={20} /> },
     { name: 'Create Fundraiser', path: '/donor/fundraiser', icon: <Globe size={20} /> },
     { name: 'Zakat Calculator', path: '/donor/zakat', icon: <Calculator size={20} /> },
@@ -515,6 +517,7 @@ export default function DonorDashboard() {
         <Route path="overview" element={<Overview />} />
         <Route path="impact" element={<MyImpact />} />
         <Route path="history" element={<DonationHistory />} />
+        <Route path="records" element={<DonorRecordsPage />} />
         <Route path="pledges" element={<Pledges />} />
         <Route path="fundraiser" element={<P2PFundraiser />} />
         <Route path="zakat" element={<div className="max-w-4xl mx-auto"><ZakatCalculator /></div>} />

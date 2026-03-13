@@ -12,34 +12,40 @@ pledgesRouter.use(authenticate);
 // GET /api/v1/pledges — My pledges (donor) or all pledges (admin)
 // ---------------------------------------------------------------------------
 pledgesRouter.get('/', async (req: Request, res: Response) => {
-  const isAdmin = ['Super Admin', 'Admin'].includes(req.user!.roleName || '');
-  const page = Number(req.query.page || 1);
-  const limit = Number(req.query.limit || 20);
-  const offset = (page - 1) * limit;
+  try {
+    const isAdmin = ['Super Admin', 'Admin'].includes(req.user!.roleName || '');
+    const page = Number(req.query.page || 1);
+    const limit = Number(req.query.limit || 20);
+    const offset = (page - 1) * limit;
 
-  let q = db('dfb_pledges as p')
-    .leftJoin('dfb_donors as d', 'p.donor_id', 'd.donor_id')
-    .leftJoin('dfb_funds as f', 'p.fund_id', 'f.fund_id')
-    .leftJoin('dfb_campaigns as c', 'p.campaign_id', 'c.campaign_id')
-    .select(
-      'p.pledge_id', 'p.total_pledge_amount', 'p.amount_fulfilled',
-      'p.installment_count', 'p.installments_paid', 'p.frequency',
-      'p.start_date', 'p.end_date', 'p.status', 'p.created_at',
-      'd.first_name', 'd.last_name',
-      'f.fund_name', 'c.title as campaign_title'
-    );
+    let q = db('dfb_pledges as p')
+      .leftJoin('dfb_donors as d', 'p.donor_id', 'd.donor_id')
+      .leftJoin('dfb_funds as f', 'p.fund_id', 'f.fund_id')
+      .leftJoin('dfb_campaigns as c', 'p.campaign_id', 'c.campaign_id')
+      .select(
+        'p.pledge_id as id',
+        'p.pledge_id', 'p.total_pledge_amount', 'p.amount_fulfilled',
+        'p.installment_count', 'p.installments_paid', 'p.frequency',
+        'p.start_date', 'p.end_date', 'p.status', 'p.created_at',
+        'd.first_name', 'd.last_name',
+        'f.fund_name', 'c.title as campaign_title'
+      );
 
-  if (!isAdmin) {
-    // Find donor linked to this user
-    const user = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
-    if (!user?.donor_id) { res.json({ success: true, data: [], meta: { total: 0 } }); return; }
-    q = q.where('p.donor_id', user.donor_id);
+    if (!isAdmin) {
+      const user = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
+      if (!user?.donor_id) { res.json({ success: true, data: [], meta: { total: 0, page, limit } }); return; }
+      q = q.where('p.donor_id', user.donor_id);
+    }
+
+    const totalRow = await q.clone().clearSelect().clearOrder().countDistinct({ total: 'p.pledge_id' }).first();
+    const total = Number(totalRow?.total || 0);
+    const pledges = await q.orderBy('p.created_at', 'desc').limit(limit).offset(offset);
+
+    res.json({ success: true, data: pledges, meta: { total, page, limit } });
+  } catch (error) {
+    console.error('[pledges] Failed to fetch pledges:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch pledges' });
   }
-
-  const [{ total }] = await q.clone().count('p.pledge_id as total').clearSelect();
-  const pledges = await q.orderBy('p.created_at', 'desc').limit(limit).offset(offset);
-
-  res.json({ success: true, data: pledges, meta: { total: Number(total), page, limit } });
 });
 
 // ---------------------------------------------------------------------------
@@ -53,7 +59,7 @@ pledgesRouter.post('/',
     body('totalPledgeAmount').isFloat({ min: 1 }).toFloat(),
     body('installmentCount').isInt({ min: 1 }).toInt(),
     body('frequency').isIn(['one_time', 'monthly', 'quarterly', 'annually']),
-    body('startDate').isISO8601().toDate(),
+    body('startDate').optional().isISO8601().toDate(),
     body('endDate').optional().isISO8601().toDate(),
   ],
   async (req: Request, res: Response): Promise<void> => {
@@ -76,7 +82,7 @@ pledgesRouter.post('/',
       installment_count: req.body.installmentCount,
       installments_paid: 0,
       frequency: req.body.frequency,
-      start_date: req.body.startDate,
+      start_date: req.body.startDate || new Date(),
       end_date: req.body.endDate || null,
       status: 'active',
       created_at: new Date(),

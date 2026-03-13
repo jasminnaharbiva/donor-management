@@ -18,8 +18,10 @@ recurringRouter.get('/', async (req: Request, res: Response) => {
     .leftJoin('dfb_donors as d', 'rs.donor_id', 'd.donor_id')
     .leftJoin('dfb_funds as f', 'rs.fund_id', 'f.fund_id')
     .select(
+      'rs.subscription_id as id',
       'rs.subscription_id', 'rs.amount', 'rs.currency', 'rs.frequency',
       'rs.gateway', 'rs.gateway_subscription_id', 'rs.status',
+      'rs.next_billing_date as next_run_date',
       'rs.next_billing_date', 'rs.failure_count', 'rs.created_at',
       'd.first_name', 'd.last_name', 'f.fund_name'
     );

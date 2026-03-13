@@ -31,7 +31,22 @@ notificationsRouter.get('/', async (req: Request, res: Response): Promise<void> 
     .where({ user_id: req.user!.userId })
     .orderBy('sent_at', 'desc')
     .limit(limit).offset(offset)
-    .select('*');
+    .select(
+      'notification_id as id',
+      'notification_id',
+      'type',
+      'title',
+      'body as message',
+      'body',
+      'is_read',
+      'sent_at as created_at',
+      'sent_at',
+      'read_at',
+      'action_url',
+      'channel',
+      'reference_type',
+      'reference_id'
+    );
 
   res.json({
     success: true,
