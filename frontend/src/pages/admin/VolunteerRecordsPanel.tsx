@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 
-type ActiveTab = 'id-cards' | 'certificates' | 'messages';
+type ActiveTab = 'id-cards' | 'certificates' | 'messages' | 'volunteers';
 
 // Matches GET /volunteer-records/id-card-templates
 interface IdCardTemplate {
@@ -81,6 +81,21 @@ interface Volunteer {
   status: string;
 }
 
+// Matches GET /volunteers/search
+interface VolunteerSearchResult {
+  volunteer_id: number;
+  first_name: string;
+  last_name: string;
+  city: string | null;
+  country: string | null;
+  background_check_status: string;
+  badge_number: string;
+  status: string;
+  approved_at: string | null;
+  created_at: string;
+  email: string | null;
+}
+
 const today = () => new Date().toISOString().split('T')[0];
 const nextYear = () => {
   const d = new Date(); d.setFullYear(d.getFullYear() + 1);
@@ -135,12 +150,54 @@ export default function VolunteerRecordsPanel() {
   // Volunteer list for dropdowns
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
 
+  // --- Volunteer Search State ---
+  const [volunteerSearchResults, setVolunteerSearchResults] = useState<VolunteerSearchResult[]>([]);
+  const [loadingVolunteers, setLoadingVolunteers] = useState(false);
+  const [volunteerFilters, setVolunteerFilters] = useState({
+    search: '',
+    status: '',
+    city: '',
+    country: '',
+    background_check_status: '',
+    badge_number: '',
+    approved_after: '',
+    approved_before: '',
+    sort_by: 'first_name',
+    sort_order: 'asc',
+    page: 1,
+    limit: 20
+  });
+  const [volunteerPagination, setVolunteerPagination] = useState({
+    total: 0,
+    total_pages: 0,
+    page: 1,
+    limit: 20
+  });
+
   const loadVolunteers = useCallback(async () => {
     try {
       const res = await api.get('/volunteers');
       setVolunteers(res.data?.data ?? []);
     } catch {}
   }, []);
+
+  // Load Volunteer Search Results
+  const loadVolunteerSearch = useCallback(async () => {
+    if (tab !== 'volunteers') return;
+    setLoadingVolunteers(true);
+    try {
+      const params = new URLSearchParams();
+      Object.entries(volunteerFilters).forEach(([key, value]) => {
+        if (value !== '' && value !== null && value !== undefined) {
+          params.append(key, value.toString());
+        }
+      });
+      const res = await api.get(`/volunteers/search?${params}`);
+      setVolunteerSearchResults(res.data?.data ?? []);
+      setVolunteerPagination(res.data?.pagination ?? { total: 0, total_pages: 0, page: 1, limit: 20 });
+    } catch { setError('Failed to load volunteer search results'); }
+    setLoadingVolunteers(false);
+  }, [tab, volunteerFilters]);
 
   useEffect(() => { loadVolunteers(); }, [loadVolunteers]);
 
@@ -187,10 +244,11 @@ export default function VolunteerRecordsPanel() {
 
   useEffect(() => {
     setError('');
-    if (tab === 'id-cards') loadCards();
+    if (tab === 'volunteers') loadVolunteerSearch();
+    else if (tab === 'id-cards') loadCards();
     else if (tab === 'certificates') loadCerts();
     else if (tab === 'messages') loadMessages();
-  }, [tab, loadCards, loadCerts, loadMessages]);
+  }, [tab, loadVolunteerSearch, loadCards, loadCerts, loadMessages]);
 
   const flash = (msg: string) => {
     setSuccess(msg);
@@ -300,6 +358,7 @@ export default function VolunteerRecordsPanel() {
   };
 
   const TABS: { key: ActiveTab; label: string }[] = [
+    { key: 'volunteers', label: 'Find Volunteers' },
     { key: 'id-cards', label: 'ID Cards' },
     { key: 'certificates', label: 'Certificates' },
     { key: 'messages', label: 'Volunteer Messages' },
@@ -331,6 +390,240 @@ export default function VolunteerRecordsPanel() {
           </button>
         ))}
       </div>
+
+      {/* =================== VOLUNTEERS TAB =================== */}
+      {tab === 'volunteers' && (
+        <div>
+          <div className="mb-4">
+            <h3 className="font-semibold text-slate-700 text-center sm:text-left mb-4">Advanced Volunteer Search & Filter</h3>
+            
+            {/* Filters Form */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Search</label>
+                  <input
+                    type="text"
+                    value={volunteerFilters.search}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, search: e.target.value }))}
+                    placeholder="Name, email, or badge #"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
+                  <select
+                    value={volunteerFilters.status}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, status: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="pending">Pending</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">City</label>
+                  <input
+                    type="text"
+                    value={volunteerFilters.city}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, city: e.target.value }))}
+                    placeholder="City name"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Country</label>
+                  <input
+                    type="text"
+                    value={volunteerFilters.country}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, country: e.target.value }))}
+                    placeholder="Country"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Background Check</label>
+                  <select
+                    value={volunteerFilters.background_check_status}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, background_check_status: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">All</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="not_required">Not Required</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Badge Number</label>
+                  <input
+                    type="text"
+                    value={volunteerFilters.badge_number}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, badge_number: e.target.value }))}
+                    placeholder="Badge #"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Approved After</label>
+                  <input
+                    type="date"
+                    value={volunteerFilters.approved_after}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, approved_after: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Approved Before</label>
+                  <input
+                    type="date"
+                    value={volunteerFilters.approved_before}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, approved_before: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-3 items-end">
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Sort By</label>
+                  <div className="flex gap-2">
+                    <select
+                      value={volunteerFilters.sort_by}
+                      onChange={e => setVolunteerFilters(f => ({ ...f, sort_by: e.target.value }))}
+                      className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="first_name">First Name</option>
+                      <option value="last_name">Last Name</option>
+                      <option value="badge_number">Badge Number</option>
+                      <option value="status">Status</option>
+                      <option value="approved_at">Approved Date</option>
+                      <option value="created_at">Created Date</option>
+                    </select>
+                    <select
+                      value={volunteerFilters.sort_order}
+                      onChange={e => setVolunteerFilters(f => ({ ...f, sort_order: e.target.value }))}
+                      className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="asc">Asc</option>
+                      <option value="desc">Desc</option>
+                    </select>
+                  </div>
+                </div>
+                <button
+                  onClick={() => loadVolunteerSearch()}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+                >
+                  Search
+                </button>
+                <button
+                  onClick={() => setVolunteerFilters({
+                    search: '',
+                    status: '',
+                    city: '',
+                    country: '',
+                    background_check_status: '',
+                    badge_number: '',
+                    approved_after: '',
+                    approved_before: '',
+                    sort_by: 'first_name',
+                    sort_order: 'asc',
+                    page: 1,
+                    limit: 20
+                  })}
+                  className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+
+            {/* Results */}
+            {loadingVolunteers ? (
+              <div className="text-slate-400 py-8 text-center">Searching volunteers…</div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-100">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        {['Name', 'Badge #', 'Email', 'City', 'Country', 'Status', 'Background Check', 'Approved At'].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {volunteerSearchResults.length === 0 ? (
+                        <tr><td colSpan={8} className="text-center py-8 text-slate-400 text-sm">No volunteers found. Try adjusting your filters.</td></tr>
+                      ) : volunteerSearchResults.map(v => (
+                        <tr key={v.volunteer_id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 text-sm text-slate-700 font-medium">{v.first_name} {v.last_name}</td>
+                          <td className="px-4 py-3 text-xs font-mono text-slate-600">{v.badge_number}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{v.email || '—'}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{v.city || '—'}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{v.country || '—'}</td>
+                          <td className="px-4 py-3">
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              v.status === 'active' ? 'bg-green-100 text-green-700' :
+                              v.status === 'inactive' ? 'bg-slate-100 text-slate-500' :
+                              v.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {v.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              v.background_check_status === 'approved' ? 'bg-green-100 text-green-700' :
+                              v.background_check_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                              v.background_check_status === 'rejected' ? 'bg-red-100 text-red-700' :
+                              'bg-slate-100 text-slate-500'
+                            }`}>
+                              {v.background_check_status || 'Not Set'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-400">
+                            {v.approved_at ? new Date(v.approved_at).toLocaleDateString() : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Pagination */}
+                {volunteerPagination.total_pages > 1 && (
+                  <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                    <div className="text-sm text-slate-700">
+                      Showing {((volunteerPagination.page - 1) * volunteerPagination.limit) + 1} to {Math.min(volunteerPagination.page * volunteerPagination.limit, volunteerPagination.total)} of {volunteerPagination.total} results
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setVolunteerFilters(f => ({ ...f, page: Math.max(1, f.page - 1) }))}
+                        disabled={volunteerPagination.page <= 1}
+                        className="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => setVolunteerFilters(f => ({ ...f, page: Math.min(volunteerPagination.total_pages, f.page + 1) }))}
+                        disabled={volunteerPagination.page >= volunteerPagination.total_pages}
+                        className="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* =================== ID CARDS TAB =================== */}
       {tab === 'id-cards' && (
