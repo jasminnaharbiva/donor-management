@@ -4,8 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import {
   Settings, Shield, Activity, Users, Megaphone, BarChart3,
   Heart, DollarSign, Target, UserCheck, Layers, Globe, HandCoins,
-  CalendarClock, Bell, UserRound, FolderOpen, ToggleLeft, ClipboardList,
-  Clock, Network, Mail, Sliders, Languages, FileText, FormInput, BadgeCheck, Palette
+  CalendarClock, Bell, UserRound, FolderOpen, ToggleLeft,
+  Clock, Network, Mail, Sliders, Languages, FileText, FormInput, Palette
 } from 'lucide-react';
 
 import SettingsPanel from './SettingsPanel';
@@ -16,7 +16,6 @@ import CampaignsPanel from './CampaignsPanel';
 import DonorsPanel from './DonorsPanel';
 import DonationsPanel from './DonationsPanel';
 import ExpensesAdminPanel from './ExpensesAdminPanel';
-import VolunteersAdminPanel from './VolunteersAdminPanel';
 import ReportsPanel from './ReportsPanel';
 import AnnouncementsPanel from './AnnouncementsPanel';
 import DashboardStats from './DashboardStats';
@@ -27,7 +26,6 @@ import RecurringPanel from './RecurringPanel';
 import NotificationsAdminPanel from './NotificationsAdminPanel';
 import ProjectsPanel from './ProjectsPanel';
 import FeatureFlagsPanel from './FeatureFlagsPanel';
-import VolunteerApplicationsPanel from './VolunteerApplicationsPanel';
 import ShiftsPanel from './ShiftsPanel';
 import P2PPanel from './P2PPanel';
 import EmailTemplatesPanel from './EmailTemplatesPanel';
@@ -35,8 +33,8 @@ import CustomFieldsPanel from './CustomFieldsPanel';
 import TranslationsPanel from './TranslationsPanel';
 import PublicPagesPanel from './PublicPagesPanel';
 import FormSchemasPanel from './FormSchemasPanel';
-import VolunteerRecordsPanel from './VolunteerRecordsPanel';
 import UIDesignPanel from './UIDesignPanel';
+import VolunteerHubPanel from './VolunteerHubPanel';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -48,8 +46,7 @@ export default function AdminDashboard() {
     { name: 'Donors', path: '/admin/donors', icon: <Heart size={20} /> },
     { name: 'Projects', path: '/admin/projects', icon: <FolderOpen size={20} /> },
     { name: 'Expenses', path: '/admin/expenses', icon: <BarChart3 size={20} /> },
-    { name: 'Volunteers', path: '/admin/volunteers', icon: <UserCheck size={20} /> },
-    { name: 'Vol. Applications', path: '/admin/vol-applications', icon: <ClipboardList size={20} /> },
+    { name: 'Volunteer Hub', path: '/admin/volunteer-hub', icon: <UserCheck size={20} /> },
     { name: 'Shifts & Timesheets', path: '/admin/shifts', icon: <Clock size={20} /> },
     { name: 'P2P Campaigns', path: '/admin/p2p', icon: <Network size={20} /> },
     { name: 'Users', path: '/admin/users', icon: <Users size={20} /> },
@@ -69,7 +66,6 @@ export default function AdminDashboard() {
     { name: 'Translations', path: '/admin/translations', icon: <Languages size={20} /> },
     { name: 'Public Pages', path: '/admin/public-pages', icon: <FileText size={20} /> },
     { name: 'Form Schemas', path: '/admin/form-schemas', icon: <FormInput size={20} /> },
-    { name: 'Vol. Records', path: '/admin/vol-records', icon: <BadgeCheck size={20} /> },
     { name: 'UI Design', path: '/admin/ui-design', icon: <Palette size={20} /> },
   ];
 
@@ -88,8 +84,9 @@ export default function AdminDashboard() {
           <Route path="donors" element={<DonorsPanel />} />
           <Route path="projects" element={<ProjectsPanel />} />
           <Route path="expenses" element={<ExpensesAdminPanel />} />
-          <Route path="volunteers" element={<VolunteersAdminPanel />} />
-          <Route path="vol-applications" element={<VolunteerApplicationsPanel />} />
+          <Route path="volunteer-hub" element={<VolunteerHubPanel />} />
+          <Route path="volunteers" element={<Navigate to="/admin/volunteer-hub?tab=people" replace />} />
+          <Route path="vol-applications" element={<Navigate to="/admin/volunteer-hub?tab=applications" replace />} />
           <Route path="shifts" element={<ShiftsPanel />} />
           <Route path="p2p" element={<P2PPanel />} />
           <Route path="users" element={<UsersPanelFull />} />
@@ -109,7 +106,8 @@ export default function AdminDashboard() {
           <Route path="translations" element={<TranslationsPanel />} />
           <Route path="public-pages" element={<PublicPagesPanel />} />
           <Route path="form-schemas" element={<FormSchemasPanel />} />
-          <Route path="vol-records" element={<VolunteerRecordsPanel />} />
+          <Route path="vol-records" element={<Navigate to="/admin/volunteer-hub?tab=records" replace />} />
+          <Route path="vms" element={<Navigate to="/admin/volunteer-hub?tab=records" replace />} />
           <Route path="ui-design" element={<UIDesignPanel />} />
         </Routes>
       </div>

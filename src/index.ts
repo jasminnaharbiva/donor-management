@@ -49,6 +49,7 @@ import { volunteerRecordsRouter }      from './routes/volunteer-records.routes';
 import { translationsRouter }          from './routes/translations.routes';
 import { publicPagesRouter }           from './routes/public-pages.routes';
 import { formSchemasRouter }           from './routes/form-schemas.routes';
+import { vmsRouter }                   from './routes/vms.routes';
 
 const app    = express();
 const server = http.createServer(app);
@@ -198,6 +199,7 @@ app.use('/api/v1/volunteer-records',       volunteerRecordsRouter);
 app.use('/api/v1/translations',            translationsRouter);
 app.use('/api/v1/public-pages',            publicPagesRouter);
 app.use('/api/v1/form-schemas',            formSchemasRouter);
+app.use('/api/v1/vms',                     vmsRouter);
 
 // Health check (no auth, no rate limit)
 app.get('/health', (_req, res) => {
@@ -274,6 +276,9 @@ app.get('/sitemap.xml', async (_req, res) => {
 // ---------------------------------------------------------------------------
 // Serve Frontend (React SPA)
 // ---------------------------------------------------------------------------
+const uploadsPath = path.join(process.cwd(), 'public', 'uploads');
+app.use('/uploads', express.static(uploadsPath));
+
 const frontendBuildPath = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendBuildPath));
 

@@ -1,16 +1,38 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
+import VmsPanel from './VmsPanel';
 
-type ActiveTab = 'id-cards' | 'certificates' | 'messages' | 'volunteers';
+type ActiveTab = 'id-cards' | 'certificates' | 'messages' | 'volunteers' | 'unified-vms';
 
 // Matches GET /volunteer-records/id-card-templates
 interface IdCardTemplate {
   template_id: number;
   template_name: string;
   orientation: string;
+  background_color: string;
   org_name: string | null;
   tagline: string | null;
   accent_color: string;
+  text_color?: string | null;
+  org_logo_url?: string | null;
+  admin_signature_url?: string | null;
+  admin_signature_name?: string | null;
+  admin_signature_title?: string | null;
+  footer_text?: string | null;
+  font_family?: string | null;
+  qr_base_url?: string | null;
+  show_photo?: boolean | number;
+  show_badge_number?: boolean | number;
+  show_designation?: boolean | number;
+  show_project_name?: boolean | number;
+  show_validity_date?: boolean | number;
+  show_qr_code?: boolean | number;
+  validity_duration_months?: number | null;
+  layout_json?: string | null;
+  dynamic_fields_json?: string | null;
+  text_blocks_json?: string | null;
+  logo_position_json?: string | null;
+  signature_position_json?: string | null;
   is_active: boolean | number;
   created_at: string;
 }
@@ -29,6 +51,9 @@ interface IssuedCard {
   status: string;           // 'active' | 'revoked' (computed from revoked_at)
   revoked_at: string | null;
   revoked_reason: string | null;
+  qr_code_value?: string | null;
+  qr_code_data_url?: string | null;
+  rendered_html?: string | null;
 }
 
 // Matches GET /volunteer-records/certificate-templates
@@ -38,6 +63,17 @@ interface CertificateTemplate {
   title_text: string;
   body_template: string;
   primary_color: string;
+  background_image_url?: string | null;
+  org_logo_url?: string | null;
+  admin_signature_1_url?: string | null;
+  admin_signature_1_name?: string | null;
+  admin_signature_1_title?: string | null;
+  admin_signature_2_url?: string | null;
+  admin_signature_2_name?: string | null;
+  admin_signature_2_title?: string | null;
+  layout_json?: string | null;
+  dynamic_fields_json?: string | null;
+  text_blocks_json?: string | null;
   is_active: boolean | number;
   created_at: string;
 }
@@ -56,6 +92,10 @@ interface IssuedCertificate {
   hours_served: number | null;
   issue_date: string;
   verification_code: string;
+  verification_url?: string | null;
+  qr_code_data_url?: string | null;
+  rendered_html?: string | null;
+  certificate_hash?: string | null;
 }
 
 // Matches GET /volunteer-records/messages (joined)
@@ -122,14 +162,22 @@ export default function VolunteerRecordsPanel() {
   const [issuedCards, setIssuedCards]   = useState<IssuedCard[]>([]);
   const [loadingCards, setLoadingCards] = useState(false);
   const [showNewIdTemplate, setShowNewIdTemplate] = useState(false);
+  const [editingIdTemplateId, setEditingIdTemplateId] = useState<number | null>(null);
   const [idTemplateForm, setIdTemplateForm] = useState({
-    templateName: '', orgName: '', tagline: '',
+    templateName: '', orientation: 'horizontal',
+    orgName: '', tagline: '', orgLogoUrl: '',
     backgroundColor: '#dbeafe', accentColor: '#1a56db',
+    textColor: '#0f172a',
+    footerText: '', fontFamily: 'Inter, Arial, sans-serif',
+    adminSignatureUrl: '', adminSignatureName: '', adminSignatureTitle: '',
+    qrBaseUrl: '/verify/{{badge_number}}?card={{card_id}}',
+    showPhoto: true, showBadgeNumber: true, showDesignation: true, showProjectName: true, showValidityDate: true, showQrCode: true,
+    dynamicFieldsJson: '[]', textBlocksJson: '[]', layoutJson: '{}',
     validityDurationMonths: 12, isActive: true,
   });
   const [showIssueCard, setShowIssueCard] = useState(false);
   const [issueCardForm, setIssueCardForm] = useState({
-    volunteerId: '', templateId: '', issueDate: today(), expiryDate: nextYear(),
+    volunteerId: '', templateId: '', issueDate: today(), expiryDate: nextYear(), dynamicValuesJson: '{}',
   });
 
   // --- Certificates State ---
@@ -137,15 +185,20 @@ export default function VolunteerRecordsPanel() {
   const [issuedCerts, setIssuedCerts]       = useState<IssuedCertificate[]>([]);
   const [loadingCerts, setLoadingCerts]     = useState(false);
   const [showNewCertTemplate, setShowNewCertTemplate] = useState(false);
+  const [editingCertTemplateId, setEditingCertTemplateId] = useState<number | null>(null);
   const [certTemplateForm, setCertTemplateForm] = useState({
     templateName: '', titleText: '',
     bodyTemplate: '<div style="text-align:center;padding:40px;font-family:Georgia,serif">\n  <h1>{{org_name}}</h1>\n  <h2>{{title_text}}</h2>\n  <p>Awarded to</p>\n  <h3>{{volunteer_name}}</h3>\n  <p>{{custom_note}}</p>\n  <p>Verification: {{verification_code}} | Date: {{issue_date}}</p>\n</div>',
     primaryColor: '#2563eb', isActive: true,
+    backgroundImageUrl: '', orgLogoUrl: '',
+    adminSignature1Url: '', adminSignature1Name: '', adminSignature1Title: '',
+    adminSignature2Url: '', adminSignature2Name: '', adminSignature2Title: '',
+    dynamicFieldsJson: '[]', textBlocksJson: '[]', layoutJson: '{}',
   });
   const [showIssueCert, setShowIssueCert]   = useState(false);
   const [issueCertForm, setIssueCertForm]   = useState({
     volunteerId: '', certTemplateId: '', issueDate: today(),
-    hoursServed: '', customNote: '',
+    hoursServed: '', customNote: '', serviceStartDate: '', serviceEndDate: '', expiresAt: '', dynamicValuesJson: '{}',
   });
 
   // --- Messages State ---
@@ -271,16 +324,144 @@ export default function VolunteerRecordsPanel() {
     setTimeout(() => setSuccess(''), 3500);
   };
 
+  const parseJsonInput = (value: string, fieldName: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      setError(`${fieldName} must be valid JSON`);
+      return null;
+    }
+  };
+
+  const openHtmlPreview = (html: string, title: string) => {
+    const preview = window.open('', '_blank');
+    if (!preview) {
+      setError('Please allow popups to open template preview');
+      return;
+    }
+    preview.document.write(`<html><head><title>${title}</title></head><body style="margin:0;padding:16px;background:#f8fafc;">${html}</body></html>`);
+    preview.document.close();
+  };
+
   // ID Card actions
   const createIdTemplate = async () => {
     if (!idTemplateForm.templateName.trim()) { setError('Template name is required'); return; }
+
+    const dynamicFields = parseJsonInput(idTemplateForm.dynamicFieldsJson, 'ID dynamic fields JSON');
+    if (dynamicFields === null) return;
+    const textBlocks = parseJsonInput(idTemplateForm.textBlocksJson, 'ID text blocks JSON');
+    if (textBlocks === null) return;
+    const layout = parseJsonInput(idTemplateForm.layoutJson, 'ID layout JSON');
+    if (layout === null) return;
+
+    const payload = {
+      templateName: idTemplateForm.templateName,
+      orientation: idTemplateForm.orientation,
+      orgName: idTemplateForm.orgName || undefined,
+      tagline: idTemplateForm.tagline || undefined,
+      orgLogoUrl: idTemplateForm.orgLogoUrl || undefined,
+      backgroundColor: idTemplateForm.backgroundColor,
+      accentColor: idTemplateForm.accentColor,
+      textColor: idTemplateForm.textColor,
+      footerText: idTemplateForm.footerText || undefined,
+      fontFamily: idTemplateForm.fontFamily || undefined,
+      adminSignatureUrl: idTemplateForm.adminSignatureUrl || undefined,
+      adminSignatureName: idTemplateForm.adminSignatureName || undefined,
+      adminSignatureTitle: idTemplateForm.adminSignatureTitle || undefined,
+      qrBaseUrl: idTemplateForm.qrBaseUrl || undefined,
+      showPhoto: idTemplateForm.showPhoto,
+      showBadgeNumber: idTemplateForm.showBadgeNumber,
+      showDesignation: idTemplateForm.showDesignation,
+      showProjectName: idTemplateForm.showProjectName,
+      showValidityDate: idTemplateForm.showValidityDate,
+      showQrCode: idTemplateForm.showQrCode,
+      dynamicFieldsJson: dynamicFields,
+      textBlocksJson: textBlocks,
+      layoutJson: layout,
+      validityDurationMonths: idTemplateForm.validityDurationMonths,
+      isActive: idTemplateForm.isActive,
+    };
+
     try {
-      await api.post('/volunteer-records/id-card-templates', idTemplateForm);
+      if (editingIdTemplateId) {
+        await api.put(`/volunteer-records/id-card-templates/${editingIdTemplateId}`, payload);
+      } else {
+        await api.post('/volunteer-records/id-card-templates', payload);
+      }
       setShowNewIdTemplate(false);
-      setIdTemplateForm({ templateName: '', orgName: '', tagline: '', backgroundColor: '#dbeafe', accentColor: '#1a56db', validityDurationMonths: 12, isActive: true });
-      flash('ID card template created');
+      setEditingIdTemplateId(null);
+      setIdTemplateForm({
+        templateName: '', orientation: 'horizontal', orgName: '', tagline: '', orgLogoUrl: '',
+        backgroundColor: '#dbeafe', accentColor: '#1a56db', textColor: '#0f172a',
+        footerText: '', fontFamily: 'Inter, Arial, sans-serif',
+        adminSignatureUrl: '', adminSignatureName: '', adminSignatureTitle: '',
+        qrBaseUrl: '/verify/{{badge_number}}?card={{card_id}}',
+        showPhoto: true, showBadgeNumber: true, showDesignation: true, showProjectName: true, showValidityDate: true, showQrCode: true,
+        dynamicFieldsJson: '[]', textBlocksJson: '[]', layoutJson: '{}',
+        validityDurationMonths: 12, isActive: true,
+      });
+      flash(editingIdTemplateId ? 'ID card template updated' : 'ID card template created');
       loadCards();
     } catch { setError('Failed to create ID card template'); }
+  };
+
+  const editIdTemplate = (template: IdCardTemplate) => {
+    setEditingIdTemplateId(template.template_id);
+    setIdTemplateForm({
+      templateName: template.template_name || '',
+      orientation: template.orientation || 'horizontal',
+      orgName: template.org_name || '',
+      tagline: template.tagline || '',
+      orgLogoUrl: template.org_logo_url || '',
+      backgroundColor: template.background_color || '#dbeafe',
+      accentColor: template.accent_color || '#1a56db',
+      textColor: template.text_color || '#0f172a',
+      footerText: template.footer_text || '',
+      fontFamily: template.font_family || 'Inter, Arial, sans-serif',
+      adminSignatureUrl: template.admin_signature_url || '',
+      adminSignatureName: template.admin_signature_name || '',
+      adminSignatureTitle: template.admin_signature_title || '',
+      qrBaseUrl: template.qr_base_url || '/verify/{{badge_number}}?card={{card_id}}',
+      showPhoto: Boolean(template.show_photo ?? true),
+      showBadgeNumber: Boolean(template.show_badge_number ?? true),
+      showDesignation: Boolean(template.show_designation ?? true),
+      showProjectName: Boolean(template.show_project_name ?? true),
+      showValidityDate: Boolean(template.show_validity_date ?? true),
+      showQrCode: Boolean(template.show_qr_code ?? true),
+      dynamicFieldsJson: template.dynamic_fields_json || '[]',
+      textBlocksJson: template.text_blocks_json || '[]',
+      layoutJson: template.layout_json || '{}',
+      validityDurationMonths: template.validity_duration_months || 12,
+      isActive: Boolean(template.is_active),
+    });
+    setShowNewIdTemplate(true);
+  };
+
+  const deleteIdTemplate = async (templateId: number) => {
+    if (!window.confirm('Delete this ID template? This is blocked if cards are already issued from it.')) return;
+    try {
+      await api.delete(`/volunteer-records/id-card-templates/${templateId}`);
+      flash('ID template deleted');
+      loadCards();
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'Failed to delete ID template');
+    }
+  };
+
+  const previewIdTemplate = async (templateId: number) => {
+    try {
+      const res = await api.post(`/volunteer-records/id-card-templates/${templateId}/preview`, {});
+      const html = res.data?.data?.rendered_html;
+      if (!html) {
+        setError('Preview render was empty');
+        return;
+      }
+      openHtmlPreview(html, 'ID Card Preview');
+    } catch {
+      setError('Failed to preview ID card template');
+    }
   };
 
   const issueIdCard = async () => {
@@ -288,18 +469,35 @@ export default function VolunteerRecordsPanel() {
       setError('Select volunteer, template, and issue date');
       return;
     }
+    const dynamicValues = parseJsonInput(issueCardForm.dynamicValuesJson, 'ID card dynamic values JSON');
+    if (dynamicValues === null) return;
     try {
       await api.post('/volunteer-records/id-cards', {
         volunteerId: Number(issueCardForm.volunteerId),
         templateId:  Number(issueCardForm.templateId),
         issueDate:   issueCardForm.issueDate,
         expiryDate:  issueCardForm.expiryDate || undefined,
+        dynamicValues,
       });
       setShowIssueCard(false);
-      setIssueCardForm({ volunteerId: '', templateId: '', issueDate: today(), expiryDate: nextYear() });
+      setIssueCardForm({ volunteerId: '', templateId: '', issueDate: today(), expiryDate: nextYear(), dynamicValuesJson: '{}' });
       flash('ID card issued successfully');
       loadCards();
     } catch { setError('Failed to issue ID card'); }
+  };
+
+  const viewIssuedIdCardRender = async (cardId: string) => {
+    try {
+      const res = await api.get(`/volunteer-records/id-cards/${cardId}/render`);
+      const html = res.data?.data?.rendered_html;
+      if (!html) {
+        setError('Card render output is not available');
+        return;
+      }
+      openHtmlPreview(html, 'Issued ID Card');
+    } catch {
+      setError('Failed to load card render');
+    }
   };
 
   const revokeCard = async (cardId: string) => {
@@ -317,18 +515,100 @@ export default function VolunteerRecordsPanel() {
       setError('Template name, title and body are required');
       return;
     }
+
+    const dynamicFields = parseJsonInput(certTemplateForm.dynamicFieldsJson, 'Certificate dynamic fields JSON');
+    if (dynamicFields === null) return;
+    const textBlocks = parseJsonInput(certTemplateForm.textBlocksJson, 'Certificate text blocks JSON');
+    if (textBlocks === null) return;
+    const layout = parseJsonInput(certTemplateForm.layoutJson, 'Certificate layout JSON');
+    if (layout === null) return;
+
+    const payload = {
+      templateName: certTemplateForm.templateName,
+      titleText: certTemplateForm.titleText,
+      bodyTemplate: certTemplateForm.bodyTemplate,
+      primaryColor: certTemplateForm.primaryColor,
+      backgroundImageUrl: certTemplateForm.backgroundImageUrl || undefined,
+      orgLogoUrl: certTemplateForm.orgLogoUrl || undefined,
+      adminSignature1Url: certTemplateForm.adminSignature1Url || undefined,
+      adminSignature1Name: certTemplateForm.adminSignature1Name || undefined,
+      adminSignature1Title: certTemplateForm.adminSignature1Title || undefined,
+      adminSignature2Url: certTemplateForm.adminSignature2Url || undefined,
+      adminSignature2Name: certTemplateForm.adminSignature2Name || undefined,
+      adminSignature2Title: certTemplateForm.adminSignature2Title || undefined,
+      dynamicFieldsJson: dynamicFields,
+      textBlocksJson: textBlocks,
+      layoutJson: layout,
+      isActive: certTemplateForm.isActive,
+    };
+
     try {
-      await api.post('/volunteer-records/certificate-templates', {
-        templateName:  certTemplateForm.templateName,
-        titleText:     certTemplateForm.titleText,
-        bodyTemplate:  certTemplateForm.bodyTemplate,
-        primaryColor:  certTemplateForm.primaryColor,
-      });
+      if (editingCertTemplateId) {
+        await api.put(`/volunteer-records/certificate-templates/${editingCertTemplateId}`, payload);
+      } else {
+        await api.post('/volunteer-records/certificate-templates', payload);
+      }
       setShowNewCertTemplate(false);
-      setCertTemplateForm({ templateName: '', titleText: '', bodyTemplate: '<div style="text-align:center;padding:40px;font-family:Georgia,serif">\n  <h1>{{org_name}}</h1>\n  <h2>{{title_text}}</h2>\n  <p>Awarded to</p>\n  <h3>{{volunteer_name}}</h3>\n  <p>{{custom_note}}</p>\n  <p>Verification: {{verification_code}} | Date: {{issue_date}}</p>\n</div>', primaryColor: '#2563eb', isActive: true });
-      flash('Certificate template created');
+      setEditingCertTemplateId(null);
+      setCertTemplateForm({
+        templateName: '', titleText: '', bodyTemplate: '<div style="text-align:center;padding:40px;font-family:Georgia,serif">\n  <h1>{{org_name}}</h1>\n  <h2>{{title_text}}</h2>\n  <p>Awarded to</p>\n  <h3>{{volunteer_name}}</h3>\n  <p>{{custom_note}}</p>\n  <p>Verification: {{verification_code}} | Date: {{issue_date}}</p>\n</div>',
+        primaryColor: '#2563eb', isActive: true,
+        backgroundImageUrl: '', orgLogoUrl: '',
+        adminSignature1Url: '', adminSignature1Name: '', adminSignature1Title: '',
+        adminSignature2Url: '', adminSignature2Name: '', adminSignature2Title: '',
+        dynamicFieldsJson: '[]', textBlocksJson: '[]', layoutJson: '{}',
+      });
+      flash(editingCertTemplateId ? 'Certificate template updated' : 'Certificate template created');
       loadCerts();
     } catch { setError('Failed to create certificate template'); }
+  };
+
+  const editCertTemplate = (template: CertificateTemplate) => {
+    setEditingCertTemplateId(template.cert_template_id);
+    setCertTemplateForm({
+      templateName: template.template_name || '',
+      titleText: template.title_text || '',
+      bodyTemplate: template.body_template || '',
+      primaryColor: template.primary_color || '#2563eb',
+      isActive: Boolean(template.is_active),
+      backgroundImageUrl: template.background_image_url || '',
+      orgLogoUrl: template.org_logo_url || '',
+      adminSignature1Url: template.admin_signature_1_url || '',
+      adminSignature1Name: template.admin_signature_1_name || '',
+      adminSignature1Title: template.admin_signature_1_title || '',
+      adminSignature2Url: template.admin_signature_2_url || '',
+      adminSignature2Name: template.admin_signature_2_name || '',
+      adminSignature2Title: template.admin_signature_2_title || '',
+      dynamicFieldsJson: template.dynamic_fields_json || '[]',
+      textBlocksJson: template.text_blocks_json || '[]',
+      layoutJson: template.layout_json || '{}',
+    });
+    setShowNewCertTemplate(true);
+  };
+
+  const deleteCertTemplate = async (templateId: number) => {
+    if (!window.confirm('Delete this certificate template? This is blocked if certificates are already issued from it.')) return;
+    try {
+      await api.delete(`/volunteer-records/certificate-templates/${templateId}`);
+      flash('Certificate template deleted');
+      loadCerts();
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'Failed to delete certificate template');
+    }
+  };
+
+  const previewCertTemplate = async (templateId: number) => {
+    try {
+      const res = await api.post(`/volunteer-records/certificate-templates/${templateId}/preview`, {});
+      const html = res.data?.data?.rendered_html;
+      if (!html) {
+        setError('Preview render was empty');
+        return;
+      }
+      openHtmlPreview(html, 'Certificate Preview');
+    } catch {
+      setError('Failed to preview certificate template');
+    }
   };
 
   const issueCertificate = async () => {
@@ -336,6 +616,8 @@ export default function VolunteerRecordsPanel() {
       setError('Select volunteer, template, and issue date');
       return;
     }
+    const dynamicValues = parseJsonInput(issueCertForm.dynamicValuesJson, 'Certificate dynamic values JSON');
+    if (dynamicValues === null) return;
     try {
       await api.post('/volunteer-records/certificates', {
         volunteerId:    Number(issueCertForm.volunteerId),
@@ -343,12 +625,30 @@ export default function VolunteerRecordsPanel() {
         issueDate:      issueCertForm.issueDate,
         hoursServed:    issueCertForm.hoursServed ? Number(issueCertForm.hoursServed) : undefined,
         customNote:     issueCertForm.customNote || undefined,
+        serviceStartDate: issueCertForm.serviceStartDate || undefined,
+        serviceEndDate: issueCertForm.serviceEndDate || undefined,
+        expiresAt: issueCertForm.expiresAt || undefined,
+        dynamicValues,
       });
       setShowIssueCert(false);
-      setIssueCertForm({ volunteerId: '', certTemplateId: '', issueDate: today(), hoursServed: '', customNote: '' });
+      setIssueCertForm({ volunteerId: '', certTemplateId: '', issueDate: today(), hoursServed: '', customNote: '', serviceStartDate: '', serviceEndDate: '', expiresAt: '', dynamicValuesJson: '{}' });
       flash('Certificate awarded successfully');
       loadCerts();
     } catch { setError('Failed to award certificate'); }
+  };
+
+  const viewIssuedCertificateRender = async (awardId: string) => {
+    try {
+      const res = await api.get(`/volunteer-records/certificates/${awardId}/render`);
+      const html = res.data?.data?.rendered_html;
+      if (!html) {
+        setError('Certificate render output is not available');
+        return;
+      }
+      openHtmlPreview(html, 'Issued Certificate');
+    } catch {
+      setError('Failed to load certificate render');
+    }
   };
 
   // Message actions
@@ -374,6 +674,7 @@ export default function VolunteerRecordsPanel() {
   };
 
   const TABS: { key: ActiveTab; label: string }[] = [
+    { key: 'unified-vms', label: 'Unified VMS Hub' },
     { key: 'volunteers', label: 'Find Volunteers' },
     { key: 'id-cards', label: 'ID Cards' },
     { key: 'certificates', label: 'Certificates' },
@@ -406,6 +707,16 @@ export default function VolunteerRecordsPanel() {
           </button>
         ))}
       </div>
+
+      {/* =================== VOLUNTEERS TAB =================== */}
+      {tab === 'unified-vms' && (
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
+          <div className="mb-3 text-xs sm:text-sm text-slate-600">
+            Unified mode: VMS certificate management + legacy volunteer records are available in one admin module.
+          </div>
+          <VmsPanel />
+        </div>
+      )}
 
       {/* =================== VOLUNTEERS TAB =================== */}
       {tab === 'volunteers' && (
@@ -740,6 +1051,11 @@ export default function VolunteerRecordsPanel() {
                     <span className="inline-block w-4 h-4 rounded" style={{ backgroundColor: t.accent_color }} />
                     <span className="text-xs text-slate-400">{new Date(t.created_at).toLocaleDateString()}</span>
                   </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button onClick={() => previewIdTemplate(t.template_id)} className="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700">Preview</button>
+                    <button onClick={() => editIdTemplate(t)} className="text-xs px-2 py-1 rounded bg-primary-50 hover:bg-primary-100 text-primary-700">Edit</button>
+                    <button onClick={() => deleteIdTemplate(t.template_id)} className="text-xs px-2 py-1 rounded bg-red-50 hover:bg-red-100 text-red-700">Delete</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -757,14 +1073,14 @@ export default function VolunteerRecordsPanel() {
             <table className="min-w-full divide-y divide-slate-100">
               <thead className="bg-slate-50">
                 <tr>
-                  {['Volunteer', 'Badge #', 'Template', 'Issue Date', 'Expiry', 'Status', 'Actions'].map(h => (
+                  {['Volunteer', 'Badge #', 'Template', 'Issue Date', 'Expiry', 'QR', 'Status', 'Actions'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {issuedCards.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-8 text-slate-400 text-sm">No cards issued yet</td></tr>
+                  <tr><td colSpan={8} className="text-center py-8 text-slate-400 text-sm">No cards issued yet</td></tr>
                 ) : issuedCards.map(c => (
                   <tr key={c.card_id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-sm text-slate-700">{c.first_name} {c.last_name}</td>
@@ -773,11 +1089,15 @@ export default function VolunteerRecordsPanel() {
                     <td className="px-4 py-3 text-xs text-slate-400">{new Date(c.issue_date).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-xs text-slate-400">{c.expiry_date ? new Date(c.expiry_date).toLocaleDateString() : '—'}</td>
                     <td className="px-4 py-3">
+                      {c.qr_code_data_url ? <img src={c.qr_code_data_url} alt="qr" className="h-10 w-10 border rounded" /> : <span className="text-xs text-slate-400">N/A</span>}
+                    </td>
+                    <td className="px-4 py-3">
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${c.status === 'revoked' || c.revoked_at ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                         {c.status === 'revoked' || c.revoked_at ? 'Revoked' : 'Valid'}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 space-x-2">
+                      <button onClick={() => viewIssuedIdCardRender(c.card_id)} className="text-primary-600 hover:text-primary-800 text-xs font-medium">View</button>
                       {!(c.status === 'revoked' || c.revoked_at) && (
                         <button onClick={() => revokeCard(c.card_id)} className="text-red-500 hover:text-red-700 text-xs font-medium">
                           Revoke
@@ -822,6 +1142,11 @@ export default function VolunteerRecordsPanel() {
                     <span className="inline-block w-4 h-4 rounded" style={{ backgroundColor: t.primary_color }} />
                     <span className="text-xs text-slate-400">{new Date(t.created_at).toLocaleDateString()}</span>
                   </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button onClick={() => previewCertTemplate(t.cert_template_id)} className="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700">Preview</button>
+                    <button onClick={() => editCertTemplate(t)} className="text-xs px-2 py-1 rounded bg-primary-50 hover:bg-primary-100 text-primary-700">Edit</button>
+                    <button onClick={() => deleteCertTemplate(t.cert_template_id)} className="text-xs px-2 py-1 rounded bg-red-50 hover:bg-red-100 text-red-700">Delete</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -839,14 +1164,14 @@ export default function VolunteerRecordsPanel() {
             <table className="min-w-full divide-y divide-slate-100">
               <thead className="bg-slate-50">
                 <tr>
-                  {['Volunteer', 'Template', 'Note', 'Hours', 'Issue Date', 'Verification Code'].map(h => (
+                  {['Volunteer', 'Template', 'Note', 'Hours', 'Issue Date', 'Verification Code', 'QR', 'Actions'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {issuedCerts.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center py-8 text-slate-400 text-sm">No certificates awarded yet</td></tr>
+                  <tr><td colSpan={8} className="text-center py-8 text-slate-400 text-sm">No certificates awarded yet</td></tr>
                 ) : issuedCerts.map(c => (
                   <tr key={c.award_id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-sm text-slate-700">{c.first_name} {c.last_name}</td>
@@ -855,6 +1180,12 @@ export default function VolunteerRecordsPanel() {
                     <td className="px-4 py-3 text-xs text-slate-500">{c.hours_served != null ? `${c.hours_served}h` : '—'}</td>
                     <td className="px-4 py-3 text-xs text-slate-400">{new Date(c.issue_date).toLocaleDateString()}</td>
                     <td className="px-4 py-3 font-mono text-xs text-primary-700 bg-primary-50 rounded">{c.verification_code}</td>
+                    <td className="px-4 py-3">
+                      {c.qr_code_data_url ? <img src={c.qr_code_data_url} alt="qr" className="h-10 w-10 border rounded" /> : <span className="text-xs text-slate-400">N/A</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => viewIssuedCertificateRender(c.award_id)} className="text-primary-600 hover:text-primary-800 text-xs font-medium">View</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -917,8 +1248,8 @@ export default function VolunteerRecordsPanel() {
       {/* New ID Card Template Modal */}
       {showNewIdTemplate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-xl p-6">
-            <h3 className="text-lg font-bold mb-4">New ID Card Template</h3>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl p-6 max-h-[90vh] overflow-auto">
+            <h3 className="text-lg font-bold mb-4">{editingIdTemplateId ? 'Edit ID Card Template' : 'New ID Card Template'}</h3>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="col-span-2">
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Template Name *</label>
@@ -926,6 +1257,22 @@ export default function VolunteerRecordsPanel() {
                   onChange={e => setIdTemplateForm(f => ({ ...f, templateName: e.target.value }))}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g. Standard Volunteer Card" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Orientation</label>
+                <select value={idTemplateForm.orientation}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, orientation: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
+                  <option value="horizontal">Horizontal</option>
+                  <option value="vertical">Vertical</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Organisation Logo URL</label>
+                <input value={idTemplateForm.orgLogoUrl}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, orgLogoUrl: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  placeholder="https://..." />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Organisation Name</label>
@@ -960,10 +1307,95 @@ export default function VolunteerRecordsPanel() {
                 </div>
               </div>
               <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Text Colour</label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={idTemplateForm.textColor}
+                    onChange={e => setIdTemplateForm(f => ({ ...f, textColor: e.target.value }))}
+                    className="h-9 w-12 rounded border border-slate-300 cursor-pointer" />
+                  <span className="text-xs text-slate-500">{idTemplateForm.textColor}</span>
+                </div>
+              </div>
+              <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Validity (months)</label>
                 <input type="number" min={1} max={120} value={idTemplateForm.validityDurationMonths}
                   onChange={e => setIdTemplateForm(f => ({ ...f, validityDurationMonths: Number(e.target.value) }))}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Footer Text</label>
+                <input value={idTemplateForm.footerText}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, footerText: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  placeholder="Emergency hotline / legal note" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Font Family</label>
+                <input value={idTemplateForm.fontFamily}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, fontFamily: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  placeholder="Inter, Arial, sans-serif" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">QR Base URL Template</label>
+                <input value={idTemplateForm.qrBaseUrl}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, qrBaseUrl: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  placeholder="/verify/{{badge_number}}?card={{card_id}}" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Signature URL</label>
+                <input value={idTemplateForm.adminSignatureUrl}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, adminSignatureUrl: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  placeholder="https://..." />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Signature Name</label>
+                <input value={idTemplateForm.adminSignatureName}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, adminSignatureName: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  placeholder="Authorized Signatory" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Signature Title</label>
+                <input value={idTemplateForm.adminSignatureTitle}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, adminSignatureTitle: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  placeholder="Coordinator / Director" />
+              </div>
+              <div className="col-span-2 grid grid-cols-2 gap-2 mt-2">
+                {[['showPhoto','Photo'],['showBadgeNumber','Badge #'],['showDesignation','Designation'],['showProjectName','Project'],['showValidityDate','Validity'],['showQrCode','QR']].map(([field,label]) => (
+                  <label key={field} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean((idTemplateForm as any)[field])}
+                      onChange={e => setIdTemplateForm(f => ({ ...f, [field]: e.target.checked }))}
+                      className="rounded"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Dynamic Fields JSON</label>
+                <textarea rows={4} value={idTemplateForm.dynamicFieldsJson}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, dynamicFieldsJson: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-primary-500"
+                  placeholder='[{"key":"mobile_number","label":"Mobile","enabled":true}]' />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Text Blocks JSON</label>
+                <textarea rows={3} value={idTemplateForm.textBlocksJson}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, textBlocksJson: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-primary-500"
+                  placeholder='[{"text":"Access Level: Volunteer"}]' />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Advanced Layout JSON</label>
+                <textarea rows={3} value={idTemplateForm.layoutJson}
+                  onChange={e => setIdTemplateForm(f => ({ ...f, layoutJson: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-primary-500"
+                  placeholder='{"version":"2026.1","mode":"auto"}' />
               </div>
             </div>
             <label className="flex items-center gap-2 mb-4 cursor-pointer">
@@ -972,8 +1404,8 @@ export default function VolunteerRecordsPanel() {
               <span className="text-sm text-slate-700">Set as Active</span>
             </label>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowNewIdTemplate(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
-              <button onClick={createIdTemplate} className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700">Create Template</button>
+              <button onClick={() => { setShowNewIdTemplate(false); setEditingIdTemplateId(null); }} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
+              <button onClick={createIdTemplate} className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700">{editingIdTemplateId ? 'Update Template' : 'Create Template'}</button>
             </div>
           </div>
         </div>
@@ -1022,6 +1454,13 @@ export default function VolunteerRecordsPanel() {
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
               </div>
             </div>
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Dynamic Values JSON (optional)</label>
+              <textarea rows={4} value={issueCardForm.dynamicValuesJson}
+                onChange={e => setIssueCardForm(f => ({ ...f, dynamicValuesJson: e.target.value }))}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-primary-500"
+                placeholder='{"custom_title":"Field Supervisor"}' />
+            </div>
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowIssueCard(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
               <button onClick={issueIdCard} className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700">Issue Card</button>
@@ -1033,8 +1472,8 @@ export default function VolunteerRecordsPanel() {
       {/* New Certificate Template Modal */}
       {showNewCertTemplate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6">
-            <h3 className="text-lg font-bold mb-4">New Certificate Template</h3>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-auto">
+            <h3 className="text-lg font-bold mb-4">{editingCertTemplateId ? 'Edit Certificate Template' : 'New Certificate Template'}</h3>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Template Name *</label>
@@ -1049,6 +1488,20 @@ export default function VolunteerRecordsPanel() {
                   onChange={e => setCertTemplateForm(f => ({ ...f, titleText: e.target.value }))}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g. Certificate of Appreciation" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Background Image URL</label>
+                <input value={certTemplateForm.backgroundImageUrl}
+                  onChange={e => setCertTemplateForm(f => ({ ...f, backgroundImageUrl: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  placeholder="https://..." />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Org Logo URL</label>
+                <input value={certTemplateForm.orgLogoUrl}
+                  onChange={e => setCertTemplateForm(f => ({ ...f, orgLogoUrl: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  placeholder="https://..." />
               </div>
             </div>
             <div className="mb-3">
@@ -1071,9 +1524,43 @@ export default function VolunteerRecordsPanel() {
                 </div>
               </div>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+              <input value={certTemplateForm.adminSignature1Url} onChange={e => setCertTemplateForm(f => ({ ...f, adminSignature1Url: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" placeholder="Signature 1 URL" />
+              <input value={certTemplateForm.adminSignature2Url} onChange={e => setCertTemplateForm(f => ({ ...f, adminSignature2Url: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" placeholder="Signature 2 URL" />
+              <input value={certTemplateForm.adminSignature1Name} onChange={e => setCertTemplateForm(f => ({ ...f, adminSignature1Name: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" placeholder="Signature 1 Name" />
+              <input value={certTemplateForm.adminSignature2Name} onChange={e => setCertTemplateForm(f => ({ ...f, adminSignature2Name: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" placeholder="Signature 2 Name" />
+              <input value={certTemplateForm.adminSignature1Title} onChange={e => setCertTemplateForm(f => ({ ...f, adminSignature1Title: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" placeholder="Signature 1 Title" />
+              <input value={certTemplateForm.adminSignature2Title} onChange={e => setCertTemplateForm(f => ({ ...f, adminSignature2Title: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" placeholder="Signature 2 Title" />
+            </div>
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Dynamic Fields JSON</label>
+              <textarea rows={3} value={certTemplateForm.dynamicFieldsJson}
+                onChange={e => setCertTemplateForm(f => ({ ...f, dynamicFieldsJson: e.target.value }))}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-primary-500"
+                placeholder='[{"key":"hours_served","label":"Hours Served","enabled":true}]' />
+            </div>
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Text Blocks JSON</label>
+              <textarea rows={3} value={certTemplateForm.textBlocksJson}
+                onChange={e => setCertTemplateForm(f => ({ ...f, textBlocksJson: e.target.value }))}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-primary-500"
+                placeholder='[{"text":"Signed digitally and verifiable via QR"}]' />
+            </div>
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Advanced Layout JSON</label>
+              <textarea rows={3} value={certTemplateForm.layoutJson}
+                onChange={e => setCertTemplateForm(f => ({ ...f, layoutJson: e.target.value }))}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-primary-500"
+                placeholder='{"version":"2026.1","mode":"smart"}' />
+            </div>
+            <label className="flex items-center gap-2 mb-4 cursor-pointer">
+              <input type="checkbox" checked={certTemplateForm.isActive}
+                onChange={e => setCertTemplateForm(f => ({ ...f, isActive: e.target.checked }))} className="rounded" />
+              <span className="text-sm text-slate-700">Set as Active</span>
+            </label>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowNewCertTemplate(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
-              <button onClick={createCertTemplate} className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700">Create Template</button>
+              <button onClick={() => { setShowNewCertTemplate(false); setEditingCertTemplateId(null); }} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
+              <button onClick={createCertTemplate} className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700">{editingCertTemplateId ? 'Update Template' : 'Create Template'}</button>
             </div>
           </div>
         </div>
@@ -1122,6 +1609,24 @@ export default function VolunteerRecordsPanel() {
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g. 40" />
               </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Service Start</label>
+                <input type="date" value={issueCertForm.serviceStartDate}
+                  onChange={e => setIssueCertForm(f => ({ ...f, serviceStartDate: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Service End</label>
+                <input type="date" value={issueCertForm.serviceEndDate}
+                  onChange={e => setIssueCertForm(f => ({ ...f, serviceEndDate: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Certificate Expiry</label>
+                <input type="date" value={issueCertForm.expiresAt}
+                  onChange={e => setIssueCertForm(f => ({ ...f, expiresAt: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
+              </div>
             </div>
             <div className="mb-4">
               <label className="block text-xs font-semibold text-slate-700 mb-1">Custom Note / Award Reason</label>
@@ -1129,6 +1634,13 @@ export default function VolunteerRecordsPanel() {
                 onChange={e => setIssueCertForm(f => ({ ...f, customNote: e.target.value }))}
                 placeholder="e.g. For outstanding service during Ramadan Drive 2026"
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Dynamic Values JSON (optional)</label>
+              <textarea rows={4} value={issueCertForm.dynamicValuesJson}
+                onChange={e => setIssueCertForm(f => ({ ...f, dynamicValuesJson: e.target.value }))}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-primary-500"
+                placeholder='{"program_name":"Relief Drive 2026"}' />
             </div>
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowIssueCert(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>

@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "migrate": "knex migrate:latest --knexfile knexfile.ts",
     "migrate:rollback": "knex migrate:rollback --knexfile knexfile.ts",
-    "seed": "knex seed:run --knexfile knexfile.ts"
+    "seed": "knex seed:run --knexfile knexfile.ts",
+    "seed:volunteer-demo": "ts-node src/scripts/seed-unified-volunteer-demo.ts"
   },
   "dependencies": {
     "@types/multer": "^2.1.0",

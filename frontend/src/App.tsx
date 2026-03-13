@@ -16,6 +16,8 @@ import PublicHome from './pages/PublicHome';
 import ProfilePage from './pages/ProfilePage';
 import AuthPortal from './pages/AuthPortal';
 import VolunteerApply from './pages/VolunteerApply';
+import VmsHome from './pages/vms/VmsHome';
+import VmsCertificatePage from './pages/vms/VmsCertificatePage';
 
 import { useEffect } from 'react';
 import { useSocket } from './hooks/useSocket';
@@ -111,6 +113,8 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/campaigns/:slug" element={<CampaignPage />} />
           <Route path="/verify/:badgeNumber" element={<VolunteerVerify />} />
+          <Route path="/vms" element={<VmsHome />} />
+          <Route path="/vms/certificate/:certificateId" element={<VmsCertificatePage />} />
 
           {/* Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['Super Admin', 'Admin']} />}>
