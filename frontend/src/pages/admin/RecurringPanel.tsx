@@ -69,9 +69,9 @@ export default function RecurringPanel() {
           <h2 className="text-xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2">
             <CalendarClock size={20} className="text-primary-600" /> Recurring Donations
           </h2>
-          <p className="text-sm text-slate-500">{total} total records</p>
+          <p className="text-sm text-slate-500 text-center sm:text-left">{total} total records</p>
         </div>
-        <div className="flex items-center justify-center sm:justify-start gap-3">
+        <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
           <select
             value={status}
             onChange={e => { setStatus(e.target.value); setPage(1); }}

@@ -63,9 +63,9 @@ export default function PledgesPanel() {
           <h2 className="text-sm sm:text-base font-semibold text-slate-800 flex items-center justify-center sm:justify-start gap-2">
             <Handshake size={20} className="text-primary-600" /> Pledges
           </h2>
-          <p className="text-sm text-slate-500">{total} total pledges</p>
+          <p className="text-sm text-slate-500 text-center sm:text-left">{total} total pledges</p>
         </div>
-        <div className="flex items-center justify-center sm:justify-start gap-3">
+        <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
           <select
             value={status}
             onChange={e => { setStatus(e.target.value); setPage(1); }}

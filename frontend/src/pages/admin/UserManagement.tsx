@@ -42,7 +42,7 @@ export default function UserManagement() {
             <Users className="text-primary-600" size={24} />
             User Management
           </h2>
-          <p className="text-sm text-slate-500 mt-1">Manage system access, roles, and accounts</p>
+          <p className="text-sm text-slate-500 mt-1 text-center sm:text-left">Manage system access, roles, and accounts</p>
         </div>
         
         <div className="relative w-full sm:w-64">

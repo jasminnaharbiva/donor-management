@@ -233,7 +233,7 @@ export default function NotificationsAdminPanel() {
           <h2 className="text-sm sm:text-base font-semibold text-slate-900 flex items-center justify-center sm:justify-start gap-2">
             <Bell size={22} className="text-primary-600" /> Notification System
           </h2>
-          <p className="text-sm text-slate-500 mt-1">Manage notification rules, email templates, and view the notification log</p>
+          <p className="text-sm text-slate-500 mt-1 text-center sm:text-left">Manage notification rules, email templates, and view the notification log</p>
         </div>
         <button onClick={() => setShowBroadcast(true)}
           className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-xl text-sm font-medium hover:bg-orange-700 transition-colors">

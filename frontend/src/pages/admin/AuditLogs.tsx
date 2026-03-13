@@ -44,10 +44,10 @@ export default function AuditLogs() {
             <Activity className="text-primary-600" size={24} />
             System Audit Logs
           </h2>
-          <p className="text-sm text-slate-500 mt-1">Immutable record of all operational and financial changes</p>
+          <p className="text-sm text-slate-500 mt-1 text-center sm:text-left">Immutable record of all operational and financial changes</p>
         </div>
         
-        <div className="flex gap-3 justify-center sm:justify-start">
+        <div className="flex gap-3 justify-center sm:justify-start w-full sm:w-auto">
           <button className="flex items-center gap-2 bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition-colors text-sm font-medium shadow-sm">
             <Filter size={18} /> Filter
           </button>

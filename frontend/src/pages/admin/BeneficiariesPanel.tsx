@@ -54,9 +54,9 @@ export default function BeneficiariesPanel() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="text-center sm:text-left">
           <h2 className="text-sm sm:text-base font-semibold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><Users size={20} className="text-primary-600" /> Beneficiaries</h2>
-          <p className="text-sm text-slate-500">{total} total records</p>
+          <p className="text-sm text-slate-500 text-center sm:text-left">{total} total records</p>
         </div>
-        <div className="flex items-center justify-center sm:justify-start gap-3">
+        <div className="flex items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
           <select
             value={status}
             onChange={e => { setStatus(e.target.value); setPage(1); }}
