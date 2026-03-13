@@ -39,7 +39,7 @@ export default function AuditLogs() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
+        <div className="text-center sm:text-left">
           <h2 className="text-xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2">
             <Activity className="text-primary-600" size={24} />
             System Audit Logs
@@ -47,7 +47,7 @@ export default function AuditLogs() {
           <p className="text-sm text-slate-500 mt-1">Immutable record of all operational and financial changes</p>
         </div>
         
-        <div className="flex gap-3">
+        <div className="flex gap-3 justify-center sm:justify-start">
           <button className="flex items-center gap-2 bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition-colors text-sm font-medium shadow-sm">
             <Filter size={18} /> Filter
           </button>

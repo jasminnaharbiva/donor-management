@@ -37,7 +37,7 @@ export default function UserManagement() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
+        <div className="text-center sm:text-left">
           <h2 className="text-sm sm:text-base font-semibold text-slate-800 flex items-center gap-2">
             <Users className="text-primary-600" size={24} />
             User Management
