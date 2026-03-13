@@ -338,8 +338,158 @@ volunteersRouter.get(
         't.status', 't.submitted_at', 's.shift_title', 'p.project_name'
       );
 
-    // add hours_worked convenience field
-    const data = sheets.map((s: any) => ({ ...s, hours_worked: +(s.duration_minutes / 60).toFixed(2) }));
     res.json({ success: true, data });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/volunteers/search — Advanced volunteer search/filter (Admin Only)
+// ---------------------------------------------------------------------------
+volunteersRouter.get(
+  '/search',
+  authenticate,
+  requireRoles('Super Admin', 'Admin'),
+  async (req: Request, res: Response): Promise<void> => {
+    const {
+      search,
+      status,
+      city,
+      country,
+      background_check_status,
+      badge_number,
+      approved_after,
+      approved_before,
+      father_name,
+      district,
+      upazila,
+      division,
+      education_level,
+      blood_group,
+      sort_by = 'first_name',
+      sort_order = 'asc',
+      page = '1',
+      limit = '50'
+    } = req.query;
+
+    let query = db('dfb_volunteers as v')
+      .leftJoin('dfb_users as u', 'v.user_id', 'u.user_id')
+      .select(
+        'v.volunteer_id',
+        'v.first_name',
+        'v.last_name',
+        'v.father_name',
+        'v.date_of_birth',
+        'v.blood_group',
+        'v.education_level',
+        'v.mobile_number',
+        'v.address',
+        'v.full_address',
+        'v.division',
+        'v.district',
+        'v.upazila',
+        'v.city',
+        'v.country',
+        'v.background_check_status',
+        'v.badge_number',
+        'v.status',
+        'v.approved_at',
+        'v.created_at',
+        'u.email'
+      );
+
+    // Apply filters
+    if (search) {
+      const searchTerm = `%${search}%`;
+      query = query.where(function() {
+        this.where('v.first_name', 'like', searchTerm)
+            .orWhere('v.last_name', 'like', searchTerm)
+            .orWhere('v.badge_number', 'like', searchTerm)
+            .orWhere('u.email', 'like', searchTerm);
+      });
+    }
+
+    if (status) {
+      query = query.where('v.status', status);
+    }
+
+    if (city) {
+      query = query.where('v.city', 'like', `%${city}%`);
+    }
+
+    if (country) {
+      query = query.where('v.country', country);
+    }
+
+    if (background_check_status) {
+      query = query.where('v.background_check_status', background_check_status);
+    }
+
+    if (badge_number) {
+      query = query.where('v.badge_number', 'like', `%${badge_number}%`);
+    }
+
+    if (approved_after) {
+      query = query.where('v.approved_at', '>=', approved_after);
+    }
+
+    if (approved_before) {
+      query = query.where('v.approved_at', '<=', approved_before);
+    }
+
+    if (father_name) {
+      query = query.where('v.father_name', 'like', `%${father_name}%`);
+    }
+
+    if (district) {
+      query = query.where('v.district', 'like', `%${district}%`);
+    }
+
+    if (upazila) {
+      query = query.where('v.upazila', 'like', `%${upazila}%`);
+    }
+
+    if (division) {
+      query = query.where('v.division', 'like', `%${division}%`);
+    }
+
+    if (education_level) {
+      query = query.where('v.education_level', 'like', `%${education_level}%`);
+    }
+
+    if (blood_group) {
+      query = query.where('v.blood_group', blood_group);
+    }
+
+    // Sorting
+    const validSortFields = ['first_name', 'last_name', 'badge_number', 'status', 'approved_at', 'created_at', 'father_name', 'district', 'upazila', 'division', 'education_level'];
+    const sortField = validSortFields.includes(sort_by as string) ? sort_by : 'first_name';
+    const sortDir = (sort_order as string) === 'desc' ? 'desc' : 'asc';
+    query = query.orderBy(`v.${sortField}`, sortDir);
+
+    // Pagination
+    const pageNum = Math.max(1, parseInt(page as string, 10));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10)));
+    const offset = (pageNum - 1) * limitNum;
+
+    // Get total count for pagination
+    const countQuery = query.clone().clearSelect().clearOrder().select(db.raw('COUNT(*) as total'));
+    const countResult = await countQuery.first();
+    const total = Number(countResult.total);
+
+    // Apply pagination
+    query = query.limit(limitNum).offset(offset);
+
+    const volunteers = await query;
+
+    res.json({
+      success: true,
+      data: volunteers,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        total_pages: Math.ceil(total / limitNum)
+      }
+    });
   }
 );

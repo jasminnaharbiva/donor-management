@@ -86,6 +86,16 @@ interface VolunteerSearchResult {
   volunteer_id: number;
   first_name: string;
   last_name: string;
+  father_name: string | null;
+  date_of_birth: string | null;
+  blood_group: string | null;
+  education_level: string | null;
+  mobile_number: string | null;
+  address: string | null;
+  full_address: string | null;
+  division: string | null;
+  district: string | null;
+  upazila: string | null;
   city: string | null;
   country: string | null;
   background_check_status: string;
@@ -162,6 +172,12 @@ export default function VolunteerRecordsPanel() {
     badge_number: '',
     approved_after: '',
     approved_before: '',
+    father_name: '',
+    district: '',
+    upazila: '',
+    division: '',
+    education_level: '',
+    blood_group: '',
     sort_by: 'first_name',
     sort_order: 'asc',
     page: 1,
@@ -486,6 +502,74 @@ export default function VolunteerRecordsPanel() {
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Father's Name</label>
+                  <input
+                    type="text"
+                    value={volunteerFilters.father_name || ''}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, father_name: e.target.value }))}
+                    placeholder="Father's name"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">District</label>
+                  <input
+                    type="text"
+                    value={volunteerFilters.district || ''}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, district: e.target.value }))}
+                    placeholder="District"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Upazila</label>
+                  <input
+                    type="text"
+                    value={volunteerFilters.upazila || ''}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, upazila: e.target.value }))}
+                    placeholder="Upazila"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Division</label>
+                  <input
+                    type="text"
+                    value={volunteerFilters.division || ''}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, division: e.target.value }))}
+                    placeholder="Division"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Education Level</label>
+                  <input
+                    type="text"
+                    value={volunteerFilters.education_level || ''}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, education_level: e.target.value }))}
+                    placeholder="Education level"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Blood Group</label>
+                  <select
+                    value={volunteerFilters.blood_group || ''}
+                    onChange={e => setVolunteerFilters(f => ({ ...f, blood_group: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">All Blood Groups</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
+                </div>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-3 items-end">
@@ -530,6 +614,12 @@ export default function VolunteerRecordsPanel() {
                     badge_number: '',
                     approved_after: '',
                     approved_before: '',
+                    father_name: '',
+                    district: '',
+                    upazila: '',
+                    division: '',
+                    education_level: '',
+                    blood_group: '',
                     sort_by: 'first_name',
                     sort_order: 'asc',
                     page: 1,
@@ -551,21 +641,23 @@ export default function VolunteerRecordsPanel() {
                   <table className="min-w-full divide-y divide-slate-100">
                     <thead className="bg-slate-50">
                       <tr>
-                        {['Name', 'Badge #', 'Email', 'City', 'Country', 'Status', 'Background Check', 'Approved At'].map(h => (
+                        {['Name', 'Badge #', 'Email', 'District', 'Division', 'Education', 'Blood Group', 'Status', 'Approved At'].map(h => (
                           <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {volunteerSearchResults.length === 0 ? (
-                        <tr><td colSpan={8} className="text-center py-8 text-slate-400 text-sm">No volunteers found. Try adjusting your filters.</td></tr>
+                        <tr><td colSpan={9} className="text-center py-8 text-slate-400 text-sm">No volunteers found. Try adjusting your filters.</td></tr>
                       ) : volunteerSearchResults.map(v => (
                         <tr key={v.volunteer_id} className="hover:bg-slate-50">
                           <td className="px-4 py-3 text-sm text-slate-700 font-medium">{v.first_name} {v.last_name}</td>
                           <td className="px-4 py-3 text-xs font-mono text-slate-600">{v.badge_number}</td>
                           <td className="px-4 py-3 text-sm text-slate-600">{v.email || '—'}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{v.city || '—'}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{v.country || '—'}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{v.district || '—'}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{v.division || '—'}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{v.education_level || '—'}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{v.blood_group || '—'}</td>
                           <td className="px-4 py-3">
                             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                               v.status === 'active' ? 'bg-green-100 text-green-700' :
@@ -574,16 +666,6 @@ export default function VolunteerRecordsPanel() {
                               'bg-red-100 text-red-700'
                             }`}>
                               {v.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                              v.background_check_status === 'approved' ? 'bg-green-100 text-green-700' :
-                              v.background_check_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                              v.background_check_status === 'rejected' ? 'bg-red-100 text-red-700' :
-                              'bg-slate-100 text-slate-500'
-                            }`}>
-                              {v.background_check_status || 'Not Set'}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-400">
