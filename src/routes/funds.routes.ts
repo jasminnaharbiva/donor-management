@@ -69,7 +69,7 @@ fundsRouter.get(['/admin-summary', '/admin/summary', '/summary'], authenticate, 
       .groupBy('fund_id')
       .select('fund_id')
       .sum('allocated_amount as total_allocated')
-      .sum(db.raw('CASE WHEN is_spent = 0 AND expense_id IS NULL THEN allocated_amount ELSE 0 END as unspent_allocations')),
+      .select(db.raw('SUM(CASE WHEN is_spent = 0 AND expense_id IS NULL THEN allocated_amount ELSE 0 END) as unspent_allocations')),
     db('dfb_expenses')
       .whereIn('fund_id', fundIds)
       .where({ status: 'Approved' })
@@ -91,10 +91,10 @@ fundsRouter.get(['/admin-summary', '/admin/summary', '/summary'], authenticate, 
       .whereIn('a.fund_id', fundIds)
       .groupBy('a.fund_id')
       .select('a.fund_id')
-      .sum(db.raw("CASE WHEN t.gateway_txn_id LIKE 'manual-entry-%' THEN a.allocated_amount ELSE 0 END as manual_entry_total"))
-      .sum(db.raw('CASE WHEN t.gateway_txn_id LIKE ? THEN a.allocated_amount ELSE 0 END as fundraising_total', ['fundraising-%']))
-      .sum(db.raw("CASE WHEN t.payment_method IN ('card','paypal','bkash','sslcommerz','nagad','rocket','apple_pay','google_pay') AND (t.gateway_txn_id IS NULL OR (t.gateway_txn_id NOT LIKE 'manual-entry-%' AND t.gateway_txn_id NOT LIKE 'fundraising-%')) THEN a.allocated_amount ELSE 0 END as payment_panel_total"))
-      .sum(db.raw("CASE WHEN t.donor_id IS NOT NULL AND (t.gateway_txn_id IS NULL OR (t.gateway_txn_id NOT LIKE 'manual-entry-%' AND t.gateway_txn_id NOT LIKE 'fundraising-%')) AND t.payment_method NOT IN ('card','paypal','bkash','sslcommerz','nagad','rocket','apple_pay','google_pay') THEN a.allocated_amount ELSE 0 END as donor_giving_total")),
+      .select(db.raw("SUM(CASE WHEN t.gateway_txn_id LIKE 'manual-entry-%' THEN a.allocated_amount ELSE 0 END) as manual_entry_total"))
+      .select(db.raw("SUM(CASE WHEN t.gateway_txn_id LIKE 'fundraising-%' THEN a.allocated_amount ELSE 0 END) as fundraising_total"))
+      .select(db.raw("SUM(CASE WHEN t.payment_method IN ('card','paypal','bkash','sslcommerz','nagad','rocket','apple_pay','google_pay') AND (t.gateway_txn_id IS NULL OR (t.gateway_txn_id NOT LIKE 'manual-entry-%' AND t.gateway_txn_id NOT LIKE 'fundraising-%')) THEN a.allocated_amount ELSE 0 END) as payment_panel_total"))
+      .select(db.raw("SUM(CASE WHEN t.donor_id IS NOT NULL AND (t.gateway_txn_id IS NULL OR (t.gateway_txn_id NOT LIKE 'manual-entry-%' AND t.gateway_txn_id NOT LIKE 'fundraising-%')) AND t.payment_method NOT IN ('card','paypal','bkash','sslcommerz','nagad','rocket','apple_pay','google_pay') THEN a.allocated_amount ELSE 0 END) as donor_giving_total")),
   ]);
 
   const allocationMap = new Map<number, any>();

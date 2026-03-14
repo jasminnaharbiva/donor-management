@@ -1,25 +1,26 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-// Get socket URL: use current origin (works in production at same domain)
-// or fallback to environment variable, or default to localhost:3002
-const getSocketUrl = () => {
-  // Check if environment variable is set
-  const envUrl = (import.meta as any).env.VITE_API_URL;
-  if (envUrl) {
-    return envUrl.replace('/api/v1', '');
-  }
-  
-  // Use current window origin (same domain as frontend)
+const getSocketBase = (): string => {
   if (typeof window !== 'undefined' && window.location) {
     return window.location.origin;
   }
-  
-  // Fallback for development
+
+  const envUrl = String((import.meta as any).env.VITE_API_URL || '').trim();
+
+  if (envUrl) {
+    try {
+      const parsed = new URL(envUrl, typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3002');
+      return `${parsed.protocol}//${parsed.host}`;
+    } catch {
+      // Ignore malformed env URL and continue to same-origin fallback
+    }
+  }
+
   return 'http://localhost:3002';
 };
 
-const SOCKET_URL = getSocketUrl();
+const SOCKET_BASE = getSocketBase();
 
 type ManagedSocket = {
   socket: Socket;
@@ -46,10 +47,12 @@ function acquireSocket(namespace: string, token: string): Socket {
     return existing.socket;
   }
 
-  const socket = io(`${SOCKET_URL}${namespace}`, {
+  const socket = io(`${SOCKET_BASE}${namespace}`, {
+    path: '/socket.io',
+    withCredentials: true,
     auth: { token },
-    transports: ['polling', 'websocket'],
-    reconnectionAttempts: 5,
+    transports: ['websocket'],
+    reconnectionAttempts: 8,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     timeout: 30000,

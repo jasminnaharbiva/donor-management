@@ -92,6 +92,7 @@ export default function FundsManagementPanel() {
     try {
       const candidateEndpoints = ['/funds/admin-summary', '/funds/admin/summary', '/funds/summary'];
       let loaded = false;
+      let summaryErrorMessage = '';
 
       for (const endpoint of candidateEndpoints) {
         try {
@@ -101,7 +102,10 @@ export default function FundsManagementPanel() {
           break;
         } catch (err: any) {
           const status = Number(err?.response?.status || 0);
-          if (status !== 404) throw err;
+          summaryErrorMessage = err?.response?.data?.message || err?.message || '';
+          if (status !== 404) {
+            continue;
+          }
         }
       }
 
@@ -119,7 +123,9 @@ export default function FundsManagementPanel() {
           fundraising_total: 0,
         }));
         setFunds(basicFunds);
-        setNotice('Advanced fund summary route is unavailable; showing compatible fallback data.');
+        setNotice(summaryErrorMessage
+          ? `Using compatibility fallback data (${summaryErrorMessage}).`
+          : 'Advanced fund summary route is unavailable; showing compatible fallback data.');
       }
     } catch (err: any) {
       setNotice(err?.response?.data?.message || 'Failed to load fund summary');
