@@ -88,9 +88,39 @@ export default function FundsManagementPanel() {
 
   const load = async () => {
     setLoading(true);
+    setNotice('');
     try {
-      const res = await api.get('/funds/admin-summary');
-      setFunds(res.data.data || []);
+      const candidateEndpoints = ['/funds/admin-summary', '/funds/admin/summary', '/funds/summary'];
+      let loaded = false;
+
+      for (const endpoint of candidateEndpoints) {
+        try {
+          const res = await api.get(endpoint);
+          setFunds(res.data.data || []);
+          loaded = true;
+          break;
+        } catch (err: any) {
+          const status = Number(err?.response?.status || 0);
+          if (status !== 404) throw err;
+        }
+      }
+
+      if (!loaded) {
+        const fallback = await api.get('/funds');
+        const basicFunds = (fallback.data.data || []).map((fund: any) => ({
+          ...fund,
+          verified_unspent_allocations: Number(fund.current_balance || 0),
+          discrepancy: 0,
+          approved_spent: Number(fund.total_spent || 0),
+          pending_spent: 0,
+          donor_giving_total: 0,
+          manual_entry_total: 0,
+          payment_panel_total: 0,
+          fundraising_total: 0,
+        }));
+        setFunds(basicFunds);
+        setNotice('Advanced fund summary route is unavailable; showing compatible fallback data.');
+      }
     } catch (err: any) {
       setNotice(err?.response?.data?.message || 'Failed to load fund summary');
     } finally {
