@@ -17,7 +17,8 @@ module.exports = {
       min_uptime:          '10s',
       restart_delay:       3000,
       autorestart:         true,
-      watch:               false,
+      watch:               ['dist'],
+      ignore_watch:        ['node_modules', 'public/uploads', 'frontend', 'logs', '.git'],
 
       // Memory management
       max_memory_restart: '512M',
