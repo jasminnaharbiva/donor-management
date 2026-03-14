@@ -54,7 +54,7 @@ fundsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
 // ---------------------------------------------------------------------------
 // GET /api/v1/funds/admin-summary — Comprehensive fund balances (admin/finance)
 // ---------------------------------------------------------------------------
-fundsRouter.get('/admin-summary', authenticate, requirePermission('funds', 'view', ['Super Admin', 'Admin', 'Finance']), async (_req: Request, res: Response): Promise<void> => {
+fundsRouter.get(['/admin-summary', '/admin/summary', '/summary'], authenticate, requirePermission('funds', 'view', ['Super Admin', 'Admin', 'Finance']), async (_req: Request, res: Response): Promise<void> => {
   const funds = await db('dfb_funds').orderBy('fund_name', 'asc').select('*');
 
   const fundIds = funds.map((fund: any) => fund.fund_id);
