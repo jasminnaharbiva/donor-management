@@ -13,6 +13,11 @@ function normalizeFundCategory(value: string): string {
   return 'General';
 }
 
+const PAYMENT_METHODS = [
+  'card', 'paypal', 'bkash', 'sslcommerz', 'nagad', 'rocket',
+  'apple_pay', 'google_pay', 'crypto', 'bank_transfer', 'cash', 'check', 'in_kind', 'daf',
+];
+
 // ---------------------------------------------------------------------------
 // GET /api/v1/funds
 // ---------------------------------------------------------------------------
@@ -58,7 +63,7 @@ fundsRouter.get('/admin-summary', authenticate, requirePermission('funds', 'view
     return;
   }
 
-  const [allocationRows, approvedExpensesRows, pendingExpensesRows] = await Promise.all([
+  const [allocationRows, approvedExpensesRows, pendingExpensesRows, sourceRows] = await Promise.all([
     db('dfb_allocations')
       .whereIn('fund_id', fundIds)
       .groupBy('fund_id')
@@ -81,20 +86,32 @@ fundsRouter.get('/admin-summary', authenticate, requirePermission('funds', 'view
       .select('fund_id')
       .sum('amount_spent as pending_spent')
       .count('expense_id as pending_count'),
+    db('dfb_allocations as a')
+      .join('dfb_transactions as t', 'a.transaction_id', 't.transaction_id')
+      .whereIn('a.fund_id', fundIds)
+      .groupBy('a.fund_id')
+      .select('a.fund_id')
+      .sum(db.raw("CASE WHEN t.gateway_txn_id LIKE 'manual-entry-%' THEN a.allocated_amount ELSE 0 END as manual_entry_total"))
+      .sum(db.raw('CASE WHEN t.gateway_txn_id LIKE ? THEN a.allocated_amount ELSE 0 END as fundraising_total', ['fundraising-%']))
+      .sum(db.raw("CASE WHEN t.payment_method IN ('card','paypal','bkash','sslcommerz','nagad','rocket','apple_pay','google_pay') AND (t.gateway_txn_id IS NULL OR (t.gateway_txn_id NOT LIKE 'manual-entry-%' AND t.gateway_txn_id NOT LIKE 'fundraising-%')) THEN a.allocated_amount ELSE 0 END as payment_panel_total"))
+      .sum(db.raw("CASE WHEN t.donor_id IS NOT NULL AND (t.gateway_txn_id IS NULL OR (t.gateway_txn_id NOT LIKE 'manual-entry-%' AND t.gateway_txn_id NOT LIKE 'fundraising-%')) AND t.payment_method NOT IN ('card','paypal','bkash','sslcommerz','nagad','rocket','apple_pay','google_pay') THEN a.allocated_amount ELSE 0 END as donor_giving_total")),
   ]);
 
   const allocationMap = new Map<number, any>();
   const approvedMap = new Map<number, any>();
   const pendingMap = new Map<number, any>();
+  const sourceMap = new Map<number, any>();
 
   allocationRows.forEach((row: any) => allocationMap.set(Number(row.fund_id), row));
   approvedExpensesRows.forEach((row: any) => approvedMap.set(Number(row.fund_id), row));
   pendingExpensesRows.forEach((row: any) => pendingMap.set(Number(row.fund_id), row));
+  sourceRows.forEach((row: any) => sourceMap.set(Number(row.fund_id), row));
 
   const enriched = funds.map((fund: any) => {
     const alloc = allocationMap.get(Number(fund.fund_id));
     const approved = approvedMap.get(Number(fund.fund_id));
     const pending = pendingMap.get(Number(fund.fund_id));
+    const source = sourceMap.get(Number(fund.fund_id));
     const verifiedUnspent = Number(alloc?.unspent_allocations || 0);
     const currentBalance = Number(fund.current_balance || 0);
 
@@ -106,6 +123,10 @@ fundsRouter.get('/admin-summary', authenticate, requirePermission('funds', 'view
       pending_spent: Number(pending?.pending_spent || 0),
       approved_expense_count: Number(approved?.approved_count || 0),
       pending_expense_count: Number(pending?.pending_count || 0),
+      donor_giving_total: Number(source?.donor_giving_total || 0),
+      manual_entry_total: Number(source?.manual_entry_total || 0),
+      payment_panel_total: Number(source?.payment_panel_total || 0),
+      fundraising_total: Number(source?.fundraising_total || 0),
       discrepancy: currentBalance - verifiedUnspent,
     };
   });
@@ -179,6 +200,105 @@ fundsRouter.post('/'
     });
 
     res.status(201).json({ success: true, message: 'Fund created', data: { fund_id: fundId } });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/funds/manual-entry — Manual inflow entry by admin/finance
+// ---------------------------------------------------------------------------
+fundsRouter.post('/manual-entry'
+  , authenticate
+  , requirePermission('funds', 'create', ['Super Admin', 'Admin', 'Finance'])
+  , [
+    body('fundId').isInt({ min: 1 }).toInt(),
+    body('amount').isFloat({ min: 0.01 }).toFloat(),
+    body('paymentMethod').optional().isIn(PAYMENT_METHODS),
+    body('donorId').optional().isInt({ min: 1 }).toInt(),
+    body('campaignId').optional().isInt({ min: 1 }).toInt(),
+    body('reference').optional().isString().isLength({ max: 180 }),
+  ]
+  , async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
+    const fundId = Number(req.body.fundId);
+    const amount = Number(req.body.amount);
+    const donorId = req.body.donorId ? Number(req.body.donorId) : null;
+    const campaignId = req.body.campaignId ? Number(req.body.campaignId) : null;
+    const paymentMethod = String(req.body.paymentMethod || 'bank_transfer');
+    const reference = String(req.body.reference || '').trim() || 'manual-entry';
+
+    const fund = await db('dfb_funds').where({ fund_id: fundId }).first('fund_id', 'fund_name');
+    if (!fund) { res.status(404).json({ success: false, message: 'Fund not found' }); return; }
+
+    if (campaignId) {
+      const campaign = await db('dfb_campaigns').where({ campaign_id: campaignId }).first('campaign_id');
+      if (!campaign) { res.status(404).json({ success: false, message: 'Campaign not found' }); return; }
+    }
+
+    const transactionId = uuidv4();
+    await db.transaction(async (trx) => {
+      await trx('dfb_transactions').insert({
+        transaction_id: transactionId,
+        donor_id: donorId,
+        amount,
+        currency: 'BDT',
+        currency_type: 'fiat',
+        payment_method: paymentMethod,
+        gateway_txn_id: `manual-entry-${Date.now()}`,
+        net_amount: amount,
+        status: 'Completed',
+        settled_at: new Date(),
+        created_at: new Date(),
+      });
+
+      await trx('dfb_allocations').insert({
+        transaction_id: transactionId,
+        fund_id: fundId,
+        allocated_amount: amount,
+        allocated_at: new Date(),
+        is_spent: false,
+      });
+
+      await trx('dfb_funds').where({ fund_id: fundId }).update({
+        current_balance: db.raw('current_balance + ?', [amount]),
+      });
+
+      if (donorId) {
+        await trx('dfb_donors').where({ donor_id: donorId }).update({
+          lifetime_value: db.raw('lifetime_value + ?', [amount]),
+          last_donation_date: new Date(),
+          updated_at: new Date(),
+        });
+      }
+
+      if (campaignId) {
+        await trx('dfb_campaigns').where({ campaign_id: campaignId }).update({
+          raised_amount: db.raw('raised_amount + ?', [amount]),
+          donor_count: db.raw('donor_count + ?', [1]),
+          updated_at: new Date(),
+        });
+        await trx('dfb_transactions').where({ transaction_id: transactionId }).update({
+          gateway_txn_id: `fundraising-${campaignId}-${Date.now()}`,
+        });
+      }
+    });
+
+    await writeAuditLog({
+      tableAffected: 'dfb_transactions',
+      recordId: transactionId,
+      actionType: 'INSERT',
+      newPayload: { fundId, amount, donorId, campaignId, paymentMethod, reference },
+      actorId: req.user!.userId,
+      actorRole: req.user!.roleName,
+      ipAddress: req.ip,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Manual fund entry added successfully',
+      data: { transaction_id: transactionId, fund_id: fundId, amount },
+    });
   }
 );
 
@@ -428,6 +548,54 @@ fundsRouter.post('/:id/reconcile'
         fixed: applyFix,
       },
     });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// DELETE /api/v1/funds/:id — Delete a fund (when safe)
+// ---------------------------------------------------------------------------
+fundsRouter.delete('/:id'
+  , authenticate
+  , requirePermission('funds', 'delete', ['Super Admin', 'Admin'])
+  , param('id').isInt({ min: 1 }).toInt()
+  , async (req: Request, res: Response): Promise<void> => {
+    const fundId = Number(req.params.id);
+    const fund = await db('dfb_funds').where({ fund_id: fundId }).first('fund_id', 'fund_name', 'current_balance');
+    if (!fund) { res.status(404).json({ success: false, message: 'Fund not found' }); return; }
+
+    const [allocCount, expenseCount, campaignCount, projectCount] = await Promise.all([
+      db('dfb_allocations').where({ fund_id: fundId }).count('allocation_id as total').first(),
+      db('dfb_expenses').where({ fund_id: fundId }).whereNull('deleted_at').count('expense_id as total').first(),
+      db('dfb_campaigns').where({ fund_id: fundId }).count('campaign_id as total').first(),
+      db('dfb_projects').where({ fund_id: fundId }).count('project_id as total').first(),
+    ]);
+
+    const hasReferences = Number((allocCount as any)?.total || 0) > 0
+      || Number((expenseCount as any)?.total || 0) > 0
+      || Number((campaignCount as any)?.total || 0) > 0
+      || Number((projectCount as any)?.total || 0) > 0;
+
+    if (hasReferences || Number(fund.current_balance || 0) > 0) {
+      res.status(409).json({
+        success: false,
+        message: 'Fund cannot be deleted because it has linked records or non-zero balance. Transfer/reconcile funds first.',
+      });
+      return;
+    }
+
+    await db('dfb_funds').where({ fund_id: fundId }).delete();
+
+    await writeAuditLog({
+      tableAffected: 'dfb_funds',
+      recordId: String(fundId),
+      actionType: 'DELETE',
+      oldPayload: { fundName: fund.fund_name },
+      actorId: req.user!.userId,
+      actorRole: req.user!.roleName,
+      ipAddress: req.ip,
+    });
+
+    res.json({ success: true, message: 'Fund deleted successfully' });
   }
 );
 

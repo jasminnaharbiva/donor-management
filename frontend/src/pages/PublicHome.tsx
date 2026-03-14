@@ -117,6 +117,7 @@ export default function PublicHome() {
                 <div key={u.update_id} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col gap-2">
                   <h3 className="font-semibold text-slate-800 text-base">{u.update_title || u.narrative}</h3>
                   <p className="text-xs text-slate-500">{u.project_name}{u.location_city ? ` · ${u.location_city}, ${u.location_country}` : ''}</p>
+                  <p className="text-xs text-slate-600">Fund: {u.fund_name || 'N/A'} · Approved Expense: {fmt(Number(u.approved_expense_amount || 0))}</p>
                   {u.update_details && <p className="text-sm text-slate-600 line-clamp-3">{u.update_details}</p>}
                   {Array.isArray(u.photo_urls) && u.photo_urls.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-2 text-xs">

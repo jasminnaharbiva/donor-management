@@ -327,7 +327,17 @@ volunteersRouter.get(
       };
     });
 
-    res.json({ success: true, data: { ...projectWithProgress, progress_logs: progressLogs, expense_updates: expenseUpdates } });
+    res.json({
+      success: true,
+      data: {
+        ...projectWithProgress,
+        project_requirements: (projectWithProgress as any).description || null,
+        total_project_fund: Number((projectWithProgress as any).budget_allocated || 0),
+        total_spent_fund: Number((projectWithProgress as any).budget_spent || 0),
+        progress_logs: progressLogs,
+        expense_updates: expenseUpdates,
+      },
+    });
   }
 );
 
@@ -406,10 +416,10 @@ volunteersRouter.post(
     body('updateTitle').trim().notEmpty().isLength({ max: 160 }),
     body('updateDetails').optional().isString().isLength({ max: 3000 }),
     body('vendorName').optional().isString().isLength({ max: 120 }),
-    body('voucherUrl').trim().isURL(),
-    body('cashMemoUrl').trim().isURL(),
-    body('photoUrls').isArray({ min: 1, max: 10 }),
-    body('photoUrls.*').isURL(),
+    body('voucherUrl').optional().trim().isURL(),
+    body('cashMemoUrl').optional().trim().isURL(),
+    body('photoUrls').optional().isArray({ max: 10 }),
+    body('photoUrls.*').optional().isURL(),
     body('spentTimestamp').optional().isISO8601().toDate(),
   ],
   async (req: Request, res: Response): Promise<void> => {
@@ -447,19 +457,14 @@ volunteersRouter.post(
       ? req.body.photoUrls.map((item: unknown) => String(item || '').trim()).filter(Boolean)
       : [];
 
-    if (!voucherUrl || !cashMemoUrl || photoUrls.length === 0) {
-      res.status(422).json({ success: false, message: 'Voucher, cash memo, and at least one photo are required.' });
-      return;
-    }
-
     const { v4: uuidv4 } = await import('uuid');
     const expenseId = uuidv4();
 
     const evidencePayload = {
       update_title: updateTitle,
       update_details: updateDetails || null,
-      voucher_url: voucherUrl,
-      cash_memo_url: cashMemoUrl,
+      voucher_url: voucherUrl || null,
+      cash_memo_url: cashMemoUrl || null,
       photos: photoUrls,
     };
 
@@ -470,7 +475,7 @@ volunteersRouter.post(
       amount_spent: amountSpent,
       vendor_name: req.body.vendorName || null,
       purpose: updateDetails ? `${updateTitle} — ${updateDetails}` : updateTitle,
-      receipt_url: voucherUrl,
+      receipt_url: voucherUrl || null,
       spent_timestamp: req.body.spentTimestamp || new Date(),
       submitted_by_volunteer_id: volunteerId,
       proof_of_execution_urls: JSON.stringify(evidencePayload),
@@ -482,7 +487,7 @@ volunteersRouter.post(
       tableAffected: 'dfb_expenses',
       recordId: expenseId,
       actionType: 'INSERT',
-      newPayload: { projectId, amountSpent, updateTitle, photoCount: photoUrls.length, hasVoucher: true, hasCashMemo: true },
+      newPayload: { projectId, amountSpent, updateTitle, photoCount: photoUrls.length, hasVoucher: Boolean(voucherUrl), hasCashMemo: Boolean(cashMemoUrl) },
       actorId: req.user!.userId,
       actorRole: req.user!.roleName,
       ipAddress: req.ip,
@@ -550,8 +555,8 @@ volunteersRouter.patch(
         : parsed.photos,
     };
 
-    if (!payload.voucher_url || !payload.cash_memo_url || payload.photos.length === 0 || !payload.update_title) {
-      res.status(422).json({ success: false, message: 'Voucher, cash memo, at least one photo, and title are required.' });
+    if (!payload.update_title) {
+      res.status(422).json({ success: false, message: 'Update title is required.' });
       return;
     }
 

@@ -225,11 +225,11 @@ async function ensureDefaultPermissions() {
   const seeds: Array<{ role: string; resource: string; actions: string[] }> = [
     { role: 'Admin', resource: 'donor_visibility', actions: ['view', 'update'] },
     { role: 'Admin', resource: 'funds', actions: ['view', 'create', 'update', 'delete', 'approve', 'export'] },
-    { role: 'Admin', resource: 'project_workspace', actions: ['view', 'create', 'update', 'approve', 'reject'] },
+    { role: 'Admin', resource: 'project_workspace', actions: ['view', 'create', 'update', 'delete', 'approve', 'reject'] },
     { role: 'Finance', resource: 'funds', actions: ['view', 'update', 'approve', 'export'] },
     { role: 'Finance', resource: 'expenses', actions: ['view', 'approve', 'reject', 'export'] },
     { role: 'Finance', resource: 'reports', actions: ['view', 'export'] },
-    { role: 'Volunteer', resource: 'project_workspace', actions: ['view', 'create', 'update'] },
+    { role: 'Volunteer', resource: 'project_workspace', actions: ['view', 'create', 'update', 'delete'] },
     { role: 'Volunteer', resource: 'expenses', actions: ['view', 'create'] },
     { role: 'Donor', resource: 'donor_visibility', actions: ['view'] },
   ];

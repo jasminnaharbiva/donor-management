@@ -136,8 +136,22 @@ To support the volunteer-driven project update lifecycle with stronger financial
 	- `src/routes/public.routes.ts` (`/api/v1/public/project-updates` visibility-aware)
 	- `frontend/src/pages/donor/DonorDashboard.tsx` (menu + impact section rendering respects admin settings)
 - Fund management expansion:
-	- `src/routes/funds.routes.ts` (admin summary, create, update, transfer, reconcile, ledger)
+	- `src/routes/funds.routes.ts` (admin summary, create, update, transfer, reconcile, ledger, manual-entry, delete)
 	- `frontend/src/pages/admin/FundsManagementPanel.tsx`
 	- `frontend/src/pages/admin/AdminDashboard.tsx` (new `/admin/funds` route + menu)
+	- Summary now reports donor/manual/payment/fundraising source channels with non-overlapping classification
+
+- Volunteer expense evidence flexibility:
+	- `src/routes/volunteers.routes.ts` and `frontend/src/pages/volunteer/VolunteerDashboard.tsx`
+	- Expense updates remain admin-reviewed, while voucher/cash memo/photos are now optional per submission
+
+- Donor/public clarity enhancements:
+	- `src/routes/donors.routes.ts`, `src/routes/public.routes.ts`
+	- `frontend/src/pages/donor/DonorDashboard.tsx`, `frontend/src/pages/PublicHome.tsx`
+	- Approved project updates now expose associated fund name + approved expense amount
+
+- Permission seed correction for withdraw flows:
+	- `src/routes/admin.routes.ts`
+	- Added default `project_workspace.delete` for Volunteer/Admin in dynamic permission mode
 
 These updates keep VMS-adjacent volunteer execution traceable from field activity through admin approval and into controlled donor/public transparency.

@@ -33,10 +33,13 @@ interface AssignedProject {
   project_id: number;
   project_name: string;
   description?: string;
+  project_requirements?: string;
   status: string;
   budget_allocated: number;
   budget_spent: number;
   budget_remaining: number;
+  total_project_fund?: number;
+  total_spent_fund?: number;
   location_country?: string;
   location_city?: string;
   start_date?: string;
@@ -445,11 +448,6 @@ function ProjectWorkspace() {
     e.preventDefault();
     if (!projectId) return;
 
-    if (!form.voucherUrl || !form.cashMemoUrl || form.photoUrls.length === 0) {
-      alert('Voucher, cash memo, and at least one photo are required.');
-      return;
-    }
-
     setSaving(true);
     try {
       await api.post(`/volunteers/my-projects/${projectId}/expense-updates`, {
@@ -502,7 +500,7 @@ function ProjectWorkspace() {
       <div className="glass rounded-xl p-5 border border-slate-200 space-y-2">
         <h3 className="text-xl font-bold text-slate-800">{project.project_name}</h3>
         <p className="text-sm text-slate-500">{project.fund_name}{project.location_city ? ` · ${project.location_city}, ${project.location_country}` : ''}</p>
-        {project.description && <p className="text-sm text-slate-600">{project.description}</p>}
+        {project.project_requirements && <p className="text-sm text-slate-600"><span className="font-semibold text-slate-700">Requirements:</span> {project.project_requirements}</p>}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-500">
           <p>Status: <span className="font-semibold text-slate-700">{project.status}</span></p>
           <p>Assigned: <span className="font-semibold text-slate-700">{new Date(project.assigned_at).toLocaleDateString()}</span></p>
@@ -571,7 +569,7 @@ function ProjectWorkspace() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Voucher (required)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Voucher (optional)</label>
               <label className="relative cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition outline-none focus-within:ring-2 focus-within:ring-primary-500/50">
                 {uploadingKind === 'voucher' ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <UploadCloud size={16} className="text-slate-500" />}
                 {uploadingKind === 'voucher' ? 'Uploading...' : 'Upload Voucher'}
@@ -580,7 +578,7 @@ function ProjectWorkspace() {
               {form.voucherUrl && <a href={form.voucherUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline mt-1 inline-block">View uploaded voucher</a>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Cash Memo (required)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Cash Memo (optional)</label>
               <label className="relative cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition outline-none focus-within:ring-2 focus-within:ring-primary-500/50">
                 {uploadingKind === 'cash_memo' ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <UploadCloud size={16} className="text-slate-500" />}
                 {uploadingKind === 'cash_memo' ? 'Uploading...' : 'Upload Cash Memo'}
@@ -591,7 +589,7 @@ function ProjectWorkspace() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Execution Photos (required, one or more)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Execution Photos (optional)</label>
             <label className="relative cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition outline-none focus-within:ring-2 focus-within:ring-primary-500/50 w-fit">
               {uploadingKind === 'photo' ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <UploadCloud size={16} className="text-slate-500" />}
               {uploadingKind === 'photo' ? 'Uploading...' : 'Upload Photos'}

@@ -721,6 +721,7 @@ function MyImpact() {
                   <span className="text-xs text-slate-500">{item.approved_at ? new Date(item.approved_at).toLocaleDateString() : 'Approved'}</span>
                 </div>
                 {updateVisibility.showProjectLocation !== false && <p className="text-xs text-slate-500 mt-1">{item.project_name}{item.location_city ? ` · ${item.location_city}, ${item.location_country}` : ''}</p>}
+                <p className="text-xs text-slate-600 mt-1">Fund: {item.fund_name || 'N/A'} · Approved Expense: {fmt(Number(item.approved_expense_amount || 0))}</p>
                 {updateVisibility.showDetails !== false && item.update_details && <p className="text-sm text-slate-600 mt-2 whitespace-pre-wrap">{item.update_details}</p>}
                 {updateVisibility.showPhotos !== false && Array.isArray(item.photo_urls) && item.photo_urls.length > 0 && (
                   <div className="mt-2 text-xs text-slate-500">

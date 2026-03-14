@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeftRight, CheckCircle2, Loader2, RefreshCw, Wallet } from 'lucide-react';
+import { ArrowLeftRight, CheckCircle2, Loader2, RefreshCw, Trash2, Wallet } from 'lucide-react';
 import api from '../../services/api';
 
 type FundSummary = {
@@ -14,6 +14,10 @@ type FundSummary = {
   discrepancy: number;
   approved_spent: number;
   pending_spent: number;
+  donor_giving_total: number;
+  manual_entry_total: number;
+  payment_panel_total: number;
+  fundraising_total: number;
 };
 
 type LedgerPayload = {
@@ -22,6 +26,7 @@ type LedgerPayload = {
 };
 
 const FUND_CATEGORIES = ['General', 'Zakat', 'Sadaqah', 'Waqf', 'Restricted', 'Emergency'];
+const PAYMENT_METHODS = ['bank_transfer', 'cash', 'check', 'card', 'bkash', 'nagad', 'sslcommerz', 'paypal', 'rocket'];
 
 export default function FundsManagementPanel() {
   const [funds, setFunds] = useState<FundSummary[]>([]);
@@ -52,6 +57,15 @@ export default function FundsManagementPanel() {
     targetFundId: '',
     amount: '',
     reason: '',
+  });
+
+  const [manualForm, setManualForm] = useState({
+    fundId: '',
+    amount: '',
+    paymentMethod: 'bank_transfer',
+    donorId: '',
+    campaignId: '',
+    reference: '',
   });
 
   const [ledgerFundId, setLedgerFundId] = useState<number | null>(null);
@@ -210,6 +224,49 @@ export default function FundsManagementPanel() {
     }
   };
 
+  const handleManualEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualForm.fundId || !manualForm.amount) {
+      setNotice('Manual entry requires fund and amount.');
+      return;
+    }
+
+    setBusyKey('manual-entry');
+    setNotice('');
+    try {
+      await api.post('/funds/manual-entry', {
+        fundId: Number(manualForm.fundId),
+        amount: Number(manualForm.amount),
+        paymentMethod: manualForm.paymentMethod,
+        donorId: manualForm.donorId ? Number(manualForm.donorId) : undefined,
+        campaignId: manualForm.campaignId ? Number(manualForm.campaignId) : undefined,
+        reference: manualForm.reference || undefined,
+      });
+      setManualForm({ fundId: '', amount: '', paymentMethod: 'bank_transfer', donorId: '', campaignId: '', reference: '' });
+      setNotice('Manual fund entry added successfully.');
+      await load();
+    } catch (err: any) {
+      setNotice(err?.response?.data?.message || 'Failed to add manual entry');
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const deleteFund = async (fund: FundSummary) => {
+    if (!confirm(`Delete fund "${fund.fund_name}"? This works only when balance is zero and no linked records exist.`)) return;
+    setBusyKey(`delete-${fund.fund_id}`);
+    setNotice('');
+    try {
+      await api.delete(`/funds/${fund.fund_id}`);
+      setNotice(`Fund "${fund.fund_name}" deleted.`);
+      await load();
+    } catch (err: any) {
+      setNotice(err?.response?.data?.message || 'Failed to delete fund');
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary-500" size={32} /></div>;
   }
@@ -237,7 +294,7 @@ export default function FundsManagementPanel() {
         <div className="glass rounded-xl p-4 border border-slate-200"><p className="text-xs text-slate-500">Pending Spend</p><p className="text-lg font-bold text-slate-800">{fmt(totals.pending)}</p></div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         <form onSubmit={handleCreate} className="glass rounded-xl p-5 border border-slate-200 space-y-3">
           <h3 className="text-sm font-semibold text-slate-800">Create Fund</h3>
           <input value={createForm.fundName} onChange={(e) => setCreateForm((p) => ({ ...p, fundName: e.target.value }))} required placeholder="Fund Name" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
@@ -291,17 +348,36 @@ export default function FundsManagementPanel() {
             {busyKey === 'transfer' ? 'Transferring...' : 'Transfer Funds'}
           </button>
         </form>
+
+        <form onSubmit={handleManualEntry} className="glass rounded-xl p-5 border border-slate-200 space-y-3">
+          <h3 className="text-sm font-semibold text-slate-800">Manual Entry / Fundraising Top-up</h3>
+          <select value={manualForm.fundId} onChange={(e) => setManualForm((p) => ({ ...p, fundId: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" required>
+            <option value="">Target Fund</option>
+            {funds.map((fund) => <option key={`manual-${fund.fund_id}`} value={fund.fund_id}>{fund.fund_name}</option>)}
+          </select>
+          <input type="number" min={0.01} step="0.01" value={manualForm.amount} onChange={(e) => setManualForm((p) => ({ ...p, amount: e.target.value }))} placeholder="Amount" required className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <select value={manualForm.paymentMethod} onChange={(e) => setManualForm((p) => ({ ...p, paymentMethod: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+            {PAYMENT_METHODS.map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+          <input type="number" min={1} value={manualForm.donorId} onChange={(e) => setManualForm((p) => ({ ...p, donorId: e.target.value }))} placeholder="Donor ID (optional)" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <input type="number" min={1} value={manualForm.campaignId} onChange={(e) => setManualForm((p) => ({ ...p, campaignId: e.target.value }))} placeholder="Campaign ID (optional)" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <input value={manualForm.reference} onChange={(e) => setManualForm((p) => ({ ...p, reference: e.target.value }))} placeholder="Reference note (optional)" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <button type="submit" disabled={busyKey === 'manual-entry'} className="w-full bg-emerald-600 text-white text-sm font-semibold rounded-lg px-3 py-2 hover:bg-emerald-700 disabled:opacity-50">
+            {busyKey === 'manual-entry' ? 'Adding...' : 'Add Manual Entry'}
+          </button>
+        </form>
       </div>
 
       <div className="glass rounded-xl p-5 border border-slate-200 overflow-x-auto">
         <h3 className="text-sm font-semibold text-slate-800 mb-3">Fund Ledger Health</h3>
-        <table className="w-full text-sm min-w-[980px]">
+        <table className="w-full text-sm min-w-[1180px]">
           <thead>
             <tr className="border-b border-slate-200 text-slate-500">
               <th className="text-left py-2 px-2">Fund</th>
               <th className="text-left py-2 px-2">Current Balance</th>
               <th className="text-left py-2 px-2">Verified Unspent</th>
               <th className="text-left py-2 px-2">Discrepancy</th>
+              <th className="text-left py-2 px-2">Inflow Sources</th>
               <th className="text-left py-2 px-2">Approved Spent</th>
               <th className="text-left py-2 px-2">Pending Spend</th>
               <th className="text-left py-2 px-2">Actions</th>
@@ -317,6 +393,12 @@ export default function FundsManagementPanel() {
                 <td className="py-2 px-2 font-semibold text-slate-700">{fmt(fund.current_balance)}</td>
                 <td className="py-2 px-2 text-slate-600">{fmt(fund.verified_unspent_allocations)}</td>
                 <td className={`py-2 px-2 font-semibold ${Number(fund.discrepancy) === 0 ? 'text-green-600' : 'text-amber-700'}`}>{fmt(fund.discrepancy)}</td>
+                <td className="py-2 px-2 text-xs text-slate-600">
+                  <div>Donor: <span className="font-medium text-slate-700">{fmt(fund.donor_giving_total)}</span></div>
+                  <div>Manual: <span className="font-medium text-slate-700">{fmt(fund.manual_entry_total)}</span></div>
+                  <div>Payment: <span className="font-medium text-slate-700">{fmt(fund.payment_panel_total)}</span></div>
+                  <div>Fundraising: <span className="font-medium text-slate-700">{fmt(fund.fundraising_total)}</span></div>
+                </td>
                 <td className="py-2 px-2 text-slate-600">{fmt(fund.approved_spent)}</td>
                 <td className="py-2 px-2 text-slate-600">{fmt(fund.pending_spent)}</td>
                 <td className="py-2 px-2">
@@ -342,11 +424,18 @@ export default function FundsManagementPanel() {
                     >
                       {busyKey === `ledger-${fund.fund_id}` ? 'Loading…' : 'Ledger'}
                     </button>
+                    <button
+                      onClick={() => deleteFund(fund)}
+                      disabled={busyKey === `delete-${fund.fund_id}`}
+                      className="px-2 py-1 text-xs border border-red-300 text-red-700 rounded bg-red-50 hover:bg-red-100 inline-flex items-center gap-1"
+                    >
+                      <Trash2 size={12} /> {busyKey === `delete-${fund.fund_id}` ? 'Deleting…' : 'Delete'}
+                    </button>
                   </div>
                 </td>
               </tr>
             ))}
-            {funds.length === 0 && <tr><td colSpan={7} className="text-center text-slate-400 py-6">No funds available</td></tr>}
+            {funds.length === 0 && <tr><td colSpan={8} className="text-center text-slate-400 py-6">No funds available</td></tr>}
           </tbody>
         </table>
       </div>

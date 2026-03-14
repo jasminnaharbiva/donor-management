@@ -249,6 +249,7 @@ publicRouter.get('/project-updates', async (req: Request, res: Response): Promis
 
   const rows = await db('dfb_expenses as e')
     .join('dfb_projects as p', 'e.project_id', 'p.project_id')
+    .leftJoin('dfb_funds as f', 'e.fund_id', 'f.fund_id')
     .where('e.status', 'Approved')
     .whereNotNull('e.project_id')
     .whereNull('e.deleted_at')
@@ -256,14 +257,17 @@ publicRouter.get('/project-updates', async (req: Request, res: Response): Promis
     .limit(limit)
     .select(
       'e.expense_id',
+      'e.fund_id',
       'e.purpose',
+      'e.amount_spent',
       'e.spent_timestamp',
       'e.approved_at',
       'e.proof_of_execution_urls',
       'p.project_id',
       'p.project_name',
       'p.location_city',
-      'p.location_country'
+      'p.location_country',
+      'f.fund_name'
     );
 
   const updates = rows
@@ -277,6 +281,9 @@ publicRouter.get('/project-updates', async (req: Request, res: Response): Promis
         update_id: row.expense_id,
         project_id: row.project_id,
         project_name: row.project_name,
+        fund_id: row.fund_id,
+        fund_name: row.fund_name,
+        approved_expense_amount: Number(row.amount_spent || 0),
         location_city: showLocation ? row.location_city : null,
         location_country: showLocation ? row.location_country : null,
         update_title: proof.updateTitle || row.purpose,

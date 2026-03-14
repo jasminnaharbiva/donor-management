@@ -1,7 +1,7 @@
 # DFB Donor Management — Implementation Report
 
 **Date**: March 14, 2026  
-**Report Coverage**: through commit `55263b9` on `main`  
+**Report Coverage**: through current working tree (pending commit) on `main`  
 **Live URL**: https://donor-management.nokshaojibon.com  
 **GitHub**: jasminnaharbiva/donor-management
 
@@ -17,7 +17,7 @@ This report tracks all implemented features against the `real_time_donation_plan
 
 ### Volunteer Project Workspace Workflow ✅
 - Volunteer project cards now open a full project workspace in the volunteer dashboard.
-- Volunteers can submit project updates with required evidence: voucher, cash memo, photos, title/details.
+- Volunteers can submit project updates day-by-day with title/details and optional evidence (voucher, cash memo, photos).
 - Volunteers can edit or withdraw only their own pending submissions.
 - Project update submissions are routed through admin approval (no direct public/donor exposure).
 
@@ -77,6 +77,37 @@ This report tracks all implemented features against the `real_time_donation_plan
   - toggle approved update fields (location/narrative/details/photos)
 
 ### Verification ✅
+- Backend TypeScript build: pass (`npm run build`)
+- Frontend build: pass (`cd frontend && npm run build`)
+
+---
+
+## Phase 6 — Fund Source Coverage + Volunteer Expense Flexibility (March 14, 2026)
+
+### Fund Inflow Coverage ✅
+- Added manual-entry inflow endpoint for admin/finance: `POST /api/v1/funds/manual-entry`.
+- Added safe fund delete endpoint for admin authority: `DELETE /api/v1/funds/:id` (guarded by zero balance + no linked records).
+- Expanded fund admin summary to show source channels:
+  - donor giving
+  - manual entry
+  - payment-panel inflow
+  - fundraising inflow
+- Prevented source total duplication by making source classification mutually exclusive in summary calculations.
+
+### Volunteer Expense Management Refinement ✅
+- Volunteer project workspace now exposes project requirements and total fund context in payload/UI.
+- Volunteer expense submissions now allow voucher/cash memo/photos as optional evidence while preserving admin review gate.
+- Admin approval/reject remains the control point before any donor/public visibility.
+
+### Donor/Public Clarity on Approved Project Spend ✅
+- Donor approved project updates now include fund name and approved expense amount for each approved update row.
+- Public approved project updates now include fund name and approved expense amount for transparency.
+
+### Permissions & Authority ✅
+- Added missing default permissions for `project_workspace.delete` to Admin/Volunteer seed rules so pending submission withdraw flows work under dynamic permission mode.
+- Admin retains full fund authority via create, update, transfer, reconcile, manual-entry, and delete endpoints.
+
+### Final Verification ✅
 - Backend TypeScript build: pass (`npm run build`)
 - Frontend build: pass (`cd frontend && npm run build`)
 
