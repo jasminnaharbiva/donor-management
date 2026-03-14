@@ -25,10 +25,26 @@ const safeJsonParse = <T = any>(value: unknown, fallback: T): T => {
   }
 };
 
+const sanitizeRichHtml = (html: string): string => {
+  return String(html)
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/\son\w+\s*=\s*(['"]).*?\1/gi, '')
+    .replace(/\s(href|src)\s*=\s*(['"])javascript:[\s\S]*?\2/gi, '');
+};
+
+const escapeHtml = (value: string): string => {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
 const interpolateTemplate = (template: string, payload: Record<string, unknown>): string => {
   return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_full, key: string) => {
     const value = payload[key];
-    return value === null || value === undefined ? '' : String(value);
+    return value === null || value === undefined ? '' : escapeHtml(String(value));
   });
 };
 
@@ -146,7 +162,7 @@ const buildCertificateHtml = (template: any, payload: Record<string, unknown>, q
     </div>
   `;
 
-  const renderedBody = interpolateTemplate(bodyTemplate || fallbackBody, payload);
+  const renderedBody = interpolateTemplate(sanitizeRichHtml(bodyTemplate || fallbackBody), payload);
 
   return `
 <div style="width:1080px;min-height:760px;border:12px solid ${template.primary_color || '#2563eb'};padding:28px 40px;background:#ffffff;font-family:Inter, Arial, sans-serif;position:relative;">

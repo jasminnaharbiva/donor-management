@@ -1,7 +1,7 @@
 # DFB Donor Management — Implementation Report
 
 **Date**: March 14, 2026  
-**Report Coverage**: through current working tree (pending commit) on `main`  
+**Report Coverage**: through current deployed branch head on `main`  
 **Live URL**: https://donor-management.nokshaojibon.com  
 **GitHub**: jasminnaharbiva/donor-management
 
@@ -10,6 +10,66 @@
 ## Summary
 
 This report tracks all implemented features against the `real_time_donation_planning.md` specification, plus all bugs fixed and improvements made across this session.
+
+---
+
+## Phase 7 — Global Compliance, Security & Privacy Hardening (March 14, 2026)
+
+### Compliance Governance (GDPR/CCPA/Global DSAR) ✅
+- Added dedicated privacy compliance data model via migration:
+  - `migrations/20260314153000_add_global_privacy_compliance_tables.ts`
+  - New tables:
+    - `dfb_data_subject_requests`
+    - `dfb_consent_events`
+- New Privacy API module:
+  - `src/routes/privacy.routes.ts`
+  - Mounted as `app.use('/api/v1/privacy', privacyRouter)` in `src/index.ts`
+- Added DSAR workflow endpoints:
+  - `POST /api/v1/privacy/requests` (create access/portability/erasure/etc. request)
+  - `GET /api/v1/privacy/requests/me` (self request tracking)
+  - `GET /api/v1/privacy/requests` (admin oversight)
+  - `PATCH /api/v1/privacy/requests/:id/status` (admin resolve/reject)
+- Added consent evidence endpoints:
+  - `POST /api/v1/privacy/consents` (grant/withdraw consent + lawful basis + evidence)
+  - `GET /api/v1/privacy/consents/me` (self consent history)
+- All sensitive privacy actions are audit logged through `writeAuditLog`.
+
+### Security Hardening (Runtime + Abuse Prevention) ✅
+- Added startup security configuration enforcement in `src/index.ts`:
+  - Fails production startup when critical secrets are weak/missing:
+    - `JWT_ACCESS_SECRET`
+    - `JWT_REFRESH_SECRET`
+    - `AES_ENCRYPTION_KEY`
+- Reduced fingerprinting risk:
+  - Disabled Express signature header via `app.disable('x-powered-by')`
+- Added explicit browser policy headers:
+  - `Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=()`
+  - `Referrer-Policy: strict-origin-when-cross-origin`
+- Added targeted brute-force / abuse controls for VMS public/auth surfaces:
+  - `vmsAuthLimiter` on `/api/v1/vms/auth/login`
+  - `vmsVerificationLimiter` on:
+    - `/api/v1/vms/public/verify-certificate`
+    - `/api/v1/vms/public/certificate/*`
+
+### Template Rendering Attack-Surface Hardening ✅
+- Strengthened HTML rendering sanitization in:
+  - `src/routes/volunteer-records.routes.ts`
+  - `src/routes/donor-records.routes.ts`
+- Added:
+  - richer script/event/javascript URL stripping
+  - safe placeholder escaping for dynamic template interpolation
+- Reduced XSS and template-payload injection risk for generated cards/certificates.
+
+### Verification ✅
+- DB migration applied successfully: `Batch 6 run: 1 migrations`
+- Migration ledger clean: `No Pending Migration files Found`
+- Backend TypeScript build: pass (`npm run build`)
+- Frontend build: pass (`cd frontend && npm run build`)
+- IDE diagnostics: `No errors found`
+
+### Security Posture Note
+- This release implements defense-in-depth controls for enterprise-grade operation and legal-process traceability.
+- No software can guarantee absolute immunity from all attacks; ongoing patching, monitoring, key rotation, backup/restore drills, and incident response remain mandatory operational controls.
 
 ---
 

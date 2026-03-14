@@ -13,7 +13,21 @@ import { createHash } from 'crypto';
 
 export const volunteerRecordsRouter = Router();
 
-const sanitizeHtml = (html: string): string => html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+const sanitizeHtml = (html: string): string => {
+  return String(html)
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/\son\w+\s*=\s*(['"]).*?\1/gi, '')
+    .replace(/\s(href|src)\s*=\s*(['"])javascript:[\s\S]*?\2/gi, '');
+};
+
+const escapeHtml = (value: string): string => {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
 
 const safeJsonStringify = (value: unknown): string | null => {
   if (value === null || value === undefined || value === '') return null;
@@ -33,7 +47,7 @@ const safeJsonParse = <T = any>(value: unknown, fallback: T): T => {
 const interpolateTemplate = (template: string, payload: Record<string, unknown>): string => {
   return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_full, key: string) => {
     const value = payload[key];
-    return value === null || value === undefined ? '' : String(value);
+    return value === null || value === undefined ? '' : escapeHtml(String(value));
   });
 };
 

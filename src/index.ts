@@ -52,9 +52,34 @@ import { translationsRouter }          from './routes/translations.routes';
 import { publicPagesRouter }           from './routes/public-pages.routes';
 import { formSchemasRouter }           from './routes/form-schemas.routes';
 import { vmsRouter }                   from './routes/vms.routes';
+import { privacyRouter }               from './routes/privacy.routes';
 
 const app    = express();
 const server = http.createServer(app);
+
+app.disable('x-powered-by');
+
+function assertSecurityConfiguration(): void {
+  const issues: string[] = [];
+
+  if (!config.jwt.accessSecret || config.jwt.accessSecret.length < 32) {
+    issues.push('JWT_ACCESS_SECRET must be at least 32 characters');
+  }
+  if (!config.jwt.refreshSecret || config.jwt.refreshSecret.length < 32) {
+    issues.push('JWT_REFRESH_SECRET must be at least 32 characters');
+  }
+  if (!config.aes.key || config.aes.key.length < 32) {
+    issues.push('AES_ENCRYPTION_KEY must be at least 32 characters');
+  }
+
+  if (!issues.length) return;
+
+  if (config.env === 'production') {
+    throw new Error(`Unsafe security configuration: ${issues.join('; ')}`);
+  }
+
+  logger.warn('Security configuration warnings (non-production mode)', { issues });
+}
 
 // ---------------------------------------------------------------------------
 // WebSocket server (Socket.io)
@@ -119,6 +144,12 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
+app.use((_req, res, next) => {
+  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=(), payment=()');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.use(cors({
   origin:      config.cors.origins,
   credentials: true,
@@ -167,12 +198,29 @@ const authLimiter = rateLimit({
   store: new RedisStore({ sendCommand: (...args: string[]) => (redis as any).call(...args), prefix: 'rl:auth:' }),
 });
 
+const vmsAuthLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  message: { success: false, message: 'Too many VMS login attempts. Try again in 5 minutes.' },
+  store: new RedisStore({ sendCommand: (...args: string[]) => (redis as any).call(...args), prefix: 'rl:vms-auth:' }),
+});
+
+const vmsVerificationLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 60,
+  message: { success: false, message: 'Too many certificate verification requests. Try again shortly.' },
+  store: new RedisStore({ sendCommand: (...args: string[]) => (redis as any).call(...args), prefix: 'rl:vms-verify:' }),
+});
+
 // ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
 const API = `/api/${config.appUrl.includes('v1') ? 'v1' : 'v1'}`;
 // Shorthand: always mount under /api/v1
 app.use('/api/v1/auth',      authLimiter, authRouter);
+app.use('/api/v1/vms/auth/login', vmsAuthLimiter);
+app.use('/api/v1/vms/public/verify-certificate', vmsVerificationLimiter);
+app.use('/api/v1/vms/public/certificate', vmsVerificationLimiter);
 app.use('/api/v1/donors',    donorRouter);
 app.use('/api/v1/donations', donationRouter);
 app.use('/api/v1/funds',     fundsRouter);
@@ -204,6 +252,7 @@ app.use('/api/v1/translations',            translationsRouter);
 app.use('/api/v1/public-pages',            publicPagesRouter);
 app.use('/api/v1/form-schemas',            formSchemasRouter);
 app.use('/api/v1/vms',                     vmsRouter);
+app.use('/api/v1/privacy',                 privacyRouter);
 
 // Health check (no auth, no rate limit)
 app.get('/health', (_req, res) => {
@@ -302,6 +351,8 @@ app.use(errorHandler);
 // Startup
 // ---------------------------------------------------------------------------
 async function bootstrap(): Promise<void> {
+  assertSecurityConfiguration();
+
   // Verify DB connectivity
   await db.raw('SELECT 1');
   logger.info('MariaDB connected', { database: config.db.database });
