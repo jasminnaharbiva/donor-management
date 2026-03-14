@@ -92,3 +92,28 @@ Change this password immediately if used for standalone VMS auth.
 - Migration status: all applied, no pending
 - Runtime smoke: pass (`200/401/404` as expected by route type)
 - Authenticated volunteer-records E2E (template create/update/preview, issue, render, delete guards): pass
+
+## Related Volunteer Workflow Extensions (March 14, 2026)
+
+Although outside standalone VMS certificate scope, volunteer-side case intake has been expanded in the unified DFB portal:
+
+- New backend route:
+	- `src/routes/beneficiary-applications.routes.ts`
+	- Mounted in `src/index.ts` as `/api/v1/beneficiary-applications`
+- New migration:
+	- `migrations/20260314102000_add_beneficiary_application_workflow.ts`
+	- Adds `dfb_beneficiary_applications`
+	- Extends `dfb_form_schemas.form_type` with `beneficiary_application`
+- New volunteer UI:
+	- `frontend/src/pages/volunteer/BeneficiaryApplicationPage.tsx`
+	- Route wired in `frontend/src/pages/volunteer/VolunteerDashboard.tsx`
+- Admin review UI upgrade:
+	- `frontend/src/pages/admin/BeneficiariesPanel.tsx` now includes application review queue + approval actions
+- Dynamic admin form control:
+	- `frontend/src/pages/admin/FormSchemasPanel.tsx` supports `beneficiary_application` + default preset
+	- `src/routes/form-schemas.routes.ts` supports backend schema fallback for this type
+- Upload policy endpoint:
+	- `POST /api/v1/media/beneficiary-upload`
+	- 500KB (identity/passport/nationality), 5MB (additional)
+
+These additions preserve the same approval-first governance model used in volunteer onboarding and records issuance.

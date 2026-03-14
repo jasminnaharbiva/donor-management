@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 
-type FormType = 'donation' | 'registration' | 'expense' | 'campaign' | 'beneficiary_intake' | 'volunteer_application';
-const FORM_TYPES: FormType[] = ['donation', 'registration', 'expense', 'campaign', 'beneficiary_intake', 'volunteer_application'];
+type FormType = 'donation' | 'registration' | 'expense' | 'campaign' | 'beneficiary_intake' | 'volunteer_application' | 'beneficiary_application';
+const FORM_TYPES: FormType[] = ['donation', 'registration', 'expense', 'campaign', 'beneficiary_intake', 'volunteer_application', 'beneficiary_application'];
 
 interface FormSchema {
   schema_id: number;
@@ -50,6 +50,27 @@ const DEFAULT_VOLUNTEER_SCHEMA = JSON.stringify([
   { name: 'passport_photo_url', label: 'Passport Size Photo (max 500KB)', type: 'file', required: true },
   { name: 'identity_document_url', label: 'NID/Birth Certificate Copy (max 500KB)', type: 'file', required: true },
   { name: 'consent', label: 'Consent', type: 'consent', required: true },
+], null, 2);
+
+const DEFAULT_BENEFICIARY_APPLICATION_SCHEMA = JSON.stringify([
+  { name: 'full_name', label: 'Full Name', type: 'text', required: true, placeholder: 'Beneficiary full name' },
+  { name: 'father_name', label: "Father\'s Name", type: 'text', required: true },
+  { name: 'mother_name', label: "Mother\'s Name", type: 'text', required: true },
+  { name: 'date_of_birth', label: 'Date of Birth', type: 'date', required: true },
+  { name: 'nid_or_birth_certificate_no', label: 'NID/Birth Certificate Number', type: 'text', required: true },
+  { name: 'mobile_number', label: 'Mobile Number', type: 'tel', required: true, placeholder: '01XXXXXXXXX' },
+  { name: 'division', label: 'Division', type: 'bd_division', required: true },
+  { name: 'district', label: 'District', type: 'bd_district', required: true },
+  { name: 'upazila', label: 'Upazila', type: 'bd_upazila', required: true },
+  { name: 'village', label: 'Village', type: 'bd_village', required: true },
+  { name: 'full_address', label: 'Full Address', type: 'textarea', required: true },
+  { name: 'identity_document_url', label: 'NID/Birth Certificate Copy (max 500KB)', type: 'file', required: true, maxSizeKb: 500, uploadKind: 'identity' },
+  { name: 'passport_photo_url', label: 'Passport Size Photo (max 500KB)', type: 'file', required: true, maxSizeKb: 500, uploadKind: 'passport' },
+  { name: 'nationality_certificate_url', label: 'Nationality Certificate (optional)', type: 'file', required: false, maxSizeKb: 500, uploadKind: 'nationality' },
+  { name: 'project_type', label: 'Project Category', type: 'select', required: true, options: ['water', 'health', 'education', 'food', 'shelter', 'cash_support', 'other'] },
+  { name: 'project_amount_taka', label: 'Application Amount (BDT)', type: 'number', required: true, min: 0 },
+  { name: 'case_description', label: 'Full Case Description', type: 'textarea', required: true },
+  { name: 'additional_document_url', label: 'Additional Document (max 5MB)', type: 'file', required: false, maxSizeKb: 5120, uploadKind: 'additional' }
 ], null, 2);
 
 export default function FormSchemasPanel() {
@@ -132,6 +153,15 @@ export default function FormSchemasPanel() {
     setJsonError('');
   };
 
+  const applyBeneficiaryPreset = () => {
+    setForm((prev) => ({
+      ...prev,
+      form_type: 'beneficiary_application',
+      schema_json: DEFAULT_BENEFICIARY_APPLICATION_SCHEMA,
+    }));
+    setJsonError('');
+  };
+
   const deleteSchema = async (id: number) => {
     if (!window.confirm('Delete this form schema? This cannot be undone.')) return;
     try {
@@ -159,6 +189,7 @@ export default function FormSchemasPanel() {
     campaign: 'Campaign Form',
     beneficiary_intake: 'Beneficiary Intake',
     volunteer_application: 'Volunteer Application',
+    beneficiary_application: 'Beneficiary Application',
   };
 
   const showPanel = isCreating || selected !== null;
@@ -243,13 +274,20 @@ export default function FormSchemasPanel() {
             </div>
 
             <div className="p-6 overflow-y-auto flex-1">
-              <div className="mb-4 flex justify-end">
+              <div className="mb-4 flex flex-wrap justify-end gap-2">
                 <button
                   type="button"
                   onClick={applyVolunteerPreset}
                   className="px-3 py-1.5 text-xs font-medium border border-primary-300 text-primary-700 rounded-lg hover:bg-primary-50"
                 >
                   Load Volunteer Default Preset
+                </button>
+                <button
+                  type="button"
+                  onClick={applyBeneficiaryPreset}
+                  className="px-3 py-1.5 text-xs font-medium border border-primary-300 text-primary-700 rounded-lg hover:bg-primary-50"
+                >
+                  Load Beneficiary Default Preset
                 </button>
               </div>
 

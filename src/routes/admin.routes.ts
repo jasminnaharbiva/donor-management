@@ -109,6 +109,22 @@ async function ensureRegistrationSettings() {
       isPublic: true,
       desc: 'Available profession options for donor and volunteer registration forms',
     },
+    {
+      key: 'beneficiary_application.project_type_options',
+      value: JSON.stringify(['water', 'health', 'education', 'food', 'shelter', 'cash_support', 'other']),
+      type: 'json',
+      category: 'beneficiary',
+      isPublic: true,
+      desc: 'Project type dropdown options for beneficiary applications',
+    },
+    {
+      key: 'beneficiary_application.villages_by_upazila',
+      value: JSON.stringify({}),
+      type: 'json',
+      category: 'beneficiary',
+      isPublic: true,
+      desc: 'Village dropdown mapping by upazila for beneficiary applications',
+    },
   ];
 
   for (const setting of settings) {

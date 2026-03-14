@@ -1193,4 +1193,111 @@ Per user requirement, volunteer onboarding remains unchanged from prior approved
 - Donor self certificates (`/my/certificates`) = `200`
 - Donor self messages (`/my/messages`) = `200`
 
+---
+
+## Phase 16 — Beneficiary Application Workflow (Volunteer → Admin Review → Donor Funding View) (March 14, 2026)
+
+### End-to-End Workflow Delivered ✅
+
+Implemented a full beneficiary application system where:
+
+1. **Volunteer submits** a detailed beneficiary case application.
+2. **Admin reviews** and can approve/reject/request changes.
+3. On approval, admin can:
+   - assign a volunteer,
+   - tag a donor,
+   - enable interested-donor visibility,
+   - link/create project workflow metadata,
+   - create beneficiary master record from the approved application.
+4. **Donor can view** approved applications when tagged or when marked as open to interested donors.
+
+### Backend Additions ✅
+
+- New migration: `20260314102000_add_beneficiary_application_workflow.ts`
+  - Adds `dfb_beneficiary_applications` table.
+  - Extends `dfb_form_schemas.form_type` enum with `beneficiary_application`.
+- New route module: `src/routes/beneficiary-applications.routes.ts`
+  - `GET /api/v1/beneficiary-applications/my` (volunteer own submissions)
+  - `GET /api/v1/beneficiary-applications` (admin list/filter)
+  - `GET /api/v1/beneficiary-applications/:id` (role-scoped detail)
+  - `POST /api/v1/beneficiary-applications` (volunteer submit)
+  - `PATCH /api/v1/beneficiary-applications/:id/review` (admin review actions)
+  - `GET /api/v1/beneficiary-applications/for-funding` (donor funding visibility)
+- Router mounted in `src/index.ts` at `/api/v1/beneficiary-applications`.
+
+### Dynamic Form & Admin Flexibility ✅
+
+- Extended dynamic form schema support:
+  - `src/routes/form-schemas.routes.ts` supports `beneficiary_application` form type.
+  - Provides fallback default schema when no active schema exists.
+- Admin schema editor updated:
+  - `frontend/src/pages/admin/FormSchemasPanel.tsx` includes `beneficiary_application` in form types.
+  - Added one-click “Load Beneficiary Default Preset” for fast initialization.
+
+### Volunteer Form UI ✅
+
+- New volunteer page: `frontend/src/pages/volunteer/BeneficiaryApplicationPage.tsx`
+  - Dynamic schema-driven field rendering.
+  - Bangladesh location cascade (division → district → upazila) + village support.
+  - Per-file upload constraints by document kind.
+  - Submission history visible to volunteer.
+- Volunteer dashboard integration:
+  - `frontend/src/pages/volunteer/VolunteerDashboard.tsx` adds menu + route:
+    - `/volunteer/beneficiary-applications`
+
+### File Upload Security & Limits ✅
+
+- Added authenticated upload endpoint:
+  - `POST /api/v1/media/beneficiary-upload`
+- Validation policy:
+  - Identity/passport/nationality docs: **max 500KB**
+  - Additional document: **max 5MB**
+  - Allowed mime types: JPEG, PNG, WEBP, PDF
+- Implemented in: `src/routes/media.routes.ts`
+
+### Admin Review Panel Upgrade ✅
+
+- Upgraded `frontend/src/pages/admin/BeneficiariesPanel.tsx` to dual-mode operations:
+  - **Applications tab** (review queue with action modal)
+  - **Beneficiaries tab** (existing beneficiary records view)
+- Admin can update status + review notes and apply approval linkage metadata:
+  - assigned volunteer, tagged donor, linked project,
+  - open-to-interested-donors flag,
+  - fundraiser-required flag,
+  - create-beneficiary-on-approve flag.
+
+### Access-Control Hardening ✅
+
+- Restricted direct beneficiary creation endpoint:
+  - `POST /api/v1/beneficiaries` now admin-only.
+  - Volunteers must use `/api/v1/beneficiary-applications` workflow.
+
+### Configuration Seeds ✅
+
+Added public/admin-manageable settings in `src/routes/admin.routes.ts`:
+
+- `beneficiary_application.project_type_options`
+- `beneficiary_application.villages_by_upazila`
+
+### Verification Matrix (Re-Executed) ✅
+
+1) **Build + migration**
+- `npm run migrate` → up to date after applying Batch 5 migration.
+- Backend build (`tsc`) → pass.
+- Frontend build (`tsc -b && vite build`) → pass.
+
+2) **Runtime workflow smoke**
+- Health endpoint `/health` = `200`.
+- Volunteer submit beneficiary application = `201`.
+- Donor submit beneficiary application = `403` (expected).
+- Admin approve review action = `200`.
+- Donor funding list endpoint = `200` and includes approved application.
+- Donor approved-application detail view = `200`.
+- Volunteer direct create `/api/v1/beneficiaries` = `403` (expected).
+
+3) **Upload rule smoke**
+- 2-byte identity PDF upload = success.
+- 600KB identity PDF upload = rejected (`max 500KB` enforced).
+- 600KB additional PDF upload = success (`<=5MB` enforced).
+
 

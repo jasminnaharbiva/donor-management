@@ -43,7 +43,7 @@ beneficiariesRouter.get('/', requireRoles('Super Admin', 'Admin', 'Volunteer'), 
 // POST /api/v1/beneficiaries — Create beneficiary intake
 // ---------------------------------------------------------------------------
 beneficiariesRouter.post('/',
-  requireRoles('Super Admin', 'Admin', 'Volunteer'),
+  requireRoles('Super Admin', 'Admin'),
   [
     body('fullName').trim().notEmpty().isLength({ max: 120 }),
     body('phone').optional().trim(),

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { Calendar, Clock, Star, Edit3, Loader2, CheckCircle, Plus, UploadCloud, FileImage, Briefcase } from 'lucide-react';
 import api from '../../services/api';
+import BeneficiaryApplicationPage from './BeneficiaryApplicationPage';
 
 interface Shift {
   shift_id: number;
@@ -310,6 +311,7 @@ export default function VolunteerDashboard() {
     { name: 'My Projects', path: '/volunteer/projects', icon: <Briefcase size={20} /> },
     { name: 'Open Shifts', path: '/volunteer/shifts', icon: <Calendar size={20} /> },
     { name: 'My Timesheets', path: '/volunteer/timesheets', icon: <Clock size={20} /> },
+    { name: 'Beneficiary Applications', path: '/volunteer/beneficiary-applications', icon: <Edit3 size={20} /> },
   ];
 
   return (
@@ -319,6 +321,7 @@ export default function VolunteerDashboard() {
         <Route path="projects" element={<MyProjects />} />
         <Route path="shifts" element={<Shifts />} />
         <Route path="timesheets" element={<Timesheets />} />
+        <Route path="beneficiary-applications" element={<BeneficiaryApplicationPage />} />
       </Routes>
     </DashboardLayout>
   );

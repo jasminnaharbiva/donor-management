@@ -5,7 +5,7 @@ import { db } from '../config/database';
 
 export const formSchemasRouter = Router();
 
-const VALID_FORM_TYPES = ['donation', 'registration', 'expense', 'campaign', 'beneficiary_intake', 'volunteer_application'] as const;
+const VALID_FORM_TYPES = ['donation', 'registration', 'expense', 'campaign', 'beneficiary_intake', 'volunteer_application', 'beneficiary_application'] as const;
 
 const DEFAULT_VOLUNTEER_SCHEMA = [
   { name: 'full_name', label: 'Name', type: 'text', required: true, placeholder: 'Enter your full name' },
@@ -23,6 +23,33 @@ const DEFAULT_VOLUNTEER_SCHEMA = [
   { name: 'passport_photo_url', label: 'Passport Size Photo (max 500KB)', type: 'file', required: true },
   { name: 'identity_document_url', label: 'NID/Birth Certificate Copy (max 500KB)', type: 'file', required: true },
   { name: 'consent', label: 'Consent', type: 'consent', required: true },
+];
+
+const DEFAULT_BENEFICIARY_APPLICATION_SCHEMA = [
+  { name: 'full_name', label: 'Full Name', type: 'text', required: true, placeholder: 'Beneficiary full name' },
+  { name: 'father_name', label: "Father's Name", type: 'text', required: true },
+  { name: 'mother_name', label: "Mother's Name", type: 'text', required: true },
+  { name: 'date_of_birth', label: 'Date of Birth', type: 'date', required: true },
+  { name: 'nid_or_birth_certificate_no', label: 'NID/Birth Certificate Number', type: 'text', required: true },
+  { name: 'mobile_number', label: 'Mobile Number', type: 'tel', required: true, placeholder: '01XXXXXXXXX' },
+  { name: 'division', label: 'Division', type: 'bd_division', required: true },
+  { name: 'district', label: 'District', type: 'bd_district', required: true },
+  { name: 'upazila', label: 'Upazila', type: 'bd_upazila', required: true },
+  { name: 'village', label: 'Village', type: 'bd_village', required: true },
+  { name: 'full_address', label: 'Full Address', type: 'textarea', required: true, placeholder: 'Village/Road, Post Office, Upazila, District' },
+  { name: 'identity_document_url', label: 'NID/Birth Certificate Copy (max 500KB)', type: 'file', required: true, maxSizeKb: 500, uploadKind: 'identity' },
+  { name: 'passport_photo_url', label: 'Passport Size Photo (max 500KB)', type: 'file', required: true, maxSizeKb: 500, uploadKind: 'passport' },
+  { name: 'nationality_certificate_url', label: 'Nationality Certificate (optional)', type: 'file', required: false, maxSizeKb: 500, uploadKind: 'nationality' },
+  {
+    name: 'project_type',
+    label: 'Project Category',
+    type: 'select',
+    required: true,
+    options: ['water', 'health', 'education', 'food', 'shelter', 'cash_support', 'other'],
+  },
+  { name: 'project_amount_taka', label: 'Application Amount (BDT)', type: 'number', required: true, min: 0 },
+  { name: 'case_description', label: 'Full Case Description', type: 'textarea', required: true },
+  { name: 'additional_document_url', label: 'Additional Document (max 5MB)', type: 'file', required: false, maxSizeKb: 5120, uploadKind: 'additional' },
 ];
 
 // GET /api/v1/form-schemas — list all
@@ -91,6 +118,16 @@ formSchemasRouter.get(
             created_by: null,
             updated_at: new Date().toISOString(),
             schema_json: DEFAULT_VOLUNTEER_SCHEMA,
+          });
+        }
+        if (req.params.formType === 'beneficiary_application') {
+          return res.json({
+            schema_id: 0,
+            form_type: 'beneficiary_application',
+            is_active: true,
+            created_by: null,
+            updated_at: new Date().toISOString(),
+            schema_json: DEFAULT_BENEFICIARY_APPLICATION_SCHEMA,
           });
         }
         return res.status(404).json({ error: 'No active schema for this form type' });

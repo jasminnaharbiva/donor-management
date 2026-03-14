@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../config/database';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, requireRoles } from '../middleware/auth.middleware';
 import fs from 'fs';
 
 export const mediaRouter = Router();
@@ -50,6 +50,28 @@ const publicUpload = multer({
     }
   }
 });
+
+const beneficiaryUpload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB hard cap
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG, WEBP, and PDF are allowed.'));
+    }
+  }
+});
+
+function safeDeleteUploadedFile(filePath: string | undefined): void {
+  if (!filePath) return;
+  try {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch {
+    // no-op
+  }
+}
 
 // ---------------------------------------------------------------------------
 // POST /api/v1/media/upload
@@ -158,6 +180,83 @@ mediaRouter.post(
     } catch (error) {
       console.error('Public media upload error:', error);
       res.status(500).json({ success: false, message: 'Database error saving media registry' });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/media/beneficiary-upload
+// Authenticated upload for beneficiary application docs.
+// - identity/passport/nationality: max 500KB
+// - additional: max 5MB
+// ---------------------------------------------------------------------------
+mediaRouter.post(
+  '/beneficiary-upload',
+  authenticate,
+  requireRoles('Volunteer', 'Admin', 'Super Admin'),
+  beneficiaryUpload.single('file'),
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.file) {
+      res.status(400).json({ success: false, message: 'No file uploaded' });
+      return;
+    }
+
+    const kind = String(req.body.kind || '').trim().toLowerCase();
+    const validKinds = ['identity', 'passport', 'nationality', 'additional'];
+    if (!validKinds.includes(kind)) {
+      safeDeleteUploadedFile(req.file.path);
+      res.status(422).json({ success: false, message: 'Invalid upload kind. Use identity, passport, nationality, or additional.' });
+      return;
+    }
+
+    const maxSize = kind === 'additional' ? 5 * 1024 * 1024 : 500 * 1024;
+    if (req.file.size > maxSize) {
+      safeDeleteUploadedFile(req.file.path);
+      res.status(422).json({
+        success: false,
+        message: kind === 'additional'
+          ? 'Additional document must be less than 5MB.'
+          : 'This document must be less than 500KB.',
+      });
+      return;
+    }
+
+    try {
+      const mediaId = uuidv4();
+      const relativePath = `/uploads/${req.file.filename}`;
+      const cdnUrl = `${process.env.APP_URL || 'http://localhost:3000'}${relativePath}`;
+
+      await db('dfb_media').insert({
+        media_id: mediaId,
+        uploader_user_id: req.user!.userId,
+        file_name: req.file.originalname,
+        file_path: relativePath,
+        mime_type: req.file.mimetype,
+        file_size_bytes: req.file.size,
+        purpose: 'kyc_document',
+        reference_type: 'beneficiary_application',
+        reference_id: req.body.referenceId || null,
+        is_public: false,
+        cdn_url: cdnUrl,
+        storage_provider: 'local',
+        virus_scan_status: 'clean',
+        created_at: new Date()
+      });
+
+      res.status(201).json({
+        success: true,
+        data: {
+          mediaId,
+          url: cdnUrl,
+          fileName: req.file.originalname,
+          sizeBytes: req.file.size,
+          kind,
+        }
+      });
+    } catch (error) {
+      safeDeleteUploadedFile(req.file.path);
+      console.error('Beneficiary media upload error:', error);
+      res.status(500).json({ success: false, message: 'Database error saving beneficiary media' });
     }
   }
 );
