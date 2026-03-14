@@ -14,6 +14,7 @@ interface Expense {
   approved_at: string;
   receipt_url: string;
   project_name?: string;
+  proof_of_execution_urls?: any;
 }
 
 interface Fund {
@@ -32,6 +33,28 @@ const STATUS_COLORS: Record<string, string> = {
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
 };
+
+function parseEvidence(raw: unknown): { updateTitle: string | null; updateDetails: string | null; voucherUrl: string | null; cashMemoUrl: string | null; photos: string[] } {
+  if (!raw) return { updateTitle: null, updateDetails: null, voucherUrl: null, cashMemoUrl: null, photos: [] };
+
+  let parsed: any = raw;
+  if (typeof raw === 'string') {
+    try { parsed = JSON.parse(raw); } catch { parsed = null; }
+  }
+  if (!parsed || typeof parsed !== 'object') return { updateTitle: null, updateDetails: null, voucherUrl: null, cashMemoUrl: null, photos: [] };
+
+  const photos = Array.isArray(parsed.photos)
+    ? parsed.photos.map((item: unknown) => String(item || '').trim()).filter(Boolean)
+    : [];
+
+  return {
+    updateTitle: parsed.update_title ? String(parsed.update_title) : null,
+    updateDetails: parsed.update_details ? String(parsed.update_details) : null,
+    voucherUrl: parsed.voucher_url ? String(parsed.voucher_url) : null,
+    cashMemoUrl: parsed.cash_memo_url ? String(parsed.cash_memo_url) : null,
+    photos,
+  };
+}
 
 export default function ExpensesAdminPanel() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -186,29 +209,46 @@ export default function ExpensesAdminPanel() {
                 <th className="text-left py-3 px-3 font-semibold text-slate-600">Amount</th>
                 <th className="text-left py-3 px-3 font-semibold text-slate-600">Fund</th>
                 <th className="text-left py-3 px-3 font-semibold text-slate-600">Volunteer</th>
+                <th className="text-left py-3 px-3 font-semibold text-slate-600">Evidence</th>
                 <th className="text-left py-3 px-3 font-semibold text-slate-600">Date</th>
                 <th className="text-left py-3 px-3 font-semibold text-slate-600">Status</th>
-                {statusFilter === 'pending' && <th className="py-3 px-3 font-semibold text-slate-600">Actions</th>}
+                {statusFilter === 'Pending' && <th className="py-3 px-3 font-semibold text-slate-600">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map(e => (
-                <tr key={e.expense_id} className="hover:bg-slate-50">
+              {filtered.map(e => {
+                const evidence = parseEvidence(e.proof_of_execution_urls);
+                return (
+                <tr key={e.expense_id} className="hover:bg-slate-50 align-top">
                   <td className="py-3 px-3">
-                    <div className="font-medium text-slate-800">{e.vendor_name}</div>
+                    <div className="font-medium text-slate-800">{evidence.updateTitle || e.vendor_name || 'Expense Update'}</div>
                     <div className="text-xs text-slate-400 truncate max-w-48">{e.purpose}</div>
-                    {e.receipt_url && (
-                      <a href={e.receipt_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">View Receipt</a>
+                    {(evidence.voucherUrl || e.receipt_url) && (
+                      <a href={evidence.voucherUrl || e.receipt_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">View Receipt</a>
                     )}
                   </td>
                   <td className="py-3 px-3 font-bold text-slate-800">{fmt(e.amount_spent)}</td>
                   <td className="py-3 px-3 text-slate-600 text-xs">{e.fund_name}</td>
                   <td className="py-3 px-3 text-slate-600 text-sm">{e.volunteer_name || '—'}</td>
+                  <td className="py-3 px-3 text-xs text-slate-600 space-y-1 min-w-[180px]">
+                    {(evidence.voucherUrl || e.receipt_url) && (
+                      <div><a href={evidence.voucherUrl || e.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">Voucher</a></div>
+                    )}
+                    {evidence.cashMemoUrl && (
+                      <div><a href={evidence.cashMemoUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">Cash Memo</a></div>
+                    )}
+                    {evidence.photos.length > 0 && (
+                      <div className="text-slate-500">Photos: {evidence.photos.slice(0, 3).map((url, idx) => (
+                        <span key={`${e.expense_id}-photo-${idx}`}>{idx > 0 ? ' · ' : ''}<a href={url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">#{idx + 1}</a></span>
+                      ))}</div>
+                    )}
+                    {!((evidence.voucherUrl || e.receipt_url) || evidence.cashMemoUrl || evidence.photos.length) && <span className="text-slate-400">—</span>}
+                  </td>
                   <td className="py-3 px-3 text-slate-500 text-xs">{fmtDate(e.spent_timestamp)}</td>
                   <td className="py-3 px-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-semibold ${STATUS_COLORS[e.status]}`}>{e.status}</span>
                   </td>
-                  {statusFilter === 'pending' && (
+                  {statusFilter === 'Pending' && (
                     <td className="py-3 px-3">
                       <div className="flex gap-2">
                         <button onClick={() => approve(e.expense_id)} disabled={actingOn === e.expense_id}
@@ -223,9 +263,9 @@ export default function ExpensesAdminPanel() {
                     </td>
                   )}
                 </tr>
-              ))}
+              );})}
               {filtered.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-8 text-slate-400">No expenses found for "{statusFilter}" status</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-slate-400">No expenses found for "{statusFilter}" status</td></tr>
               )}
             </tbody>
           </table>

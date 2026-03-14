@@ -1,10 +1,80 @@
 import { Router, Request, Response } from 'express';
 import { body, query, param, validationResult } from 'express-validator';
 import { db } from '../config/database';
-import { authenticate, requireRoles } from '../middleware/auth.middleware';
+import { authenticate, requirePermission, requireRoles } from '../middleware/auth.middleware';
 import { encrypt, decrypt } from '../utils/crypto';
 
 export const donorRouter = Router();
+
+const DONOR_VISIBILITY_KEYS = [
+  'donor_visibility.menu_items',
+  'donor_visibility.impact_sections',
+  'donor_visibility.update_fields',
+];
+
+type DonorVisibilityConfig = {
+  menuItems: Array<{ key: string; label?: string; enabled?: boolean }>;
+  impactSections: Array<{ id: string; title?: string; enabled?: boolean }>;
+  updateFields: {
+    showProjectLocation?: boolean;
+    showNarrative?: boolean;
+    showDetails?: boolean;
+    showPhotos?: boolean;
+  };
+};
+
+async function loadDonorVisibilityConfig(): Promise<DonorVisibilityConfig> {
+  const rows = await db('dfb_system_settings')
+    .whereIn('setting_key', DONOR_VISIBILITY_KEYS)
+    .select('setting_key', 'setting_value', 'value_type');
+
+  const map = new Map(rows.map((row: any) => [row.setting_key, row]));
+  const parseJson = <T>(key: string, fallback: T): T => {
+    const row = map.get(key);
+    if (!row?.setting_value) return fallback;
+    try {
+      return JSON.parse(row.setting_value) as T;
+    } catch {
+      return fallback;
+    }
+  };
+
+  return {
+    menuItems: parseJson('donor_visibility.menu_items', []),
+    impactSections: parseJson('donor_visibility.impact_sections', []),
+    updateFields: parseJson('donor_visibility.update_fields', {
+      showProjectLocation: true,
+      showNarrative: true,
+      showDetails: true,
+      showPhotos: true,
+    }),
+  };
+}
+
+function isImpactSectionEnabled(config: DonorVisibilityConfig, id: string): boolean {
+  const row = (config.impactSections || []).find((item) => item.id === id);
+  if (!row) return true;
+  return row.enabled !== false;
+}
+
+function parseApprovedUpdateProof(raw: unknown): { photos: string[]; updateTitle: string | null; updateDetails: string | null } {
+  if (!raw) return { photos: [], updateTitle: null, updateDetails: null };
+  let parsed: any = raw;
+  if (typeof raw === 'string') {
+    try { parsed = JSON.parse(raw); } catch { parsed = null; }
+  }
+  if (!parsed || typeof parsed !== 'object') return { photos: [], updateTitle: null, updateDetails: null };
+
+  const photos = Array.isArray(parsed.photos)
+    ? parsed.photos.map((item: unknown) => String(item || '').trim()).filter(Boolean)
+    : [];
+
+  return {
+    photos,
+    updateTitle: parsed.update_title ? String(parsed.update_title) : null,
+    updateDetails: parsed.update_details ? String(parsed.update_details) : null,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // GET /api/v1/donors
@@ -162,7 +232,12 @@ donorRouter.delete(
 // ---------------------------------------------------------------------------
 // GET /api/v1/donors/me/impact — "Where did my money go?" donor-facing provenance
 // ---------------------------------------------------------------------------
-donorRouter.get('/me/impact', authenticate, async (req: Request, res: Response): Promise<void> => {
+donorRouter.get('/me/visibility', authenticate, requirePermission('donor_visibility', 'view', ['Donor', 'Super Admin', 'Admin']), async (_req: Request, res: Response): Promise<void> => {
+  const visibility = await loadDonorVisibilityConfig();
+  res.json({ success: true, data: visibility });
+});
+
+donorRouter.get('/me/impact', authenticate, requirePermission('donor_visibility', 'view', ['Donor', 'Super Admin', 'Admin']), async (req: Request, res: Response): Promise<void> => {
   try {
     const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
     if (!userRow?.donor_id) {
@@ -170,6 +245,9 @@ donorRouter.get('/me/impact', authenticate, async (req: Request, res: Response):
       return;
     }
     const donorId = userRow.donor_id;
+    const visibility = await loadDonorVisibilityConfig();
+    const canViewAllocations = isImpactSectionEnabled(visibility, 'allocation_breakdown');
+    const canViewSummary = isImpactSectionEnabled(visibility, 'summary');
 
     const donations = await db('dfb_transactions as t')
       .leftJoin('dfb_allocations as a', 't.transaction_id', 'a.transaction_id')
@@ -195,8 +273,8 @@ donorRouter.get('/me/impact', authenticate, async (req: Request, res: Response):
         .where({ 'a.transaction_id': don.transaction_id })
         .select(
           'a.allocation_id', 'a.allocated_amount', 'a.is_spent', 'a.allocated_at',
-          'e.expense_id', 'e.purpose', 'e.amount_spent', 'e.vendor_name',
-          'e.spent_timestamp', 'e.receipt_url', 'e.status as expense_status'
+          'e.expense_id', 'e.purpose',
+          'e.spent_timestamp', 'e.status as expense_status'
         );
 
       const totalAllocated = allocations.reduce((s: number, a: any) => s + Number(a.allocated_amount), 0);
@@ -218,32 +296,32 @@ donorRouter.get('/me/impact', authenticate, async (req: Request, res: Response):
         total_allocated: totalAllocated,
         total_deployed: totalSpent,
         pending_amount: Math.max(0, amount - totalSpent),
-        allocations: allocations.map((a: any) => ({
-          allocation_id: a.allocation_id,
-          allocated_amount: Number(a.allocated_amount),
-          is_spent: Boolean(a.is_spent),
-          allocated_at: a.allocated_at,
-          expense: a.expense_id ? {
-            expense_id: a.expense_id,
-            purpose: a.purpose,
-            amount_spent: Number(a.amount_spent),
-            vendor_name: a.vendor_name,
-            spent_on: a.spent_timestamp,
-            receipt_url: a.receipt_url,
-            status: a.expense_status,
-          } : null,
-        })),
+        allocations: canViewAllocations
+          ? allocations.map((a: any) => ({
+              allocation_id: a.allocation_id,
+              allocated_amount: Number(a.allocated_amount),
+              is_spent: Boolean(a.is_spent),
+              allocated_at: a.allocated_at,
+              expense: a.expense_id ? {
+                expense_id: a.expense_id,
+                purpose: a.purpose,
+                spent_on: a.spent_timestamp,
+                status: a.expense_status,
+              } : null,
+            }))
+          : [],
       };
     }));
 
-    const summary = {
+    const summaryRaw = {
       total_donated: donations.reduce((s: number, d: any) => s + Number(d.amount || 0), 0),
       total_deployed: impact.reduce((s: number, i: any) => s + i.total_deployed, 0),
       total_pending: impact.reduce((s: number, i: any) => s + i.pending_amount, 0),
       donations_count: donations.length,
     };
+    const summary = canViewSummary ? summaryRaw : null;
 
-    res.json({ success: true, data: { summary, donations: impact } });
+    res.json({ success: true, data: { summary, donations: impact, visibility } });
   } catch (error) {
     console.error('[donors/me/impact] Failed to build impact view:', error);
     res.status(500).json({ success: false, message: 'Failed to load impact data' });
@@ -294,6 +372,75 @@ donorRouter.get('/me/projects', authenticate, async (req: Request, res: Response
   } catch (error) {
     console.error('[donors/me/projects] Failed to load donor projects:', error);
     res.status(500).json({ success: false, message: 'Failed to load donor projects' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/donors/me/project-updates — Approved, donor-visible project updates
+// Sensitive expense docs (voucher/cash memo/amounts) are excluded.
+// ---------------------------------------------------------------------------
+donorRouter.get('/me/project-updates', authenticate, requirePermission('donor_visibility', 'view', ['Donor', 'Super Admin', 'Admin']), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
+    if (!userRow?.donor_id) {
+      res.status(403).json({ success: false, message: 'No donor account linked to this user' });
+      return;
+    }
+
+    const visibility = await loadDonorVisibilityConfig();
+    if (!isImpactSectionEnabled(visibility, 'approved_updates')) {
+      res.json({ success: true, data: [], visibility });
+      return;
+    }
+
+    const donorId = userRow.donor_id;
+    const rows = await db('dfb_transactions as t')
+      .join('dfb_allocations as a', 't.transaction_id', 'a.transaction_id')
+      .join('dfb_expenses as e', 'a.expense_id', 'e.expense_id')
+      .join('dfb_projects as p', 'e.project_id', 'p.project_id')
+      .where('t.donor_id', donorId)
+      .andWhere('e.status', 'Approved')
+      .whereNotNull('e.project_id')
+      .groupBy('e.expense_id')
+      .orderBy('e.approved_at', 'desc')
+      .limit(60)
+      .select(
+        'e.expense_id',
+        'e.purpose',
+        'e.spent_timestamp',
+        'e.approved_at',
+        'e.proof_of_execution_urls',
+        'p.project_id',
+        'p.project_name',
+        'p.location_city',
+        'p.location_country'
+      );
+
+    const updates = rows.map((row: any) => {
+      const proof = parseApprovedUpdateProof(row.proof_of_execution_urls);
+      const showLocation = visibility.updateFields.showProjectLocation !== false;
+      const showNarrative = visibility.updateFields.showNarrative !== false;
+      const showDetails = visibility.updateFields.showDetails !== false;
+      const showPhotos = visibility.updateFields.showPhotos !== false;
+      return {
+        update_id: row.expense_id,
+        project_id: row.project_id,
+        project_name: row.project_name,
+        location_city: showLocation ? row.location_city : null,
+        location_country: showLocation ? row.location_country : null,
+        update_title: proof.updateTitle || row.purpose,
+        update_details: showDetails ? proof.updateDetails : null,
+        narrative: showNarrative ? row.purpose : null,
+        photo_urls: showPhotos ? proof.photos : [],
+        spent_timestamp: row.spent_timestamp,
+        approved_at: row.approved_at,
+      };
+    });
+
+    res.json({ success: true, data: updates, visibility });
+  } catch (error) {
+    console.error('[donors/me/project-updates] Failed to load donor project updates:', error);
+    res.status(500).json({ success: false, message: 'Failed to load donor project updates' });
   }
 });
 

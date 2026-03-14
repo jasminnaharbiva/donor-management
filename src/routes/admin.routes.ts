@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { db } from '../config/database';
-import { authenticate, requireRoles } from '../middleware/auth.middleware';
+import { authenticate, requirePermission, requireRoles } from '../middleware/auth.middleware';
 import { invalidatePermissionCache, broadcastConfigChange } from '../services/admin.service';
 import { writeAuditLog } from '../services/audit.service';
 import { decrypt } from '../utils/crypto';
@@ -143,6 +143,105 @@ async function ensureRegistrationSettings() {
 }
 ensureRegistrationSettings().catch(() => {});
 
+async function ensureDonorVisibilitySettings() {
+  const settings = [
+    {
+      key: 'donor_visibility.menu_items',
+      value: JSON.stringify([
+        { key: 'overview', label: 'Overview', enabled: true },
+        { key: 'impact', label: 'My Impact', enabled: true },
+        { key: 'history', label: 'Donation History', enabled: true },
+        { key: 'records', label: 'My Records', enabled: true },
+        { key: 'pledges', label: 'Pledges', enabled: true },
+        { key: 'fundraiser', label: 'Create Fundraiser', enabled: true },
+        { key: 'zakat', label: 'Zakat Calculator', enabled: true },
+        { key: 'billing', label: 'Subscriptions', enabled: true },
+        { key: 'notifications', label: 'Notifications', enabled: true },
+        { key: 'account', label: 'My Account / GDPR', enabled: true }
+      ]),
+      type: 'json',
+      category: 'ui',
+      isPublic: true,
+      desc: 'Dynamic donor menu visibility configuration',
+    },
+    {
+      key: 'donor_visibility.impact_sections',
+      value: JSON.stringify([
+        { id: 'summary', title: 'Impact Summary', enabled: true },
+        { id: 'deployment_progress', title: 'Money Deployed', enabled: true },
+        { id: 'allocation_breakdown', title: 'Donation Allocation Breakdown', enabled: true },
+        { id: 'approved_updates', title: 'Approved Field Updates & Photos', enabled: true }
+      ]),
+      type: 'json',
+      category: 'ui',
+      isPublic: true,
+      desc: 'Dynamic section controls for donor impact page',
+    },
+    {
+      key: 'donor_visibility.update_fields',
+      value: JSON.stringify({
+        showProjectLocation: true,
+        showNarrative: true,
+        showDetails: true,
+        showPhotos: true
+      }),
+      type: 'json',
+      category: 'ui',
+      isPublic: true,
+      desc: 'Field-level visibility for donor project updates',
+    },
+  ];
+
+  for (const setting of settings) {
+    const exists = await db('dfb_system_settings').where({ setting_key: setting.key }).first();
+    if (!exists) {
+      await db('dfb_system_settings').insert({
+        setting_key: setting.key,
+        setting_value: setting.value,
+        value_type: setting.type,
+        category: setting.category,
+        is_public: setting.isPublic,
+        description: setting.desc,
+      });
+    }
+  }
+}
+ensureDonorVisibilitySettings().catch(() => {});
+
+async function ensurePermissionSeed(roleName: string, resource: string, action: string) {
+  const role = await db('dfb_roles').where({ role_name: roleName }).first('role_id');
+  if (!role?.role_id) return;
+
+  const exists = await db('dfb_permissions')
+    .where({ role_id: role.role_id, resource, action })
+    .first('permission_id');
+
+  if (!exists) {
+    await db('dfb_permissions').insert({ role_id: role.role_id, resource, action });
+  }
+}
+
+async function ensureDefaultPermissions() {
+  const seeds: Array<{ role: string; resource: string; actions: string[] }> = [
+    { role: 'Admin', resource: 'donor_visibility', actions: ['view', 'update'] },
+    { role: 'Admin', resource: 'funds', actions: ['view', 'create', 'update', 'delete', 'approve', 'export'] },
+    { role: 'Admin', resource: 'project_workspace', actions: ['view', 'create', 'update', 'approve', 'reject'] },
+    { role: 'Finance', resource: 'funds', actions: ['view', 'update', 'approve', 'export'] },
+    { role: 'Finance', resource: 'expenses', actions: ['view', 'approve', 'reject', 'export'] },
+    { role: 'Finance', resource: 'reports', actions: ['view', 'export'] },
+    { role: 'Volunteer', resource: 'project_workspace', actions: ['view', 'create', 'update'] },
+    { role: 'Volunteer', resource: 'expenses', actions: ['view', 'create'] },
+    { role: 'Donor', resource: 'donor_visibility', actions: ['view'] },
+  ];
+
+  for (const seed of seeds) {
+    for (const action of seed.actions) {
+      await ensurePermissionSeed(seed.role, seed.resource, action);
+    }
+  }
+}
+ensureDefaultPermissions().catch(() => {});
+
 // ---------------------------------------------------------------------------
 // 1. Settings Management (dfb_system_settings)
 // ---------------------------------------------------------------------------
@@ -223,6 +322,110 @@ adminRouter.put('/settings',
 
     res.json({ success: true, message: 'Settings updated successfully' });
 });
+
+// ---------------------------------------------------------------------------
+// Donor visibility controls (dynamic, admin-managed)
+// ---------------------------------------------------------------------------
+adminRouter.get('/donor-visibility', requirePermission('donor_visibility', 'view', ['Super Admin', 'Admin']), async (_req: Request, res: Response): Promise<void> => {
+  const keys = [
+    'donor_visibility.menu_items',
+    'donor_visibility.impact_sections',
+    'donor_visibility.update_fields',
+  ];
+
+  const rows = await db('dfb_system_settings')
+    .whereIn('setting_key', keys)
+    .select('setting_key', 'setting_value', 'value_type');
+
+  const map = new Map(rows.map((row: any) => [row.setting_key, row]));
+  const readJson = (key: string, fallback: any) => {
+    const row = map.get(key);
+    if (!row) return fallback;
+    try {
+      if (row.value_type === 'json' || String(row.setting_value || '').trim().startsWith('{') || String(row.setting_value || '').trim().startsWith('[')) {
+        return JSON.parse(row.setting_value);
+      }
+      return fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
+  res.json({
+    success: true,
+    data: {
+      menuItems: readJson('donor_visibility.menu_items', []),
+      impactSections: readJson('donor_visibility.impact_sections', []),
+      updateFields: readJson('donor_visibility.update_fields', {}),
+    },
+  });
+});
+
+adminRouter.put('/donor-visibility',
+  requirePermission('donor_visibility', 'update', ['Super Admin', 'Admin']),
+  [
+    body('menuItems').optional().isArray(),
+    body('impactSections').optional().isArray(),
+    body('updateFields').optional().isObject(),
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
+    const updates: Array<{ key: string; value: string }> = [];
+    if (req.body.menuItems !== undefined) {
+      updates.push({ key: 'donor_visibility.menu_items', value: JSON.stringify(req.body.menuItems) });
+    }
+    if (req.body.impactSections !== undefined) {
+      updates.push({ key: 'donor_visibility.impact_sections', value: JSON.stringify(req.body.impactSections) });
+    }
+    if (req.body.updateFields !== undefined) {
+      updates.push({ key: 'donor_visibility.update_fields', value: JSON.stringify(req.body.updateFields) });
+    }
+
+    if (updates.length === 0) {
+      res.status(422).json({ success: false, message: 'No visibility updates provided' });
+      return;
+    }
+
+    await db.transaction(async (trx) => {
+      for (const item of updates) {
+        const existing = await trx('dfb_system_settings').where({ setting_key: item.key }).first('setting_id');
+        if (existing) {
+          await trx('dfb_system_settings').where({ setting_key: item.key }).update({
+            setting_value: item.value,
+            updated_by: req.user!.userId,
+            updated_at: new Date(),
+          });
+        } else {
+          await trx('dfb_system_settings').insert({
+            setting_key: item.key,
+            setting_value: item.value,
+            value_type: 'json',
+            category: 'ui',
+            is_public: true,
+            description: 'Donor visibility dynamic configuration',
+            updated_by: req.user!.userId,
+            updated_at: new Date(),
+          });
+        }
+
+        broadcastConfigChange(item.key, 'setting');
+      }
+    });
+
+    await writeAuditLog({
+      tableAffected: 'dfb_system_settings',
+      recordId: 'donor_visibility',
+      actionType: 'UPDATE',
+      newPayload: { keys: updates.map(u => u.key) },
+      actorId: req.user!.userId,
+      ipAddress: req.ip,
+    });
+
+    res.json({ success: true, message: 'Donor visibility updated successfully' });
+  }
+);
 
 // ---------------------------------------------------------------------------
 // 2. Feature Toggles (dfb_feature_flags)

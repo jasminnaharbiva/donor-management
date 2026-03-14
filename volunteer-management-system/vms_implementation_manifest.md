@@ -3,10 +3,10 @@
 This file tracks where the implemented VMS module lives in the current software.
 
 ## Release Snapshot
-- Date: March 13, 2026
+- Date: March 14, 2026
 - Branch: `main`
-- Deployed commit: `0d7efc1`
-- Status: pushed to GitHub `jasminnaharbiva/donor-management`
+- Deployed commit: pending (current working tree)
+- Status: implementation complete in working tree; push pending
 
 ## Implemented Source Files
 
@@ -117,3 +117,27 @@ Although outside standalone VMS certificate scope, volunteer-side case intake ha
 	- 500KB (identity/passport/nationality), 5MB (additional)
 
 These additions preserve the same approval-first governance model used in volunteer onboarding and records issuance.
+
+## Governance + Fund Management Extensions (March 14, 2026)
+
+To support the volunteer-driven project update lifecycle with stronger financial governance and donor/public controls, the following non-VMS core modules were extended:
+
+- Permission middleware upgrade:
+	- `src/middleware/auth.middleware.ts`
+	- Adds dynamic `requirePermission(resource, action, fallbackRoles)` with cache-assisted permission checks
+- Volunteer project workflow hardening:
+	- `src/routes/volunteers.routes.ts`
+	- Adds pending submission edit/delete endpoints and tighter permission-gated project workspace actions
+- Admin dynamic donor visibility control:
+	- `src/routes/admin.routes.ts` (`/api/v1/admin/donor-visibility` GET/PUT)
+	- `frontend/src/pages/admin/SettingsPanel.tsx` (add/edit/delete/hide visibility UI)
+- Donor/public visibility enforcement:
+	- `src/routes/donors.routes.ts` (`/api/v1/donors/me/visibility`, `/me/impact`, `/me/project-updates` visibility-aware)
+	- `src/routes/public.routes.ts` (`/api/v1/public/project-updates` visibility-aware)
+	- `frontend/src/pages/donor/DonorDashboard.tsx` (menu + impact section rendering respects admin settings)
+- Fund management expansion:
+	- `src/routes/funds.routes.ts` (admin summary, create, update, transfer, reconcile, ledger)
+	- `frontend/src/pages/admin/FundsManagementPanel.tsx`
+	- `frontend/src/pages/admin/AdminDashboard.tsx` (new `/admin/funds` route + menu)
+
+These updates keep VMS-adjacent volunteer execution traceable from field activity through admin approval and into controlled donor/public transparency.

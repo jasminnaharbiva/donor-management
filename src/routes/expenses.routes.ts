@@ -148,76 +148,86 @@ expenseRouter.post(
   requireRoles('Super Admin', 'Admin', 'Finance'),
   param('id').isUUID(),
   async (req: Request, res: Response): Promise<void> => {
-    const expense = await db('dfb_expenses').where({ expense_id: req.params.id }).first();
-
-    if (!expense) { res.status(404).json({ success: false, message: 'Expense not found' }); return; }
-    if (expense.status !== 'Pending') {
-      res.status(409).json({ success: false, message: `Cannot approve expense in status: ${expense.status}` });
-      return;
-    }
-
-    // FIFO allocation consumption
-    await consumeAllocations(expense.fund_id, Number(expense.amount_spent), expense.expense_id);
-
-    // Create integrity hash for this expense
-    const hashId = await createIntegrityHash({
-      recordType: 'expense',
-      recordId:   expense.expense_id,
-      payload:    {
-        expense_id:   expense.expense_id,
-        fund_id:      expense.fund_id,
-        amount_spent: expense.amount_spent,
-        approved_by:  req.user!.userId,
-        approved_at:  new Date().toISOString(),
-      },
-    });
-
-    await db('dfb_expenses').where({ expense_id: req.params.id }).update({
-      status:              'Approved',
-      approved_by:         req.user!.userId,
-      approved_at:         new Date(),
-      integrity_hash_id:   hashId,
-    });
-
-    // Update project budget_spent and budget_remaining if linked to a project
-    if (expense.project_id) {
-      await db('dfb_projects').where({ project_id: expense.project_id }).update({
-        budget_spent:     db.raw('budget_spent + ?', [Number(expense.amount_spent)]),
-        budget_remaining: db.raw('GREATEST(0, budget_remaining - ?)', [Number(expense.amount_spent)]),
-        updated_at:       new Date(),
-      });
-    }
-
-    await writeAuditLog({
-      tableAffected: 'dfb_expenses',
-      recordId:      expense.expense_id,
-      actionType:    'APPROVE',
-      actorId:       req.user!.userId,
-      actorRole:     req.user!.roleName,
-      ipAddress:     req.ip,
-    });
-
-    // Send email notification to the volunteer (non-blocking)
     try {
-      const vol = await db('dfb_volunteers as v')
-        .join('dfb_users as u', 'v.volunteer_id', 'u.volunteer_id')
-        .where('v.volunteer_id', expense.submitted_by_volunteer_id)
-        .first('u.email', 'v.first_name');
-      if (vol?.email) {
-        const email = (() => { try { return decrypt(vol.email); } catch { return null; } })();
-        if (email) {
-          sendExpenseApproved({
-            toEmail: email,
-            firstName: vol.first_name || 'Volunteer',
-            amount: Number(expense.amount_spent),
-            purpose: expense.purpose || 'Expense',
-            expenseId: expense.expense_id,
-          }).catch(() => {});
-        }
-      }
-    } catch { /* non-critical */ }
+      const expense = await db('dfb_expenses').where({ expense_id: req.params.id }).first();
 
-    res.json({ success: true, message: 'Expense approved and allocations consumed (FIFO)' });
+      if (!expense) { res.status(404).json({ success: false, message: 'Expense not found' }); return; }
+      if (expense.status !== 'Pending') {
+        res.status(409).json({ success: false, message: `Cannot approve expense in status: ${expense.status}` });
+        return;
+      }
+
+      // FIFO allocation consumption
+      await consumeAllocations(expense.fund_id, Number(expense.amount_spent), expense.expense_id);
+
+      // Create integrity hash for this expense
+      const hashId = await createIntegrityHash({
+        recordType: 'expense',
+        recordId:   expense.expense_id,
+        payload:    {
+          expense_id:   expense.expense_id,
+          fund_id:      expense.fund_id,
+          amount_spent: expense.amount_spent,
+          approved_by:  req.user!.userId,
+          approved_at:  new Date().toISOString(),
+        },
+      });
+
+      await db('dfb_expenses').where({ expense_id: req.params.id }).update({
+        status:              'Approved',
+        approved_by:         req.user!.userId,
+        approved_at:         new Date(),
+        integrity_hash_id:   hashId,
+      });
+
+      // Update project budget_spent and budget_remaining if linked to a project
+      if (expense.project_id) {
+        await db('dfb_projects').where({ project_id: expense.project_id }).update({
+          budget_spent:     db.raw('budget_spent + ?', [Number(expense.amount_spent)]),
+          updated_at:       new Date(),
+        });
+      }
+
+      await writeAuditLog({
+        tableAffected: 'dfb_expenses',
+        recordId:      expense.expense_id,
+        actionType:    'APPROVE',
+        actorId:       req.user!.userId,
+        actorRole:     req.user!.roleName,
+        ipAddress:     req.ip,
+      });
+
+      // Send email notification to the volunteer (non-blocking)
+      try {
+        const vol = await db('dfb_volunteers as v')
+          .join('dfb_users as u', 'v.volunteer_id', 'u.volunteer_id')
+          .where('v.volunteer_id', expense.submitted_by_volunteer_id)
+          .first('u.email', 'v.first_name');
+        if (vol?.email) {
+          const email = (() => { try { return decrypt(vol.email); } catch { return null; } })();
+          if (email) {
+            sendExpenseApproved({
+              toEmail: email,
+              firstName: vol.first_name || 'Volunteer',
+              amount: Number(expense.amount_spent),
+              purpose: expense.purpose || 'Expense',
+              expenseId: expense.expense_id,
+            }).catch(() => {});
+          }
+        }
+      } catch { /* non-critical */ }
+
+      res.json({ success: true, message: 'Expense approved and allocations consumed (FIFO)' });
+    } catch (error: any) {
+      const message = String(error?.message || 'Failed to approve expense');
+      if (message.includes('Insufficient fund balance')) {
+        res.status(409).json({ success: false, message });
+        return;
+      }
+
+      console.error('[expenses/approve] Failed to approve expense:', error);
+      res.status(500).json({ success: false, message: 'Failed to approve expense' });
+    }
   }
 );
 

@@ -1,11 +1,44 @@
 import { Router, Request, Response } from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { db } from '../config/database';
-import { authenticate, requireRoles } from '../middleware/auth.middleware';
+import { authenticate, requirePermission, requireRoles } from '../middleware/auth.middleware';
 import { approveVolunteerApplication } from '../services/volunteer.service';
 import { writeAuditLog } from '../services/audit.service';
 
 export const volunteersRouter = Router();
+
+type ExpenseEvidence = {
+  update_title: string | null;
+  update_details: string | null;
+  voucher_url: string | null;
+  cash_memo_url: string | null;
+  photos: string[];
+};
+
+function parseExpenseEvidence(raw: unknown): ExpenseEvidence {
+  if (!raw) return { update_title: null, update_details: null, voucher_url: null, cash_memo_url: null, photos: [] };
+
+  let parsed: any = raw;
+  if (typeof raw === 'string') {
+    try { parsed = JSON.parse(raw); } catch { parsed = null; }
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return { update_title: null, update_details: null, voucher_url: null, cash_memo_url: null, photos: [] };
+  }
+
+  const photos = Array.isArray(parsed.photos)
+    ? parsed.photos.map((item: unknown) => String(item || '').trim()).filter(Boolean)
+    : [];
+
+  return {
+    update_title: parsed.update_title ? String(parsed.update_title) : null,
+    update_details: parsed.update_details ? String(parsed.update_details) : null,
+    voucher_url: parsed.voucher_url ? String(parsed.voucher_url) : null,
+    cash_memo_url: parsed.cash_memo_url ? String(parsed.cash_memo_url) : null,
+    photos,
+  };
+}
 
 async function attachVolunteerProjectProgress<T extends { project_id: number }>(projects: T[]): Promise<Array<T & Record<string, unknown>>> {
   if (!projects.length) return projects;
@@ -193,6 +226,7 @@ volunteersRouter.post(
 volunteersRouter.get(
   '/my-projects',
   authenticate,
+  requirePermission('project_workspace', 'view', ['Volunteer', 'Admin', 'Super Admin']),
   async (req: Request, res: Response): Promise<void> => {
     const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id');
     const volunteerId = userRow?.volunteer_id;
@@ -213,6 +247,466 @@ volunteersRouter.get(
       );
     const enrichedProjects = await attachVolunteerProjectProgress(projects as Array<{ project_id: number }>);
     res.json({ success: true, data: enrichedProjects });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/volunteers/my-projects/:projectId — Project details for assigned volunteer
+// ---------------------------------------------------------------------------
+volunteersRouter.get(
+  '/my-projects/:projectId',
+  authenticate,
+  requirePermission('project_workspace', 'view', ['Volunteer', 'Admin', 'Super Admin']),
+  param('projectId').isInt({ min: 1 }).toInt(),
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
+    const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id');
+    const volunteerId = userRow?.volunteer_id;
+    if (!volunteerId) {
+      res.status(403).json({ success: false, message: 'Only active volunteers can access this project' });
+      return;
+    }
+
+    const projectId = req.params.projectId as any;
+    const assignment = await db('dfb_project_assignments as pa')
+      .join('dfb_projects as p', 'pa.project_id', 'p.project_id')
+      .leftJoin('dfb_funds as f', 'p.fund_id', 'f.fund_id')
+      .where({ 'pa.project_id': projectId, 'pa.volunteer_id': volunteerId, 'pa.status': 'active' })
+      .first(
+        'p.project_id', 'p.project_name', 'p.description', 'p.status',
+        'p.budget_allocated', 'p.budget_spent', 'p.budget_remaining',
+        'p.location_country', 'p.location_city',
+        'p.start_date', 'p.target_completion_date', 'p.actual_completion_date',
+        'p.created_at', 'p.updated_at',
+        'f.fund_name',
+        'pa.assigned_at'
+      );
+
+    if (!assignment) {
+      res.status(404).json({ success: false, message: 'Assigned project not found' });
+      return;
+    }
+
+    const [projectWithProgress] = await attachVolunteerProjectProgress([assignment as { project_id: number }]);
+    const progressLogs = await db('dfb_project_progress_logs')
+      .where({ project_id: projectId })
+      .orderBy('happened_at', 'desc')
+      .orderBy('log_id', 'desc')
+      .limit(25)
+      .select('log_id', 'update_type', 'update_title', 'update_body', 'progress_percent', 'status_snapshot', 'happened_at', 'created_at');
+
+    const expenseUpdatesRaw = await db('dfb_expenses')
+      .where({ project_id: projectId, submitted_by_volunteer_id: volunteerId })
+      .whereNull('deleted_at')
+      .orderBy('created_at', 'desc')
+      .limit(25)
+      .select(
+        'expense_id', 'amount_spent', 'vendor_name', 'purpose', 'status',
+        'spent_timestamp', 'created_at', 'approved_at',
+        'receipt_url', 'proof_of_execution_urls'
+      );
+
+    const expenseUpdates = expenseUpdatesRaw.map((row: any) => {
+      const evidence = parseExpenseEvidence(row.proof_of_execution_urls);
+      return {
+        expense_id: row.expense_id,
+        amount_spent: Number(row.amount_spent || 0),
+        vendor_name: row.vendor_name,
+        purpose: row.purpose,
+        status: row.status,
+        spent_timestamp: row.spent_timestamp,
+        created_at: row.created_at,
+        approved_at: row.approved_at,
+        update_title: evidence.update_title,
+        update_details: evidence.update_details,
+        voucher_url: evidence.voucher_url || row.receipt_url || null,
+        cash_memo_url: evidence.cash_memo_url,
+        photo_urls: evidence.photos,
+      };
+    });
+
+    res.json({ success: true, data: { ...projectWithProgress, progress_logs: progressLogs, expense_updates: expenseUpdates } });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/volunteers/my-projects/:projectId/expense-updates
+// ---------------------------------------------------------------------------
+volunteersRouter.get(
+  '/my-projects/:projectId/expense-updates',
+  authenticate,
+  requirePermission('project_workspace', 'view', ['Volunteer', 'Admin', 'Super Admin']),
+  param('projectId').isInt({ min: 1 }).toInt(),
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
+    const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id');
+    const volunteerId = userRow?.volunteer_id;
+    if (!volunteerId) {
+      res.status(403).json({ success: false, message: 'Only active volunteers can access this project' });
+      return;
+    }
+
+    const projectId = req.params.projectId as any;
+    const assignment = await db('dfb_project_assignments')
+      .where({ project_id: projectId, volunteer_id: volunteerId, status: 'active' })
+      .first('assignment_id');
+    if (!assignment) {
+      res.status(403).json({ success: false, message: 'You are not assigned to this project' });
+      return;
+    }
+
+    const rows = await db('dfb_expenses')
+      .where({ project_id: projectId, submitted_by_volunteer_id: volunteerId })
+      .whereNull('deleted_at')
+      .orderBy('created_at', 'desc')
+      .select(
+        'expense_id', 'amount_spent', 'vendor_name', 'purpose', 'status',
+        'spent_timestamp', 'created_at', 'approved_at',
+        'receipt_url', 'proof_of_execution_urls'
+      );
+
+    const mapped = rows.map((row: any) => {
+      const evidence = parseExpenseEvidence(row.proof_of_execution_urls);
+      return {
+        expense_id: row.expense_id,
+        amount_spent: Number(row.amount_spent || 0),
+        vendor_name: row.vendor_name,
+        purpose: row.purpose,
+        status: row.status,
+        spent_timestamp: row.spent_timestamp,
+        created_at: row.created_at,
+        approved_at: row.approved_at,
+        update_title: evidence.update_title,
+        update_details: evidence.update_details,
+        voucher_url: evidence.voucher_url || row.receipt_url || null,
+        cash_memo_url: evidence.cash_memo_url,
+        photo_urls: evidence.photos,
+      };
+    });
+
+    res.json({ success: true, data: mapped });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/volunteers/my-projects/:projectId/expense-updates
+// Volunteer submits expense + voucher + cash memo + photos (admin review)
+// ---------------------------------------------------------------------------
+volunteersRouter.post(
+  '/my-projects/:projectId/expense-updates',
+  authenticate,
+  requirePermission('project_workspace', 'create', ['Volunteer', 'Admin', 'Super Admin']),
+  [
+    param('projectId').isInt({ min: 1 }).toInt(),
+    body('amountSpent').isFloat({ min: 0.01 }).toFloat(),
+    body('updateTitle').trim().notEmpty().isLength({ max: 160 }),
+    body('updateDetails').optional().isString().isLength({ max: 3000 }),
+    body('vendorName').optional().isString().isLength({ max: 120 }),
+    body('voucherUrl').trim().isURL(),
+    body('cashMemoUrl').trim().isURL(),
+    body('photoUrls').isArray({ min: 1, max: 10 }),
+    body('photoUrls.*').isURL(),
+    body('spentTimestamp').optional().isISO8601().toDate(),
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
+    const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id');
+    const volunteerId = userRow?.volunteer_id;
+    if (!volunteerId) {
+      res.status(403).json({ success: false, message: 'Only active volunteers can submit project updates' });
+      return;
+    }
+
+    const projectId = req.params.projectId as any;
+    const assignment = await db('dfb_project_assignments')
+      .where({ project_id: projectId, volunteer_id: volunteerId, status: 'active' })
+      .first('assignment_id');
+    if (!assignment) {
+      res.status(403).json({ success: false, message: 'You are not assigned to this project' });
+      return;
+    }
+
+    const project = await db('dfb_projects').where({ project_id: projectId }).first('project_id', 'fund_id');
+    if (!project) {
+      res.status(404).json({ success: false, message: 'Project not found' });
+      return;
+    }
+
+    const amountSpent = Number(req.body.amountSpent || 0);
+    const updateTitle = String(req.body.updateTitle || '').trim();
+    const updateDetails = req.body.updateDetails ? String(req.body.updateDetails).trim() : '';
+    const voucherUrl = String(req.body.voucherUrl || '').trim();
+    const cashMemoUrl = String(req.body.cashMemoUrl || '').trim();
+    const photoUrls = Array.isArray(req.body.photoUrls)
+      ? req.body.photoUrls.map((item: unknown) => String(item || '').trim()).filter(Boolean)
+      : [];
+
+    if (!voucherUrl || !cashMemoUrl || photoUrls.length === 0) {
+      res.status(422).json({ success: false, message: 'Voucher, cash memo, and at least one photo are required.' });
+      return;
+    }
+
+    const { v4: uuidv4 } = await import('uuid');
+    const expenseId = uuidv4();
+
+    const evidencePayload = {
+      update_title: updateTitle,
+      update_details: updateDetails || null,
+      voucher_url: voucherUrl,
+      cash_memo_url: cashMemoUrl,
+      photos: photoUrls,
+    };
+
+    await db('dfb_expenses').insert({
+      expense_id: expenseId,
+      fund_id: project.fund_id,
+      project_id: projectId,
+      amount_spent: amountSpent,
+      vendor_name: req.body.vendorName || null,
+      purpose: updateDetails ? `${updateTitle} — ${updateDetails}` : updateTitle,
+      receipt_url: voucherUrl,
+      spent_timestamp: req.body.spentTimestamp || new Date(),
+      submitted_by_volunteer_id: volunteerId,
+      proof_of_execution_urls: JSON.stringify(evidencePayload),
+      status: 'Pending',
+      created_at: new Date(),
+    });
+
+    await writeAuditLog({
+      tableAffected: 'dfb_expenses',
+      recordId: expenseId,
+      actionType: 'INSERT',
+      newPayload: { projectId, amountSpent, updateTitle, photoCount: photoUrls.length, hasVoucher: true, hasCashMemo: true },
+      actorId: req.user!.userId,
+      actorRole: req.user!.roleName,
+      ipAddress: req.ip,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Project expense update submitted for admin review',
+      data: { expense_id: expenseId, status: 'Pending' },
+    });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// PATCH /api/v1/volunteers/my-projects/:projectId/expense-updates/:expenseId
+// Volunteer can edit own PENDING submission before admin review.
+// ---------------------------------------------------------------------------
+volunteersRouter.patch(
+  '/my-projects/:projectId/expense-updates/:expenseId',
+  authenticate,
+  requirePermission('project_workspace', 'update', ['Volunteer', 'Admin', 'Super Admin']),
+  [
+    param('projectId').isInt({ min: 1 }).toInt(),
+    param('expenseId').isUUID(),
+    body('amountSpent').optional().isFloat({ min: 0.01 }).toFloat(),
+    body('updateTitle').optional().isString().isLength({ min: 1, max: 160 }),
+    body('updateDetails').optional().isString().isLength({ max: 3000 }),
+    body('vendorName').optional().isString().isLength({ max: 120 }),
+    body('voucherUrl').optional().isURL(),
+    body('cashMemoUrl').optional().isURL(),
+    body('photoUrls').optional().isArray({ min: 1, max: 10 }),
+    body('photoUrls.*').optional().isURL(),
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
+    const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id');
+    const volunteerId = userRow?.volunteer_id;
+    if (!volunteerId) { res.status(403).json({ success: false, message: 'Only active volunteers can update project submissions' }); return; }
+
+    const projectId = req.params.projectId as any;
+    const expenseId = String(req.params.expenseId);
+
+    const assignment = await db('dfb_project_assignments')
+      .where({ project_id: projectId, volunteer_id: volunteerId, status: 'active' })
+      .first('assignment_id');
+    if (!assignment) { res.status(403).json({ success: false, message: 'You are not assigned to this project' }); return; }
+
+    const expense = await db('dfb_expenses')
+      .where({ expense_id: expenseId, project_id: projectId, submitted_by_volunteer_id: volunteerId })
+      .whereNull('deleted_at')
+      .first('expense_id', 'status', 'proof_of_execution_urls', 'receipt_url');
+    if (!expense) { res.status(404).json({ success: false, message: 'Expense update not found' }); return; }
+    if (expense.status !== 'Pending') { res.status(409).json({ success: false, message: 'Only pending submissions can be edited' }); return; }
+
+    const parsed = parseExpenseEvidence(expense.proof_of_execution_urls);
+    const payload = {
+      update_title: req.body.updateTitle !== undefined ? String(req.body.updateTitle).trim() : parsed.update_title,
+      update_details: req.body.updateDetails !== undefined ? String(req.body.updateDetails).trim() : parsed.update_details,
+      voucher_url: req.body.voucherUrl !== undefined ? String(req.body.voucherUrl).trim() : (parsed.voucher_url || expense.receipt_url),
+      cash_memo_url: req.body.cashMemoUrl !== undefined ? String(req.body.cashMemoUrl).trim() : parsed.cash_memo_url,
+      photos: req.body.photoUrls !== undefined
+        ? (Array.isArray(req.body.photoUrls) ? req.body.photoUrls.map((item: unknown) => String(item || '').trim()).filter(Boolean) : [])
+        : parsed.photos,
+    };
+
+    if (!payload.voucher_url || !payload.cash_memo_url || payload.photos.length === 0 || !payload.update_title) {
+      res.status(422).json({ success: false, message: 'Voucher, cash memo, at least one photo, and title are required.' });
+      return;
+    }
+
+    const updates: Record<string, unknown> = {
+      proof_of_execution_urls: JSON.stringify(payload),
+    };
+    if (req.body.amountSpent !== undefined) updates.amount_spent = Number(req.body.amountSpent);
+    if (req.body.vendorName !== undefined) updates.vendor_name = req.body.vendorName || null;
+    updates.purpose = payload.update_details ? `${payload.update_title} — ${payload.update_details}` : payload.update_title;
+    updates.receipt_url = payload.voucher_url;
+
+    await db('dfb_expenses').where({ expense_id: expenseId }).update(updates);
+
+    await writeAuditLog({
+      tableAffected: 'dfb_expenses',
+      recordId: expenseId,
+      actionType: 'UPDATE',
+      newPayload: { projectId, updatedByVolunteer: true },
+      actorId: req.user!.userId,
+      actorRole: req.user!.roleName,
+      ipAddress: req.ip,
+    });
+
+    res.json({ success: true, message: 'Pending project update edited successfully' });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// DELETE /api/v1/volunteers/my-projects/:projectId/expense-updates/:expenseId
+// Volunteer can withdraw own PENDING submission.
+// ---------------------------------------------------------------------------
+volunteersRouter.delete(
+  '/my-projects/:projectId/expense-updates/:expenseId',
+  authenticate,
+  requirePermission('project_workspace', 'delete', ['Volunteer', 'Admin', 'Super Admin']),
+  [
+    param('projectId').isInt({ min: 1 }).toInt(),
+    param('expenseId').isUUID(),
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
+    const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id');
+    const volunteerId = userRow?.volunteer_id;
+    if (!volunteerId) { res.status(403).json({ success: false, message: 'Only active volunteers can remove project submissions' }); return; }
+
+    const projectId = req.params.projectId as any;
+    const expenseId = String(req.params.expenseId);
+
+    const expense = await db('dfb_expenses')
+      .where({ expense_id: expenseId, project_id: projectId, submitted_by_volunteer_id: volunteerId })
+      .whereNull('deleted_at')
+      .first('expense_id', 'status');
+    if (!expense) { res.status(404).json({ success: false, message: 'Expense update not found' }); return; }
+    if (expense.status !== 'Pending') { res.status(409).json({ success: false, message: 'Only pending submissions can be removed' }); return; }
+
+    await db('dfb_expenses').where({ expense_id: expenseId }).update({
+      status: 'Cancelled',
+      deleted_at: new Date(),
+    });
+
+    await writeAuditLog({
+      tableAffected: 'dfb_expenses',
+      recordId: expenseId,
+      actionType: 'DELETE',
+      newPayload: { projectId, withdrawnByVolunteer: true },
+      actorId: req.user!.userId,
+      actorRole: req.user!.roleName,
+      ipAddress: req.ip,
+    });
+
+    res.json({ success: true, message: 'Pending project update withdrawn' });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/volunteers/my-projects/:projectId/progress-logs — Volunteer progress update
+// ---------------------------------------------------------------------------
+volunteersRouter.post(
+  '/my-projects/:projectId/progress-logs',
+  authenticate,
+  requirePermission('project_workspace', 'update', ['Super Admin', 'Admin']),
+  [
+    param('projectId').isInt({ min: 1 }).toInt(),
+    body('updateTitle').trim().notEmpty().isLength({ max: 160 }),
+    body('updateBody').optional().isString().isLength({ max: 4000 }),
+    body('updateType').optional().isIn(['field_update', 'milestone', 'issue', 'note']),
+    body('progressPercent').optional().isInt({ min: 0, max: 100 }).toInt(),
+    body('happenedAt').optional().isISO8601().toDate(),
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
+    const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id');
+    const volunteerId = userRow?.volunteer_id;
+    const roleName = req.user!.roleName || '';
+    const isAdminActor = roleName === 'Super Admin' || roleName === 'Admin';
+
+    if (!volunteerId && !isAdminActor) {
+      res.status(403).json({ success: false, message: 'Only assigned volunteers or admins can submit updates' });
+      return;
+    }
+
+    const projectId = req.params.projectId as any;
+    if (!isAdminActor) {
+      const assignment = await db('dfb_project_assignments')
+        .where({ project_id: projectId, volunteer_id: volunteerId, status: 'active' })
+        .first('assignment_id');
+      if (!assignment) {
+        res.status(403).json({ success: false, message: 'You are not assigned to this project' });
+        return;
+      }
+    }
+
+    const project = await db('dfb_projects').where({ project_id: projectId }).first('project_id', 'status');
+    if (!project) {
+      res.status(404).json({ success: false, message: 'Project not found' });
+      return;
+    }
+
+    let progressPercent = req.body.progressPercent;
+    if (progressPercent === undefined) {
+      const latestLog = await db('dfb_project_progress_logs')
+        .where({ project_id: projectId })
+        .orderBy('happened_at', 'desc')
+        .orderBy('log_id', 'desc')
+        .first('progress_percent');
+      progressPercent = Number(latestLog?.progress_percent || 0);
+    }
+
+    const [logId] = await db('dfb_project_progress_logs').insert({
+      project_id: projectId,
+      update_type: req.body.updateType || 'note',
+      update_title: req.body.updateTitle,
+      update_body: req.body.updateBody || null,
+      progress_percent: progressPercent,
+      status_snapshot: project.status,
+      logged_by: req.user!.userId,
+      happened_at: req.body.happenedAt || new Date(),
+      created_at: new Date(),
+    });
+
+    await db('dfb_projects').where({ project_id: projectId }).update({ updated_at: new Date() });
+
+    await writeAuditLog({
+      tableAffected: 'dfb_project_progress_logs',
+      recordId: String(logId),
+      actionType: 'INSERT',
+      newPayload: { projectId, updateTitle: req.body.updateTitle, updateType: req.body.updateType || 'note', progressPercent },
+      actorId: req.user!.userId,
+    });
+
+    res.status(201).json({ success: true, message: 'Project update submitted', data: { log_id: logId } });
   }
 );
 

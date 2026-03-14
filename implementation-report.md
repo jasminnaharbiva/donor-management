@@ -1,7 +1,7 @@
 # DFB Donor Management — Implementation Report
 
-**Date**: March 12, 2026  
-**Report Coverage**: through commit `b43ef25` on `main`  
+**Date**: March 14, 2026  
+**Report Coverage**: through current working tree (pending commit) on `main`  
 **Live URL**: https://donor-management.nokshaojibon.com  
 **GitHub**: jasminnaharbiva/donor-management
 
@@ -10,6 +10,75 @@
 ## Summary
 
 This report tracks all implemented features against the `real_time_donation_planning.md` specification, plus all bugs fixed and improvements made across this session.
+
+---
+
+## Phase 5 — Governance + Fund Management Hardening (March 14, 2026)
+
+### Volunteer Project Workspace Workflow ✅
+- Volunteer project cards now open a full project workspace in the volunteer dashboard.
+- Volunteers can submit project updates with required evidence: voucher, cash memo, photos, title/details.
+- Volunteers can edit or withdraw only their own pending submissions.
+- Project update submissions are routed through admin approval (no direct public/donor exposure).
+
+### Admin Review + Evidence Controls ✅
+- Admin expense approval panel now surfaces voucher/cash memo/photo evidence more clearly.
+- Pending-state action rendering fixed for approve/reject controls.
+- Approval flow stability fixes:
+  - Prevent generated-column write attempts on `budget_remaining`.
+  - Handle insufficient allocation scenarios with explicit business errors.
+
+### Donor/Public Data Safety + Dynamic Visibility ✅
+- Added donor-approved project updates API with strict sanitization (no voucher/cash memo/expense leakage).
+- Added public approved updates API with narrative/photos only.
+- Added dynamic donor visibility settings in admin APIs:
+  - `GET /api/v1/admin/donor-visibility`
+  - `PUT /api/v1/admin/donor-visibility`
+- Added donor visibility runtime endpoint:
+  - `GET /api/v1/donors/me/visibility`
+- Donor dashboard now respects admin-configured menu visibility and impact section visibility.
+- Donor impact UI hardened to handle hidden sections gracefully (no null-summary crash).
+- Public approved updates API now also enforces admin visibility toggles.
+
+### Permission System Integration (Runtime Enforcement) ✅
+- Added dynamic `requirePermission(resource, action, fallbackRoles)` middleware.
+- Permission checks now include role-name and custom-permission cache paths (Redis + safe fallback).
+- Integrated permission enforcement into key project-workspace and donor-visibility routes.
+
+### Complete Fund Management Expansion ✅
+
+#### Backend (`src/routes/funds.routes.ts`)
+- New secured management endpoints:
+  - `GET /api/v1/funds/admin-summary`
+  - `POST /api/v1/funds`
+  - `PATCH /api/v1/funds/:id`
+  - `POST /api/v1/funds/transfer`
+  - `POST /api/v1/funds/:id/reconcile`
+  - `GET /api/v1/funds/:id/ledger`
+- Transfer workflow now records full ledger trail:
+  - source allocation consumption
+  - approved transfer expense record
+  - target transaction + allocation
+  - source/target balance mutation in one DB transaction
+- Reconciliation endpoint supports both discrepancy check and optional balance correction.
+- All fund-management actions write audit entries.
+
+#### Frontend Admin UX
+- New `Funds` panel in admin dashboard:
+  - real-time fund summary and discrepancy view
+  - create fund form
+  - edit fund profile form
+  - inter-fund transfer form
+  - per-fund reconcile check/fix actions
+  - per-fund ledger preview
+- Settings panel now includes full donor-visibility editor:
+  - add/edit/delete/hide donor menu items
+  - add/edit/delete/hide impact sections
+  - toggle approved update fields (location/narrative/details/photos)
+
+### Verification ✅
+- Backend TypeScript build: pass (`npm run build`)
+- Frontend build: pass (`cd frontend && npm run build`)
 
 ---
 

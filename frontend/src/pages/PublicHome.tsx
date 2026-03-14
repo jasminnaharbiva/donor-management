@@ -6,11 +6,13 @@ import api from '../services/api';
 export default function PublicHome() {
   const [impact, setImpact] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [projectUpdates, setProjectUpdates] = useState<any[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     api.get('/public/impact').then(r => setImpact(r.data.data)).catch(console.error);
     api.get('/public/campaigns').then(r => setCampaigns((r.data.data || []).slice(0, 3))).catch(console.error);
+    api.get('/public/project-updates?limit=6').then(r => setProjectUpdates(r.data.data || [])).catch(() => setProjectUpdates([]));
   }, []);
 
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'BDT', maximumFractionDigits: 0 }).format(n || 0);
@@ -99,6 +101,30 @@ export default function PublicHome() {
                   <button onClick={() => navigate('/register?panel=donor')} className="mt-2 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2 px-4 rounded-xl text-sm">
                     Donate to this campaign
                   </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {projectUpdates.length > 0 && (
+        <div className="relative z-10 bg-white border-t border-slate-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-16">
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 text-center mb-10">Approved Field Updates</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projectUpdates.map((u: any) => (
+                <div key={u.update_id} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col gap-2">
+                  <h3 className="font-semibold text-slate-800 text-base">{u.update_title || u.narrative}</h3>
+                  <p className="text-xs text-slate-500">{u.project_name}{u.location_city ? ` · ${u.location_city}, ${u.location_country}` : ''}</p>
+                  {u.update_details && <p className="text-sm text-slate-600 line-clamp-3">{u.update_details}</p>}
+                  {Array.isArray(u.photo_urls) && u.photo_urls.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-2 text-xs">
+                      {u.photo_urls.slice(0, 3).map((url: string, idx: number) => (
+                        <a key={`${u.update_id}-photo-${idx}`} href={url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">Photo {idx + 1}</a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -73,6 +73,8 @@ function safeDeleteUploadedFile(filePath: string | undefined): void {
   }
 }
 
+const imageMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
 // ---------------------------------------------------------------------------
 // POST /api/v1/media/upload
 // ---------------------------------------------------------------------------
@@ -257,6 +259,94 @@ mediaRouter.post(
       safeDeleteUploadedFile(req.file.path);
       console.error('Beneficiary media upload error:', error);
       res.status(500).json({ success: false, message: 'Database error saving beneficiary media' });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/media/project-update-upload
+// Authenticated upload for volunteer project updates.
+// - voucher / cash_memo: private (not public)
+// - photo: public
+// ---------------------------------------------------------------------------
+mediaRouter.post(
+  '/project-update-upload',
+  authenticate,
+  requireRoles('Volunteer', 'Admin', 'Super Admin'),
+  upload.single('file'),
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.file) {
+      res.status(400).json({ success: false, message: 'No file uploaded' });
+      return;
+    }
+
+    const kind = String(req.body.kind || '').trim().toLowerCase();
+    const validKinds = ['voucher', 'cash_memo', 'photo'];
+    if (!validKinds.includes(kind)) {
+      safeDeleteUploadedFile(req.file.path);
+      res.status(422).json({ success: false, message: 'Invalid upload kind. Use voucher, cash_memo, or photo.' });
+      return;
+    }
+
+    const maxSize = kind === 'photo' ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (req.file.size > maxSize) {
+      safeDeleteUploadedFile(req.file.path);
+      res.status(422).json({
+        success: false,
+        message: kind === 'photo'
+          ? 'Photo must be less than 10MB.'
+          : 'Voucher or cash memo must be less than 5MB.',
+      });
+      return;
+    }
+
+    if (kind === 'photo' && !imageMimeTypes.includes(req.file.mimetype)) {
+      safeDeleteUploadedFile(req.file.path);
+      res.status(422).json({ success: false, message: 'Photo must be JPEG, PNG, or WEBP.' });
+      return;
+    }
+
+    const rawReferenceType = String(req.body.referenceType || 'project_expense_update');
+    const referenceType = rawReferenceType.slice(0, 40);
+
+    try {
+      const mediaId = uuidv4();
+      const relativePath = `/uploads/${req.file.filename}`;
+      const cdnUrl = `${process.env.APP_URL || 'http://localhost:3000'}${relativePath}`;
+      const purpose = kind === 'photo' ? 'proof_of_execution' : 'receipt';
+
+      await db('dfb_media').insert({
+        media_id: mediaId,
+        uploader_user_id: req.user!.userId,
+        file_name: req.file.originalname,
+        file_path: relativePath,
+        mime_type: req.file.mimetype,
+        file_size_bytes: req.file.size,
+        purpose,
+        reference_type: referenceType,
+        reference_id: req.body.referenceId || null,
+        is_public: kind === 'photo',
+        cdn_url: cdnUrl,
+        storage_provider: 'local',
+        virus_scan_status: 'clean',
+        created_at: new Date()
+      });
+
+      res.status(201).json({
+        success: true,
+        data: {
+          mediaId,
+          kind,
+          url: cdnUrl,
+          fileName: req.file.originalname,
+          sizeBytes: req.file.size,
+          isPublic: kind === 'photo',
+        }
+      });
+    } catch (error) {
+      safeDeleteUploadedFile(req.file.path);
+      console.error('Project update media upload error:', error);
+      res.status(500).json({ success: false, message: 'Database error saving project update media' });
     }
   }
 );

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
@@ -497,18 +497,50 @@ function Pledges() {
 
 export default function DonorDashboard() {
   const { user } = useAuth();
-  const menuItems = [
-    { name: 'Overview', path: '/donor/overview', icon: <Activity size={20} /> },
-    { name: 'My Impact', path: '/donor/impact', icon: <TrendingUp size={20} /> },
-    { name: 'Donation History', path: '/donor/history', icon: <Heart size={20} /> },
-    { name: 'My Records', path: '/donor/records', icon: <Trophy size={20} /> },
-    { name: 'Pledges', path: '/donor/pledges', icon: <Calendar size={20} /> },
-    { name: 'Create Fundraiser', path: '/donor/fundraiser', icon: <Globe size={20} /> },
-    { name: 'Zakat Calculator', path: '/donor/zakat', icon: <Calculator size={20} /> },
-    { name: 'Subscriptions', path: '/donor/billing', icon: <RefreshCw size={20} /> },
-    { name: 'Notifications', path: '/donor/notifications', icon: <Bell size={20} /> },
-    { name: 'My Account / GDPR', path: '/donor/account', icon: <Shield size={20} /> },
-  ];
+  const [menuVisibility, setMenuVisibility] = useState<Record<string, boolean> | null>(null);
+
+  useEffect(() => {
+    api.get('/donors/me/visibility')
+      .then((res) => {
+        const items = res.data?.data?.menuItems;
+        if (!Array.isArray(items)) {
+          setMenuVisibility(null);
+          return;
+        }
+
+        const next: Record<string, boolean> = {};
+        items.forEach((row: any) => {
+          const key = typeof row?.key === 'string' ? row.key.trim() : '';
+          if (!key) return;
+          next[key] = row.enabled !== false;
+        });
+        setMenuVisibility(next);
+      })
+      .catch(() => setMenuVisibility(null));
+  }, []);
+
+  const menuItems = useMemo(() => {
+    const baseMenuItems = [
+      { key: 'overview', name: 'Overview', path: '/donor/overview', icon: <Activity size={20} /> },
+      { key: 'impact', name: 'My Impact', path: '/donor/impact', icon: <TrendingUp size={20} /> },
+      { key: 'history', name: 'Donation History', path: '/donor/history', icon: <Heart size={20} /> },
+      { key: 'records', name: 'My Records', path: '/donor/records', icon: <Trophy size={20} /> },
+      { key: 'pledges', name: 'Pledges', path: '/donor/pledges', icon: <Calendar size={20} /> },
+      { key: 'p2p', name: 'Create Fundraiser', path: '/donor/fundraiser', icon: <Globe size={20} /> },
+      { key: 'zakat', name: 'Zakat Calculator', path: '/donor/zakat', icon: <Calculator size={20} /> },
+      { key: 'subscriptions', name: 'Subscriptions', path: '/donor/billing', icon: <RefreshCw size={20} /> },
+      { key: 'notifications', name: 'Notifications', path: '/donor/notifications', icon: <Bell size={20} /> },
+      { key: 'account', name: 'My Account / GDPR', path: '/donor/account', icon: <Shield size={20} /> },
+    ];
+
+    return baseMenuItems
+      .filter((item) => {
+        if (!menuVisibility) return true;
+        if (menuVisibility[item.key] === undefined) return true;
+        return menuVisibility[item.key] !== false;
+      })
+      .map(({ key: _key, ...item }) => item);
+  }, [menuVisibility]);
 
   return (
     <DashboardLayout title="Donor Portal" role={user?.role || 'Donor'} menuItems={menuItems}>
@@ -571,13 +603,20 @@ function NotificationsPage() {
 // ---------------------------------------------------------------------------
 function MyImpact() {
   const [data, setData] = useState<any>(null);
+  const [projectUpdates, setProjectUpdates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
 
   useEffect(() => {
-    api.get('/donors/me/impact')
-      .then(r => setData(r.data.data))
+    Promise.all([
+      api.get('/donors/me/impact'),
+      api.get('/donors/me/project-updates').catch(() => ({ data: { data: [] } })),
+    ])
+      .then(([impactRes, updatesRes]) => {
+        setData(impactRes.data.data);
+        setProjectUpdates(updatesRes.data.data || []);
+      })
       .catch(() => setError('Could not load impact data.'))
       .finally(() => setLoading(false));
   }, []);
@@ -586,67 +625,116 @@ function MyImpact() {
   if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
   if (!data) return null;
 
-  const { summary, donations } = data;
-  const deployedPct = summary.total_donated > 0 ? Math.round((summary.total_deployed / summary.total_donated) * 100) : 0;
+  const { summary, donations, visibility } = data;
+  const hasSummary = Boolean(summary);
+  const updateVisibility = visibility?.updateFields || {};
+  const impactSections = Array.isArray(visibility?.impactSections) ? visibility.impactSections : [];
+  const isSectionEnabled = (id: string) => {
+    const row = impactSections.find((item: any) => item?.id === id);
+    return row ? row.enabled !== false : true;
+  };
+  const canSeeAllocationBreakdown = isSectionEnabled('allocation_breakdown');
+  const canSeeApprovedUpdates = isSectionEnabled('approved_updates');
+  const deployedPct = hasSummary && summary.total_donated > 0 ? Math.round((summary.total_deployed / summary.total_donated) * 100) : 0;
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-2"><TrendingUp className="text-green-500"/> Where Did My Money Go?</h2>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          { label: 'Total Donated', val: fmt(summary.total_donated), color: 'bg-primary-50 border-primary-200' },
-          { label: 'Deployed to Programs', val: fmt(summary.total_deployed), color: 'bg-green-50 border-green-200' },
-          { label: 'Pending Deployment', val: fmt(summary.total_pending), color: 'bg-yellow-50 border-yellow-200' },
-        ].map(c => (
-          <div key={c.label} className={`rounded-xl border p-4 ${c.color}`}>
-            <p className="text-xs text-slate-500 uppercase tracking-wide">{c.label}</p>
-            <p className="text-xl sm:text-2xl font-bold text-slate-800 mt-1">{c.val}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Deployment progress bar */}
-      <div className="glass rounded-xl p-4 border border-slate-200">
-        <div className="flex justify-between text-sm text-slate-600 mb-2">
-          <span>Money Deployed</span><span className="font-semibold">{deployedPct}%</span>
-        </div>
-        <div className="w-full bg-slate-200 rounded-full h-3">
-          <div className="bg-green-500 h-3 rounded-full transition-all" style={{ width: `${deployedPct}%` }}/>
-        </div>
-      </div>
-
-      {/* Per-donation breakdown */}
-      {donations.length === 0 && <div className="text-center py-8 text-slate-400">No donations yet.</div>}
-      {donations.map((don: any) => (
-        <div key={don.transaction_id} className="glass rounded-xl border border-slate-200 overflow-hidden">
-          <div className="bg-slate-50 px-4 py-3 flex flex-wrap gap-3 justify-between items-center">
-            <div>
-              <span className="font-semibold text-slate-800">{fmt(don.amount)}</span>
-              <span className="ml-2 text-sm text-slate-500">→ {don.fund?.fund_name}</span>
-            </div>
-            <span className="text-xs text-slate-400">{new Date(don.donated_at).toLocaleDateString()}</span>
-          </div>
-          <div className="p-4 space-y-2">
-            {don.allocations.length === 0 && <p className="text-sm text-slate-400 italic">Allocation in progress…</p>}
-            {don.allocations.map((al: any) => (
-              <div key={al.allocation_id} className={`flex items-start gap-3 p-3 rounded-lg ${al.is_spent ? 'bg-green-50 border border-green-100' : 'bg-yellow-50 border border-yellow-100'}`}>
-                <div className="mt-0.5">{al.is_spent ? <CheckCircle size={16} className="text-green-500"/> : <DollarSign size={16} className="text-yellow-500"/>}</div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-slate-700">{fmt(al.allocated_amount)} — {al.is_spent ? 'Deployed' : 'Allocated (pending deployment)'}</p>
-                  {al.expense && (
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {al.expense.purpose} {al.expense.vendor_name ? `• ${al.expense.vendor_name}` : ''} {al.expense.spent_on ? `• ${new Date(al.expense.spent_on).toLocaleDateString()}` : ''}
-                      {al.expense.receipt_url && (<> • <a href={al.expense.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary-500 underline">Receipt</a></>)}
-                    </p>
-                  )}
-                </div>
+      {hasSummary ? (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { label: 'Total Donated', val: fmt(summary.total_donated), color: 'bg-primary-50 border-primary-200' },
+              { label: 'Deployed to Programs', val: fmt(summary.total_deployed), color: 'bg-green-50 border-green-200' },
+              { label: 'Pending Deployment', val: fmt(summary.total_pending), color: 'bg-yellow-50 border-yellow-200' },
+            ].map(c => (
+              <div key={c.label} className={`rounded-xl border p-4 ${c.color}`}>
+                <p className="text-xs text-slate-500 uppercase tracking-wide">{c.label}</p>
+                <p className="text-xl sm:text-2xl font-bold text-slate-800 mt-1">{c.val}</p>
               </div>
             ))}
           </div>
-        </div>
-      ))}
+
+          {/* Deployment progress bar */}
+          <div className="glass rounded-xl p-4 border border-slate-200">
+            <div className="flex justify-between text-sm text-slate-600 mb-2">
+              <span>Money Deployed</span><span className="font-semibold">{deployedPct}%</span>
+            </div>
+            <div className="w-full bg-slate-200 rounded-full h-3">
+              <div className="bg-green-500 h-3 rounded-full transition-all" style={{ width: `${deployedPct}%` }}/>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="glass rounded-xl p-4 border border-slate-200 text-sm text-slate-500">Summary is currently hidden by admin visibility settings.</div>
+      )}
+
+      {/* Per-donation breakdown */}
+      {canSeeAllocationBreakdown ? (
+        <>
+          {donations.length === 0 && <div className="text-center py-8 text-slate-400">No donations yet.</div>}
+          {donations.map((don: any) => (
+            <div key={don.transaction_id} className="glass rounded-xl border border-slate-200 overflow-hidden">
+              <div className="bg-slate-50 px-4 py-3 flex flex-wrap gap-3 justify-between items-center">
+                <div>
+                  <span className="font-semibold text-slate-800">{fmt(don.amount)}</span>
+                  <span className="ml-2 text-sm text-slate-500">→ {don.fund?.fund_name}</span>
+                </div>
+                <span className="text-xs text-slate-400">{new Date(don.donated_at).toLocaleDateString()}</span>
+              </div>
+              <div className="p-4 space-y-2">
+                {don.allocations.length === 0 && <p className="text-sm text-slate-400 italic">Allocation in progress…</p>}
+                {don.allocations.map((al: any) => (
+                  <div key={al.allocation_id} className={`flex items-start gap-3 p-3 rounded-lg ${al.is_spent ? 'bg-green-50 border border-green-100' : 'bg-yellow-50 border border-yellow-100'}`}>
+                    <div className="mt-0.5">{al.is_spent ? <CheckCircle size={16} className="text-green-500"/> : <DollarSign size={16} className="text-yellow-500"/>}</div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-700">{fmt(al.allocated_amount)} — {al.is_spent ? 'Deployed' : 'Allocated (pending deployment)'}</p>
+                      {al.expense && (
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {al.expense.purpose} {al.expense.spent_on ? `• ${new Date(al.expense.spent_on).toLocaleDateString()}` : ''}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </>
+      ) : (
+        <div className="glass rounded-xl p-4 border border-slate-200 text-sm text-slate-500">Allocation breakdown is currently hidden by admin visibility settings.</div>
+      )}
+
+      {canSeeApprovedUpdates && (
+      <div className="glass rounded-xl p-5 border border-slate-200">
+        <h3 className="text-lg font-bold text-slate-800 mb-3">Approved Field Updates & Photos</h3>
+        {projectUpdates.length === 0 ? (
+          <p className="text-sm text-slate-500">No approved field updates yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {projectUpdates.map((item: any) => (
+              <div key={item.update_id} className="rounded-lg border border-slate-200 bg-white/70 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-slate-800 text-sm">{item.update_title || item.narrative}</p>
+                  <span className="text-xs text-slate-500">{item.approved_at ? new Date(item.approved_at).toLocaleDateString() : 'Approved'}</span>
+                </div>
+                {updateVisibility.showProjectLocation !== false && <p className="text-xs text-slate-500 mt-1">{item.project_name}{item.location_city ? ` · ${item.location_city}, ${item.location_country}` : ''}</p>}
+                {updateVisibility.showDetails !== false && item.update_details && <p className="text-sm text-slate-600 mt-2 whitespace-pre-wrap">{item.update_details}</p>}
+                {updateVisibility.showPhotos !== false && Array.isArray(item.photo_urls) && item.photo_urls.length > 0 && (
+                  <div className="mt-2 text-xs text-slate-500">
+                    Photos: {item.photo_urls.slice(0, 5).map((url: string, idx: number) => (
+                      <span key={`${item.update_id}-photo-${idx}`}>{idx > 0 ? ' · ' : ''}<a href={url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">#{idx + 1}</a></span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      )}
     </div>
   );
 }

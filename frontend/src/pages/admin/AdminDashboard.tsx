@@ -36,6 +36,7 @@ import FormSchemasPanel from './FormSchemasPanel';
 import UIDesignPanel from './UIDesignPanel';
 import VolunteerHubPanel from './VolunteerHubPanel';
 import DonorRecordsPanel from './DonorRecordsPanel';
+import FundsManagementPanel from './FundsManagementPanel';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -44,6 +45,7 @@ export default function AdminDashboard() {
     { name: 'Overview', path: '/admin/overview', icon: <Layers size={20} /> },
     { name: 'Campaigns', path: '/admin/campaigns', icon: <Target size={20} /> },
     { name: 'Donations', path: '/admin/donations', icon: <DollarSign size={20} /> },
+    { name: 'Funds', path: '/admin/funds', icon: <HandCoins size={20} /> },
     { name: 'Donors', path: '/admin/donors', icon: <Heart size={20} /> },
     { name: 'Projects', path: '/admin/projects', icon: <FolderOpen size={20} /> },
     { name: 'Expenses', path: '/admin/expenses', icon: <BarChart3 size={20} /> },
@@ -83,6 +85,7 @@ export default function AdminDashboard() {
           <Route path="overview" element={<DashboardStats />} />
           <Route path="campaigns" element={<CampaignsPanel />} />
           <Route path="donations" element={<DonationsPanel />} />
+          <Route path="funds" element={<FundsManagementPanel />} />
           <Route path="donors" element={<DonorsPanel />} />
           <Route path="projects" element={<ProjectsPanel />} />
           <Route path="expenses" element={<ExpensesAdminPanel />} />
