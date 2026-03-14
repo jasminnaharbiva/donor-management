@@ -208,6 +208,69 @@ async function ensureDonorVisibilitySettings() {
 }
 ensureDonorVisibilitySettings().catch(() => {});
 
+async function ensureExpenseWorkflowSettings() {
+  const settings = [
+    {
+      key: 'expense_workflow.volunteer_form_fields',
+      value: JSON.stringify({
+        showAmountSpent: true,
+        amountRequired: true,
+        showUpdateTitle: true,
+        titleRequired: true,
+        showUpdateDetails: true,
+        showVendorName: true,
+        showVoucher: true,
+        voucherRequired: false,
+        showCashMemo: true,
+        cashMemoRequired: false,
+        showPhotos: true,
+        photosRequired: false,
+        showProgressLogs: true,
+        allowEditPending: true,
+        allowWithdrawPending: true,
+      }),
+      type: 'json',
+      category: 'workflow',
+      isPublic: false,
+      desc: 'Dynamic volunteer project expense form configuration',
+    },
+    {
+      key: 'expense_workflow.admin_review_fields',
+      value: JSON.stringify({
+        defaultStatusFilter: 'Pending',
+        showVendorPurpose: true,
+        showAmount: true,
+        showFund: true,
+        showVolunteer: true,
+        showEvidence: true,
+        showDate: true,
+        showStatus: true,
+        showProject: true,
+        showApproveReject: true,
+      }),
+      type: 'json',
+      category: 'workflow',
+      isPublic: false,
+      desc: 'Dynamic admin expense review table and action controls',
+    },
+  ];
+
+  for (const setting of settings) {
+    const exists = await db('dfb_system_settings').where({ setting_key: setting.key }).first();
+    if (!exists) {
+      await db('dfb_system_settings').insert({
+        setting_key: setting.key,
+        setting_value: setting.value,
+        value_type: setting.type,
+        category: setting.category,
+        is_public: setting.isPublic,
+        description: setting.desc,
+      });
+    }
+  }
+}
+ensureExpenseWorkflowSettings().catch(() => {});
+
 async function ensurePermissionSeed(roleName: string, resource: string, action: string) {
   const role = await db('dfb_roles').where({ role_name: roleName }).first('role_id');
   if (!role?.role_id) return;
@@ -224,7 +287,9 @@ async function ensurePermissionSeed(roleName: string, resource: string, action: 
 async function ensureDefaultPermissions() {
   const seeds: Array<{ role: string; resource: string; actions: string[] }> = [
     { role: 'Admin', resource: 'donor_visibility', actions: ['view', 'update'] },
+    { role: 'Admin', resource: 'expense_workflow', actions: ['view', 'update'] },
     { role: 'Admin', resource: 'funds', actions: ['view', 'create', 'update', 'delete', 'approve', 'export'] },
+    { role: 'Admin', resource: 'expenses', actions: ['view', 'create', 'update', 'delete', 'approve', 'reject', 'export'] },
     { role: 'Admin', resource: 'project_workspace', actions: ['view', 'create', 'update', 'delete', 'approve', 'reject'] },
     { role: 'Finance', resource: 'funds', actions: ['view', 'update', 'approve', 'export'] },
     { role: 'Finance', resource: 'expenses', actions: ['view', 'approve', 'reject', 'export'] },
@@ -424,6 +489,96 @@ adminRouter.put('/donor-visibility',
     });
 
     res.json({ success: true, message: 'Donor visibility updated successfully' });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Expense workflow controls (dynamic, admin-managed)
+// ---------------------------------------------------------------------------
+adminRouter.get('/expense-workflow-settings', requirePermission('expense_workflow', 'view', ['Super Admin', 'Admin']), async (_req: Request, res: Response): Promise<void> => {
+  const keys = [
+    'expense_workflow.volunteer_form_fields',
+    'expense_workflow.admin_review_fields',
+  ];
+
+  const rows = await db('dfb_system_settings')
+    .whereIn('setting_key', keys)
+    .select('setting_key', 'setting_value');
+
+  const map = new Map(rows.map((row: any) => [row.setting_key, row.setting_value]));
+  const parseJson = (key: string, fallback: any) => {
+    const raw = map.get(key);
+    if (!raw) return fallback;
+    try { return JSON.parse(raw); } catch { return fallback; }
+  };
+
+  res.json({
+    success: true,
+    data: {
+      volunteerFormFields: parseJson('expense_workflow.volunteer_form_fields', {}),
+      adminReviewFields: parseJson('expense_workflow.admin_review_fields', {}),
+    },
+  });
+});
+
+adminRouter.put('/expense-workflow-settings',
+  requirePermission('expense_workflow', 'update', ['Super Admin', 'Admin']),
+  [
+    body('volunteerFormFields').optional().isObject(),
+    body('adminReviewFields').optional().isObject(),
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
+    const updates: Array<{ key: string; value: string }> = [];
+    if (req.body.volunteerFormFields !== undefined) {
+      updates.push({ key: 'expense_workflow.volunteer_form_fields', value: JSON.stringify(req.body.volunteerFormFields) });
+    }
+    if (req.body.adminReviewFields !== undefined) {
+      updates.push({ key: 'expense_workflow.admin_review_fields', value: JSON.stringify(req.body.adminReviewFields) });
+    }
+
+    if (!updates.length) {
+      res.status(422).json({ success: false, message: 'No workflow updates provided' });
+      return;
+    }
+
+    await db.transaction(async (trx) => {
+      for (const item of updates) {
+        const exists = await trx('dfb_system_settings').where({ setting_key: item.key }).first('setting_id');
+        if (exists) {
+          await trx('dfb_system_settings').where({ setting_key: item.key }).update({
+            setting_value: item.value,
+            updated_by: req.user!.userId,
+            updated_at: new Date(),
+          });
+        } else {
+          await trx('dfb_system_settings').insert({
+            setting_key: item.key,
+            setting_value: item.value,
+            value_type: 'json',
+            category: 'workflow',
+            is_public: false,
+            description: 'Dynamic expense workflow settings',
+            updated_by: req.user!.userId,
+            updated_at: new Date(),
+          });
+        }
+        broadcastConfigChange(item.key, 'setting');
+      }
+    });
+
+    await writeAuditLog({
+      tableAffected: 'dfb_system_settings',
+      recordId: 'expense_workflow',
+      actionType: 'UPDATE',
+      newPayload: { keys: updates.map((item) => item.key) },
+      actorId: req.user!.userId,
+      ipAddress: req.ip,
+    });
+
+    res.json({ success: true, message: 'Expense workflow settings updated successfully' });
   }
 );
 

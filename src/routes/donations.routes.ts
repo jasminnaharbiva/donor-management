@@ -38,10 +38,25 @@ donationRouter.post(
       fundId, campaignId, gatewayTxnId, gatewayFee = 0,
     } = req.body;
 
-    let resolvedDonorId = donorId;
-    if (!resolvedDonorId) {
-      const currentUser = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
-      resolvedDonorId = currentUser?.donor_id;
+    const role = await db('dfb_roles').where({ role_id: req.user!.roleId }).first('role_name');
+    const roleName = role?.role_name || '';
+    const isPrivileged = ['Super Admin', 'Admin', 'Finance'].includes(roleName);
+
+    const currentUser = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
+    const linkedDonorId = currentUser?.donor_id ? Number(currentUser.donor_id) : null;
+
+    let resolvedDonorId = donorId ? Number(donorId) : (linkedDonorId || null);
+
+    if (!isPrivileged) {
+      if (!linkedDonorId) {
+        res.status(403).json({ success: false, message: 'No donor profile linked to this account' });
+        return;
+      }
+      if (donorId && Number(donorId) !== linkedDonorId) {
+        res.status(403).json({ success: false, message: 'You cannot create donations for another donor account' });
+        return;
+      }
+      resolvedDonorId = linkedDonorId;
     }
 
     const netAmount  = amount - gatewayFee;

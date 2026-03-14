@@ -394,7 +394,22 @@ fundsRouter.post('/transfer'
     const transferExpenseId = uuidv4();
     const transferTxnId = uuidv4();
 
-    await db.transaction(async (trx) => {
+    try {
+      await db.transaction(async (trx) => {
+      const [lockedSourceFund, lockedTargetFund] = await Promise.all([
+        trx('dfb_funds').where({ fund_id: sourceFundId }).forUpdate().first('fund_id', 'fund_name', 'current_balance'),
+        trx('dfb_funds').where({ fund_id: targetFundId }).forUpdate().first('fund_id', 'fund_name'),
+      ]);
+
+      if (!lockedSourceFund || !lockedTargetFund) {
+        throw new Error('Source or target fund not found');
+      }
+
+      const lockedSourceBalance = Number(lockedSourceFund.current_balance || 0);
+      if (lockedSourceBalance < amount) {
+        throw new Error(`Insufficient source fund balance. Available: ${lockedSourceBalance}`);
+      }
+
       const available = await trx('dfb_allocations')
         .where({ fund_id: sourceFundId, is_spent: false })
         .whereNull('expense_id')
@@ -442,7 +457,7 @@ fundsRouter.post('/transfer'
         project_id: null,
         amount_spent: amount,
         vendor_name: 'Internal Transfer',
-        purpose: `Fund transfer to ${targetFund.fund_name}: ${reason}`,
+        purpose: `Fund transfer to ${lockedTargetFund.fund_name}: ${reason}`,
         receipt_url: null,
         spent_timestamp: new Date(),
         submitted_by_volunteer_id: null,
@@ -480,7 +495,19 @@ fundsRouter.post('/transfer'
       await trx('dfb_funds').where({ fund_id: targetFundId }).update({
         current_balance: db.raw('current_balance + ?', [amount]),
       });
-    });
+      });
+    } catch (err: any) {
+      const message = String(err?.message || 'Fund transfer failed');
+      if (message.includes('Insufficient source fund balance') || message.includes('Insufficient unspent allocation balance')) {
+        res.status(409).json({ success: false, message });
+        return;
+      }
+      if (message.includes('not found')) {
+        res.status(404).json({ success: false, message: 'Source or target fund not found' });
+        return;
+      }
+      throw err;
+    }
 
     await writeAuditLog({
       tableAffected: 'dfb_funds',

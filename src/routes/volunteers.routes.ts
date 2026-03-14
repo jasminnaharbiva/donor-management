@@ -7,6 +7,37 @@ import { writeAuditLog } from '../services/audit.service';
 
 export const volunteersRouter = Router();
 
+const DEFAULT_VOLUNTEER_FORM_FIELDS = {
+  showAmountSpent: true,
+  amountRequired: true,
+  showUpdateTitle: true,
+  titleRequired: true,
+  showUpdateDetails: true,
+  showVendorName: true,
+  showVoucher: true,
+  voucherRequired: false,
+  showCashMemo: true,
+  cashMemoRequired: false,
+  showPhotos: true,
+  photosRequired: false,
+  showProgressLogs: true,
+  allowEditPending: true,
+  allowWithdrawPending: true,
+};
+
+async function loadVolunteerFormFields() {
+  const row = await db('dfb_system_settings')
+    .where({ setting_key: 'expense_workflow.volunteer_form_fields' })
+    .first('setting_value');
+
+  if (!row?.setting_value) return DEFAULT_VOLUNTEER_FORM_FIELDS;
+  try {
+    return { ...DEFAULT_VOLUNTEER_FORM_FIELDS, ...JSON.parse(row.setting_value) };
+  } catch {
+    return DEFAULT_VOLUNTEER_FORM_FIELDS;
+  }
+}
+
 type ExpenseEvidence = {
   update_title: string | null;
   update_details: string | null;
@@ -246,7 +277,108 @@ volunteersRouter.get(
         'f.fund_name', 'pa.assigned_at'
       );
     const enrichedProjects = await attachVolunteerProjectProgress(projects as Array<{ project_id: number }>);
-    res.json({ success: true, data: enrichedProjects });
+
+    const projectIds = enrichedProjects.map((row: any) => Number(row.project_id));
+    const statsRows = projectIds.length
+      ? await db('dfb_expenses')
+          .whereIn('project_id', projectIds)
+          .where({ submitted_by_volunteer_id: volunteerId })
+          .whereNull('deleted_at')
+          .groupBy('project_id')
+          .select('project_id')
+          .sum('amount_spent as submitted_amount_total')
+          .sum(db.raw("CASE WHEN status='Pending' THEN 1 ELSE 0 END as pending_count"))
+          .sum(db.raw("CASE WHEN status='Approved' THEN 1 ELSE 0 END as approved_count"))
+          .sum(db.raw("CASE WHEN status='Rejected' THEN 1 ELSE 0 END as rejected_count"))
+      : [];
+
+    const statsByProject = new Map<number, any>();
+    statsRows.forEach((row: any) => statsByProject.set(Number(row.project_id), row));
+
+    const mapped = enrichedProjects.map((project: any) => {
+      const stat = statsByProject.get(Number(project.project_id));
+      return {
+        ...project,
+        project_requirements: project.description || null,
+        total_project_fund: Number(project.budget_allocated || 0),
+        total_spent_fund: Number(project.budget_spent || 0),
+        submitted_amount_total: Number(stat?.submitted_amount_total || 0),
+        pending_expense_count: Number(stat?.pending_count || 0),
+        approved_expense_count: Number(stat?.approved_count || 0),
+        rejected_expense_count: Number(stat?.rejected_count || 0),
+      };
+    });
+
+    res.json({ success: true, data: mapped });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/volunteers/my-projects-finance — Aggregate project finance overview
+// ---------------------------------------------------------------------------
+volunteersRouter.get(
+  '/my-projects-finance',
+  authenticate,
+  requirePermission('project_workspace', 'view', ['Volunteer', 'Admin', 'Super Admin']),
+  async (req: Request, res: Response): Promise<void> => {
+    const userRow = await db('dfb_users').where({ user_id: req.user!.userId }).first('volunteer_id');
+    const volunteerId = userRow?.volunteer_id;
+    if (!volunteerId) {
+      res.json({ success: true, data: { projects: [], totals: { allocated: 0, spent: 0, remaining: 0, submitted: 0 } } });
+      return;
+    }
+
+    const projects = await db('dfb_project_assignments as pa')
+      .join('dfb_projects as p', 'pa.project_id', 'p.project_id')
+      .leftJoin('dfb_funds as f', 'p.fund_id', 'f.fund_id')
+      .where({ 'pa.volunteer_id': volunteerId, 'pa.status': 'active' })
+      .select(
+        'p.project_id', 'p.project_name', 'p.description', 'p.status',
+        'p.budget_allocated', 'p.budget_spent', 'p.budget_remaining',
+        'p.location_country', 'p.location_city',
+        'f.fund_name', 'pa.assigned_at'
+      );
+
+    const projectIds = projects.map((row: any) => Number(row.project_id));
+    const rows = projectIds.length
+      ? await db('dfb_expenses')
+          .whereIn('project_id', projectIds)
+          .where({ submitted_by_volunteer_id: volunteerId })
+          .whereNull('deleted_at')
+          .groupBy('project_id')
+          .select('project_id')
+          .sum('amount_spent as submitted_amount_total')
+          .sum(db.raw("CASE WHEN status='Pending' THEN 1 ELSE 0 END as pending_count"))
+          .sum(db.raw("CASE WHEN status='Approved' THEN 1 ELSE 0 END as approved_count"))
+          .sum(db.raw("CASE WHEN status='Rejected' THEN 1 ELSE 0 END as rejected_count"))
+      : [];
+
+    const byProject = new Map<number, any>();
+    rows.forEach((row: any) => byProject.set(Number(row.project_id), row));
+
+    const mapped = projects.map((project: any) => {
+      const stat = byProject.get(Number(project.project_id));
+      return {
+        ...project,
+        project_requirements: project.description || null,
+        total_project_fund: Number(project.budget_allocated || 0),
+        total_spent_fund: Number(project.budget_spent || 0),
+        submitted_amount_total: Number(stat?.submitted_amount_total || 0),
+        pending_expense_count: Number(stat?.pending_count || 0),
+        approved_expense_count: Number(stat?.approved_count || 0),
+        rejected_expense_count: Number(stat?.rejected_count || 0),
+      };
+    });
+
+    const totals = mapped.reduce((acc: any, row: any) => {
+      acc.allocated += Number(row.total_project_fund || 0);
+      acc.spent += Number(row.total_spent_fund || 0);
+      acc.remaining += Number(row.budget_remaining || 0);
+      acc.submitted += Number(row.submitted_amount_total || 0);
+      return acc;
+    }, { allocated: 0, spent: 0, remaining: 0, submitted: 0 });
+
+    res.json({ success: true, data: { projects: mapped, totals } });
   }
 );
 
@@ -290,6 +422,7 @@ volunteersRouter.get(
     }
 
     const [projectWithProgress] = await attachVolunteerProjectProgress([assignment as { project_id: number }]);
+    const workflowFields = await loadVolunteerFormFields();
     const progressLogs = await db('dfb_project_progress_logs')
       .where({ project_id: projectId })
       .orderBy('happened_at', 'desc')
@@ -334,6 +467,7 @@ volunteersRouter.get(
         project_requirements: (projectWithProgress as any).description || null,
         total_project_fund: Number((projectWithProgress as any).budget_allocated || 0),
         total_spent_fund: Number((projectWithProgress as any).budget_spent || 0),
+        workflow_fields: workflowFields,
         progress_logs: progressLogs,
         expense_updates: expenseUpdates,
       },

@@ -46,6 +46,28 @@ interface AssignedProject {
   target_completion_date?: string;
   fund_name?: string;
   assigned_at: string;
+  submitted_amount_total?: number;
+  pending_expense_count?: number;
+  approved_expense_count?: number;
+  rejected_expense_count?: number;
+}
+
+interface WorkflowFields {
+  showAmountSpent?: boolean;
+  amountRequired?: boolean;
+  showUpdateTitle?: boolean;
+  titleRequired?: boolean;
+  showUpdateDetails?: boolean;
+  showVendorName?: boolean;
+  showVoucher?: boolean;
+  voucherRequired?: boolean;
+  showCashMemo?: boolean;
+  cashMemoRequired?: boolean;
+  showPhotos?: boolean;
+  photosRequired?: boolean;
+  showProgressLogs?: boolean;
+  allowEditPending?: boolean;
+  allowWithdrawPending?: boolean;
 }
 
 interface ProjectProgressLog {
@@ -73,6 +95,29 @@ interface ProjectExpenseUpdate {
   voucher_url?: string | null;
   cash_memo_url?: string | null;
   photo_urls?: string[];
+}
+
+interface ProjectFinanceRecord {
+  project_id: number;
+  project_name: string;
+  status: string;
+  submitted_amount_total: number;
+  pending_expense_count: number;
+  approved_expense_count: number;
+  rejected_expense_count: number;
+  total_records: number;
+  fund_name?: string;
+  budget_allocated?: number;
+  budget_spent?: number;
+  budget_remaining?: number;
+}
+
+interface ProjectFinanceSummary {
+  total_projects: number;
+  total_submitted: number;
+  total_pending: number;
+  total_approved: number;
+  total_rejected: number;
 }
 
 function Shifts() {
@@ -336,9 +381,112 @@ function Timesheets() {
   );
 }
 
+function ProjectFinanceCenter() {
+  const [summary, setSummary] = useState<ProjectFinanceSummary | null>(null);
+  const [projects, setProjects] = useState<ProjectFinanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/volunteers/my-projects-finance')
+      .then((res) => {
+        const payload = res.data?.data || {};
+        setSummary(payload.summary || null);
+        setProjects(payload.projects || []);
+      })
+      .catch(() => {
+        setSummary(null);
+        setProjects([]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary-500" size={32} /></div>;
+  }
+
+  const cards = [
+    { label: 'Projects', value: Number(summary?.total_projects || 0), color: 'text-slate-700 bg-slate-50 border-slate-200' },
+    { label: 'Submitted', value: Number(summary?.total_submitted || 0), color: 'text-primary-700 bg-primary-50 border-primary-200' },
+    { label: 'Pending', value: Number(summary?.total_pending || 0), color: 'text-amber-700 bg-amber-50 border-amber-200' },
+    { label: 'Approved', value: Number(summary?.total_approved || 0), color: 'text-green-700 bg-green-50 border-green-200' },
+    { label: 'Rejected', value: Number(summary?.total_rejected || 0), color: 'text-red-700 bg-red-50 border-red-200' },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="glass rounded-xl p-5">
+        <h3 className="text-xl font-bold flex items-center gap-2"><FileImage className="text-primary-500" /> Project Finance Center</h3>
+        <p className="text-sm text-slate-500 mt-0.5">Track submitted expenses and approval queue for every assigned project.</p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {cards.map((item) => (
+          <div key={item.label} className={`rounded-xl border p-4 ${item.color}`}>
+            <p className="text-xs uppercase tracking-wide opacity-80">{item.label}</p>
+            <p className="text-xl font-bold mt-1">{item.value.toLocaleString()}</p>
+          </div>
+        ))}
+      </div>
+
+      {projects.length === 0 ? (
+        <div className="bg-white/50 border border-slate-200 rounded-xl p-8 text-center text-slate-500">
+          No assigned projects with finance records yet.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {projects.map((project) => {
+            const submittedAmount = Number(project.submitted_amount_total || 0);
+            const approvedCount = Number(project.approved_expense_count || 0);
+            const pendingCount = Number(project.pending_expense_count || 0);
+            const rejectedCount = Number(project.rejected_expense_count || 0);
+
+            return (
+              <div key={project.project_id} className="glass rounded-xl p-4 border border-slate-200">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-slate-800">{project.project_name}</p>
+                    <p className="text-xs text-slate-500">{project.fund_name || 'No fund mapped'} · Status: {project.status}</p>
+                  </div>
+                  <Link
+                    to={`/volunteer/projects/${project.project_id}`}
+                    className="inline-flex items-center gap-2 text-sm bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg"
+                  >
+                    <ArrowLeft className="rotate-180" size={14} />
+                    Open Workspace
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-sm">
+                  <div className="rounded-lg border border-primary-200 bg-primary-50 p-3">
+                    <p className="text-xs text-primary-700">Submitted Amount</p>
+                    <p className="font-semibold text-primary-800">${submittedAmount.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-xs text-amber-700">Pending</p>
+                    <p className="font-semibold text-amber-800">{pendingCount}</p>
+                  </div>
+                  <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+                    <p className="text-xs text-green-700">Approved</p>
+                    <p className="font-semibold text-green-800">{approvedCount}</p>
+                  </div>
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                    <p className="text-xs text-red-700">Rejected</p>
+                    <p className="font-semibold text-red-800">{rejectedCount}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function VolunteerDashboard() {
   const menuItems = [
     { name: 'My Projects', path: '/volunteer/projects', icon: <Briefcase size={20} /> },
+    { name: 'Project Finance', path: '/volunteer/finance', icon: <FileImage size={20} /> },
     { name: 'Open Shifts', path: '/volunteer/shifts', icon: <Calendar size={20} /> },
     { name: 'My Timesheets', path: '/volunteer/timesheets', icon: <Clock size={20} /> },
     { name: 'Beneficiary Applications', path: '/volunteer/beneficiary-applications', icon: <Edit3 size={20} /> },
@@ -349,6 +497,7 @@ export default function VolunteerDashboard() {
       <Routes>
         <Route path="/" element={<Navigate to="projects" replace />} />
         <Route path="projects" element={<MyProjects />} />
+        <Route path="finance" element={<ProjectFinanceCenter />} />
         <Route path="projects/:projectId" element={<ProjectWorkspace />} />
         <Route path="shifts" element={<Shifts />} />
         <Route path="timesheets" element={<Timesheets />} />
@@ -366,10 +515,12 @@ function ProjectWorkspace() {
     latest_progress_percent?: number | null;
     latest_progress_title?: string | null;
     latest_progress_at?: string | null;
+    workflow_fields?: WorkflowFields;
   }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingKind, setUploadingKind] = useState<string | null>(null);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [form, setForm] = useState({
     updateTitle: '',
     updateDetails: '',
@@ -396,6 +547,11 @@ function ProjectWorkspace() {
   useEffect(() => {
     load();
   }, [projectId]);
+
+  const resetForm = () => {
+    setEditingExpenseId(null);
+    setForm({ updateTitle: '', updateDetails: '', amountSpent: '', vendorName: '', voucherUrl: '', cashMemoUrl: '', photoUrls: [] });
+  };
 
   const uploadProjectFile = async (kind: 'voucher' | 'cash_memo' | 'photo', file: File): Promise<string | null> => {
     const formData = new FormData();
@@ -444,22 +600,90 @@ function ProjectWorkspace() {
     e.target.value = '';
   };
 
+  const startEditExpense = (row: ProjectExpenseUpdate) => {
+    setEditingExpenseId(row.expense_id);
+    setForm({
+      updateTitle: row.update_title || '',
+      updateDetails: row.update_details || '',
+      amountSpent: String(Number(row.amount_spent || 0)),
+      vendorName: row.vendor_name || '',
+      voucherUrl: row.voucher_url || '',
+      cashMemoUrl: row.cash_memo_url || '',
+      photoUrls: row.photo_urls || [],
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const withdrawExpense = async (expenseId: string) => {
+    if (!projectId) return;
+    if (!window.confirm('Withdraw this pending expense update?')) return;
+
+    try {
+      await api.delete(`/volunteers/my-projects/${projectId}/expense-updates/${expenseId}`);
+      if (editingExpenseId === expenseId) resetForm();
+      await load();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Could not withdraw expense update.');
+    }
+  };
+
   const submitExpenseUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectId) return;
 
+    const fields = project?.workflow_fields || {};
+    const amountShown = fields.showAmountSpent !== false;
+    const amountRequired = fields.amountRequired !== false;
+    const titleShown = fields.showUpdateTitle !== false;
+    const titleRequired = fields.titleRequired !== false;
+    const voucherRequired = fields.voucherRequired === true;
+    const cashMemoRequired = fields.cashMemoRequired === true;
+    const photosRequired = fields.photosRequired === true;
+
+    if (titleShown && titleRequired && !form.updateTitle.trim()) {
+      alert('Update title is required.');
+      return;
+    }
+
+    if (amountShown && amountRequired && !(Number(form.amountSpent) > 0)) {
+      alert('Expense amount is required.');
+      return;
+    }
+
+    if (voucherRequired && !form.voucherUrl) {
+      alert('Voucher upload is required by current workflow settings.');
+      return;
+    }
+
+    if (cashMemoRequired && !form.cashMemoUrl) {
+      alert('Cash memo upload is required by current workflow settings.');
+      return;
+    }
+
+    if (photosRequired && form.photoUrls.length === 0) {
+      alert('At least one execution photo is required by current workflow settings.');
+      return;
+    }
+
     setSaving(true);
     try {
-      await api.post(`/volunteers/my-projects/${projectId}/expense-updates`, {
-        amountSpent: Number(form.amountSpent),
-        updateTitle: form.updateTitle,
+      const payload = {
+        amountSpent: Number(form.amountSpent || 0.01),
+        updateTitle: form.updateTitle || (editingExpenseId ? undefined : 'Expense Update'),
         updateDetails: form.updateDetails || undefined,
         vendorName: form.vendorName || undefined,
         voucherUrl: form.voucherUrl,
         cashMemoUrl: form.cashMemoUrl,
         photoUrls: form.photoUrls,
-      });
-      setForm({ updateTitle: '', updateDetails: '', amountSpent: '', vendorName: '', voucherUrl: '', cashMemoUrl: '', photoUrls: [] });
+      };
+
+      if (editingExpenseId) {
+        await api.patch(`/volunteers/my-projects/${projectId}/expense-updates/${editingExpenseId}`, payload);
+      } else {
+        await api.post(`/volunteers/my-projects/${projectId}/expense-updates`, payload);
+      }
+
+      resetForm();
       await load();
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Could not submit project expense update.');
@@ -487,6 +711,22 @@ function ProjectWorkspace() {
   const pct = allocated > 0 ? Math.min(100, Math.round((spent / allocated) * 100)) : 0;
   const latestLogs = project.progress_logs || [];
   const expenseUpdates = project.expense_updates || [];
+  const workflow = project.workflow_fields || {};
+  const showAmountSpent = workflow.showAmountSpent !== false;
+  const amountRequired = workflow.amountRequired !== false;
+  const showUpdateTitle = workflow.showUpdateTitle !== false;
+  const titleRequired = workflow.titleRequired !== false;
+  const showUpdateDetails = workflow.showUpdateDetails !== false;
+  const showVendorName = workflow.showVendorName !== false;
+  const showVoucher = workflow.showVoucher !== false;
+  const voucherRequired = workflow.voucherRequired === true;
+  const showCashMemo = workflow.showCashMemo !== false;
+  const cashMemoRequired = workflow.cashMemoRequired === true;
+  const showPhotos = workflow.showPhotos !== false;
+  const photosRequired = workflow.photosRequired === true;
+  const showProgressLogs = workflow.showProgressLogs !== false;
+  const allowEditPending = workflow.allowEditPending !== false;
+  const allowWithdrawPending = workflow.allowWithdrawPending !== false;
 
   return (
     <div className="space-y-4">
@@ -520,89 +760,118 @@ function ProjectWorkspace() {
       </div>
 
       <div className="glass rounded-xl p-5 border border-primary-200">
-        <h4 className="font-semibold text-slate-800 flex items-center gap-2 mb-3"><MessageSquare size={16} className="text-primary-500" /> Submit Expense Update (Admin Review)</h4>
+        <h4 className="font-semibold text-slate-800 flex items-center gap-2 mb-3"><MessageSquare size={16} className="text-primary-500" /> {editingExpenseId ? 'Edit Pending Expense Update' : 'Submit Expense Update (Admin Review)'}</h4>
+        {editingExpenseId && (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 flex items-center justify-between gap-2">
+            <span>You are editing a pending expense update.</span>
+            <button type="button" onClick={resetForm} className="text-amber-700 hover:text-amber-900 font-medium">Cancel Edit</button>
+          </div>
+        )}
         <form onSubmit={submitExpenseUpdate} className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Update Title</label>
-            <input
-              value={form.updateTitle}
-              onChange={e => setForm({ ...form, updateTitle: e.target.value })}
-              required
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 focus:outline-none"
-              placeholder="Example: Completed household survey in Ward-3"
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {showUpdateTitle && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Expense Amount</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Update Title {titleRequired ? '' : '(optional)'}</label>
               <input
-                type="number"
-                min={0.01}
-                step={0.01}
-                value={form.amountSpent}
-                onChange={e => setForm({ ...form, amountSpent: e.target.value })}
-                required
+                value={form.updateTitle}
+                onChange={e => setForm({ ...form, updateTitle: e.target.value })}
+                required={titleRequired}
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 focus:outline-none"
-                placeholder="Enter amount spent"
+                placeholder="Example: Completed household survey in Ward-3"
               />
             </div>
+          )}
+
+          {(showAmountSpent || showVendorName) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {showAmountSpent && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Expense Amount {amountRequired ? '' : '(optional)'}</label>
+                  <input
+                    type="number"
+                    min={0.01}
+                    step={0.01}
+                    value={form.amountSpent}
+                    onChange={e => setForm({ ...form, amountSpent: e.target.value })}
+                    required={amountRequired}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 focus:outline-none"
+                    placeholder="Enter amount spent"
+                  />
+                </div>
+              )}
+              {showVendorName && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Vendor Name (optional)</label>
+                  <input
+                    value={form.vendorName}
+                    onChange={e => setForm({ ...form, vendorName: e.target.value })}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 focus:outline-none"
+                    placeholder="Vendor / Shop / Supplier"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {showUpdateDetails && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Vendor Name (optional)</label>
-              <input
-                value={form.vendorName}
-                onChange={e => setForm({ ...form, vendorName: e.target.value })}
+              <label className="block text-sm font-medium text-slate-700 mb-1">Update Details</label>
+              <textarea
+                value={form.updateDetails}
+                onChange={e => setForm({ ...form, updateDetails: e.target.value })}
+                rows={3}
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 focus:outline-none"
-                placeholder="Vendor / Shop / Supplier"
+                placeholder="Write what was done, blockers, and next plan."
               />
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Update Details</label>
-            <textarea
-              value={form.updateDetails}
-              onChange={e => setForm({ ...form, updateDetails: e.target.value })}
-              rows={3}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 focus:outline-none"
-              placeholder="Write what was done, blockers, and next plan."
-            />
-          </div>
+          )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Voucher (optional)</label>
-              <label className="relative cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition outline-none focus-within:ring-2 focus-within:ring-primary-500/50">
-                {uploadingKind === 'voucher' ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <UploadCloud size={16} className="text-slate-500" />}
-                {uploadingKind === 'voucher' ? 'Uploading...' : 'Upload Voucher'}
-                <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={e => handleSingleFileUpload('voucher', e)} accept="image/jpeg,image/png,image/webp,application/pdf" disabled={uploadingKind !== null} />
-              </label>
-              {form.voucherUrl && <a href={form.voucherUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline mt-1 inline-block">View uploaded voucher</a>}
+          {(showVoucher || showCashMemo) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {showVoucher && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Voucher {voucherRequired ? '(required)' : '(optional)'}</label>
+                  <label className="relative cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition outline-none focus-within:ring-2 focus-within:ring-primary-500/50">
+                    {uploadingKind === 'voucher' ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <UploadCloud size={16} className="text-slate-500" />}
+                    {uploadingKind === 'voucher' ? 'Uploading...' : 'Upload Voucher'}
+                    <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={e => handleSingleFileUpload('voucher', e)} accept="image/jpeg,image/png,image/webp,application/pdf" disabled={uploadingKind !== null} />
+                  </label>
+                  {form.voucherUrl && <a href={form.voucherUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline mt-1 inline-block">View uploaded voucher</a>}
+                </div>
+              )}
+              {showCashMemo && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Cash Memo {cashMemoRequired ? '(required)' : '(optional)'}</label>
+                  <label className="relative cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition outline-none focus-within:ring-2 focus-within:ring-primary-500/50">
+                    {uploadingKind === 'cash_memo' ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <UploadCloud size={16} className="text-slate-500" />}
+                    {uploadingKind === 'cash_memo' ? 'Uploading...' : 'Upload Cash Memo'}
+                    <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={e => handleSingleFileUpload('cash_memo', e)} accept="image/jpeg,image/png,image/webp,application/pdf" disabled={uploadingKind !== null} />
+                  </label>
+                  {form.cashMemoUrl && <a href={form.cashMemoUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline mt-1 inline-block">View uploaded cash memo</a>}
+                </div>
+              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Cash Memo (optional)</label>
-              <label className="relative cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition outline-none focus-within:ring-2 focus-within:ring-primary-500/50">
-                {uploadingKind === 'cash_memo' ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <UploadCloud size={16} className="text-slate-500" />}
-                {uploadingKind === 'cash_memo' ? 'Uploading...' : 'Upload Cash Memo'}
-                <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={e => handleSingleFileUpload('cash_memo', e)} accept="image/jpeg,image/png,image/webp,application/pdf" disabled={uploadingKind !== null} />
-              </label>
-              {form.cashMemoUrl && <a href={form.cashMemoUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline mt-1 inline-block">View uploaded cash memo</a>}
-            </div>
-          </div>
+          )}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Execution Photos (optional)</label>
-            <label className="relative cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition outline-none focus-within:ring-2 focus-within:ring-primary-500/50 w-fit">
-              {uploadingKind === 'photo' ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <UploadCloud size={16} className="text-slate-500" />}
-              {uploadingKind === 'photo' ? 'Uploading...' : 'Upload Photos'}
-              <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handlePhotoUpload} accept="image/jpeg,image/png,image/webp" disabled={uploadingKind !== null} multiple />
-            </label>
-            {form.photoUrls.length > 0 && (
-              <div className="mt-2 text-xs text-slate-600">{form.photoUrls.length} photo(s) uploaded</div>
+          {showPhotos && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Execution Photos {photosRequired ? '(required)' : '(optional)'}</label>
+              <label className="relative cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition outline-none focus-within:ring-2 focus-within:ring-primary-500/50 w-fit">
+                {uploadingKind === 'photo' ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <UploadCloud size={16} className="text-slate-500" />}
+                {uploadingKind === 'photo' ? 'Uploading...' : 'Upload Photos'}
+                <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handlePhotoUpload} accept="image/jpeg,image/png,image/webp" disabled={uploadingKind !== null} multiple />
+              </label>
+              {form.photoUrls.length > 0 && (
+                <div className="mt-2 text-xs text-slate-600">{form.photoUrls.length} photo(s) uploaded</div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            {editingExpenseId && (
+              <button type="button" onClick={resetForm} className="text-sm px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
             )}
-          </div>
-
-          <div className="flex justify-end">
             <button type="submit" disabled={saving} className="flex items-center gap-2 text-sm bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg disabled:opacity-50">
-              {saving && <Loader2 size={14} className="animate-spin" />} Submit for Review
+              {saving && <Loader2 size={14} className="animate-spin" />} {editingExpenseId ? 'Save Changes' : 'Submit for Review'}
             </button>
           </div>
         </form>
@@ -638,12 +907,35 @@ function ProjectWorkspace() {
                     </>
                   ) : 'No files attached'}
                 </div>
+                {row.status === 'Pending' && (allowEditPending || allowWithdrawPending) && (
+                  <div className="mt-3 flex items-center gap-2">
+                    {allowEditPending && (
+                      <button
+                        type="button"
+                        onClick={() => startEditExpense(row)}
+                        className="text-xs px-3 py-1.5 rounded-md border border-primary-200 text-primary-700 hover:bg-primary-50"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {allowWithdrawPending && (
+                      <button
+                        type="button"
+                        onClick={() => withdrawExpense(row.expense_id)}
+                        className="text-xs px-3 py-1.5 rounded-md border border-red-200 text-red-700 hover:bg-red-50"
+                      >
+                        Withdraw
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
 
+      {showProgressLogs && (
       <div className="glass rounded-xl p-5 border border-slate-200">
         <h4 className="font-semibold text-slate-800 mb-3">Project Progress Logs</h4>
         {latestLogs.length === 0 ? (
@@ -663,6 +955,7 @@ function ProjectWorkspace() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -733,6 +1026,13 @@ function MyProjects() {
                     </div>
                   </div>
                 )}
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-md bg-primary-50 border border-primary-200 px-2 py-1 text-primary-700">Submitted: ${Number(p.submitted_amount_total || 0).toLocaleString()}</div>
+                  <div className="rounded-md bg-amber-50 border border-amber-200 px-2 py-1 text-amber-700">Pending: {Number(p.pending_expense_count || 0)}</div>
+                  <div className="rounded-md bg-green-50 border border-green-200 px-2 py-1 text-green-700">Approved: {Number(p.approved_expense_count || 0)}</div>
+                  <div className="rounded-md bg-red-50 border border-red-200 px-2 py-1 text-red-700">Rejected: {Number(p.rejected_expense_count || 0)}</div>
+                </div>
 
                 <div className="text-xs text-slate-400 space-y-0.5">
                   {p.start_date && <p>📅 Start: {new Date(p.start_date).toLocaleDateString()}</p>}

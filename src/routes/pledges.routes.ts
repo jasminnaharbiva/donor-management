@@ -8,12 +8,18 @@ export const pledgesRouter = Router();
 
 pledgesRouter.use(authenticate);
 
+async function resolveRoleName(roleId: number): Promise<string> {
+  const role = await db('dfb_roles').where({ role_id: roleId }).first('role_name');
+  return role?.role_name || '';
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/v1/pledges — My pledges (donor) or all pledges (admin)
 // ---------------------------------------------------------------------------
 pledgesRouter.get('/', async (req: Request, res: Response) => {
   try {
-    const isAdmin = ['Super Admin', 'Admin'].includes(req.user!.roleName || '');
+    const roleName = await resolveRoleName(req.user!.roleId);
+    const isAdmin = ['Super Admin', 'Admin'].includes(roleName);
     const page = Number(req.query.page || 1);
     const limit = Number(req.query.limit || 20);
     const offset = (page - 1) * limit;
@@ -66,10 +72,25 @@ pledgesRouter.post('/',
     const errors = validationResult(req);
     if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
 
+    const roleName = await resolveRoleName(req.user!.roleId);
+    const isAdmin = ['Super Admin', 'Admin'].includes(roleName);
+
     let donorId = req.body.donorId;
-    if (!donorId) {
-      const user = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
-      donorId = user?.donor_id;
+    const user = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
+    const linkedDonorId = user?.donor_id ? Number(user.donor_id) : null;
+
+    if (!isAdmin) {
+      if (!linkedDonorId) {
+        res.status(400).json({ success: false, message: 'No donor profile linked to this account' });
+        return;
+      }
+      if (donorId && Number(donorId) !== linkedDonorId) {
+        res.status(403).json({ success: false, message: 'You cannot create pledges for another donor account' });
+        return;
+      }
+      donorId = linkedDonorId;
+    } else if (!donorId) {
+      donorId = linkedDonorId;
     }
     if (!donorId) { res.status(400).json({ success: false, message: 'No donor profile linked to this account' }); return; }
 
@@ -107,9 +128,24 @@ pledgesRouter.post('/',
 pledgesRouter.patch('/:id/cancel',
   param('id').isInt().toInt(),
   async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
     const id = req.params.id as any;
     const pledge = await db('dfb_pledges').where({ pledge_id: id }).first();
     if (!pledge) { res.status(404).json({ success: false, message: 'Pledge not found' }); return; }
+
+    const roleName = await resolveRoleName(req.user!.roleId);
+    const isAdmin = ['Super Admin', 'Admin'].includes(roleName);
+
+    if (!isAdmin) {
+      const user = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
+      const linkedDonorId = user?.donor_id ? Number(user.donor_id) : null;
+      if (!linkedDonorId || Number(pledge.donor_id) !== linkedDonorId) {
+        res.status(403).json({ success: false, message: 'You can only cancel your own pledges' });
+        return;
+      }
+    }
 
     await db('dfb_pledges').where({ pledge_id: id }).update({ status: 'cancelled' });
 

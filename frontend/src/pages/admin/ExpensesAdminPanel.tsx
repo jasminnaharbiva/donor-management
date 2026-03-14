@@ -28,10 +28,37 @@ interface Project {
   fund_id: number;
 }
 
+type ExpenseWorkflowConfig = {
+  defaultStatusFilter?: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled' | 'All';
+  showVendorPurpose?: boolean;
+  showAmount?: boolean;
+  showFund?: boolean;
+  showVolunteer?: boolean;
+  showProject?: boolean;
+  showEvidence?: boolean;
+  showDate?: boolean;
+  showStatus?: boolean;
+  showApproveReject?: boolean;
+};
+
+const DEFAULT_WORKFLOW: ExpenseWorkflowConfig = {
+  defaultStatusFilter: 'Pending',
+  showVendorPurpose: true,
+  showAmount: true,
+  showFund: true,
+  showVolunteer: true,
+  showProject: true,
+  showEvidence: true,
+  showDate: true,
+  showStatus: true,
+  showApproveReject: true,
+};
+
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-700',
-  approved: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
+  Pending: 'bg-amber-100 text-amber-700',
+  Approved: 'bg-green-100 text-green-700',
+  Rejected: 'bg-red-100 text-red-700',
+  Cancelled: 'bg-slate-100 text-slate-700',
 };
 
 function parseEvidence(raw: unknown): { updateTitle: string | null; updateDetails: string | null; voucherUrl: string | null; cashMemoUrl: string | null; photos: string[] } {
@@ -61,7 +88,9 @@ export default function ExpensesAdminPanel() {
   const [loading, setLoading] = useState(true);
   const [actingOn, setActingOn] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('Pending');
+  const [statusFilter, setStatusFilter] = useState<'Pending' | 'Approved' | 'Rejected' | 'Cancelled' | 'All'>('Pending');
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({ Pending: 0, Approved: 0, Rejected: 0, Cancelled: 0 });
+  const [workflow, setWorkflow] = useState<ExpenseWorkflowConfig>(DEFAULT_WORKFLOW);
   
   // Create expense form state
   const [showForm, setShowForm] = useState(false);
@@ -77,11 +106,24 @@ export default function ExpensesAdminPanel() {
     receiptUrl: '',
   });
 
+  useEffect(() => {
+    api.get('/admin/expense-workflow-settings')
+      .then((res) => {
+        const incoming = res.data?.data?.adminReviewFields || {};
+        const merged = { ...DEFAULT_WORKFLOW, ...incoming };
+        setWorkflow(merged);
+        setStatusFilter((merged.defaultStatusFilter as any) || 'Pending');
+      })
+      .catch(() => setWorkflow(DEFAULT_WORKFLOW));
+  }, []);
+
   const load = async (s = statusFilter) => {
     setLoading(true);
     try {
-      const res = await api.get(`/expenses?status=${s}&limit=50`);
-      setExpenses(res.data.data);
+      const queryStatus = s === 'All' ? '' : `status=${s}&`;
+      const res = await api.get(`/expenses?${queryStatus}includeCounts=true&limit=50`);
+      setExpenses(res.data.data || []);
+      setStatusCounts(res.data?.meta?.statusCounts || { Pending: 0, Approved: 0, Rejected: 0, Cancelled: 0 });
     } catch { }
     setLoading(false);
   };
@@ -186,6 +228,19 @@ export default function ExpensesAdminPanel() {
       </div>
 
       <div className="glass rounded-xl p-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+          {['Pending', 'Approved', 'Rejected', 'Cancelled'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status as any)}
+              className={`text-left rounded-lg border px-3 py-2 ${statusFilter === status ? 'border-primary-300 bg-primary-50' : 'border-slate-200 bg-white'}`}
+            >
+              <p className="text-xs text-slate-500">{status}</p>
+              <p className="text-base font-semibold text-slate-800">{statusCounts[status] || 0}</p>
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -193,11 +248,12 @@ export default function ExpensesAdminPanel() {
               value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <select className="border border-slate-300 rounded-lg px-3 py-2 text-sm" value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}>
+            onChange={e => setStatusFilter(e.target.value as any)}>
             <option value="Pending">Pending</option>
             <option value="Approved">Approved</option>
             <option value="Rejected">Rejected</option>
             <option value="Cancelled">Cancelled</option>
+            <option value="All">All</option>
           </select>
         </div>
 
@@ -205,14 +261,15 @@ export default function ExpensesAdminPanel() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="text-left py-3 px-3 font-semibold text-slate-600">Vendor / Purpose</th>
-                <th className="text-left py-3 px-3 font-semibold text-slate-600">Amount</th>
-                <th className="text-left py-3 px-3 font-semibold text-slate-600">Fund</th>
-                <th className="text-left py-3 px-3 font-semibold text-slate-600">Volunteer</th>
-                <th className="text-left py-3 px-3 font-semibold text-slate-600">Evidence</th>
-                <th className="text-left py-3 px-3 font-semibold text-slate-600">Date</th>
-                <th className="text-left py-3 px-3 font-semibold text-slate-600">Status</th>
-                {statusFilter === 'Pending' && <th className="py-3 px-3 font-semibold text-slate-600">Actions</th>}
+                {workflow.showVendorPurpose !== false && <th className="text-left py-3 px-3 font-semibold text-slate-600">Vendor / Purpose</th>}
+                {workflow.showAmount !== false && <th className="text-left py-3 px-3 font-semibold text-slate-600">Amount</th>}
+                {workflow.showFund !== false && <th className="text-left py-3 px-3 font-semibold text-slate-600">Fund</th>}
+                {workflow.showVolunteer !== false && <th className="text-left py-3 px-3 font-semibold text-slate-600">Volunteer</th>}
+                {workflow.showProject !== false && <th className="text-left py-3 px-3 font-semibold text-slate-600">Project</th>}
+                {workflow.showEvidence !== false && <th className="text-left py-3 px-3 font-semibold text-slate-600">Evidence</th>}
+                {workflow.showDate !== false && <th className="text-left py-3 px-3 font-semibold text-slate-600">Date</th>}
+                {workflow.showStatus !== false && <th className="text-left py-3 px-3 font-semibold text-slate-600">Status</th>}
+                {workflow.showApproveReject !== false && <th className="py-3 px-3 font-semibold text-slate-600">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -220,17 +277,18 @@ export default function ExpensesAdminPanel() {
                 const evidence = parseEvidence(e.proof_of_execution_urls);
                 return (
                 <tr key={e.expense_id} className="hover:bg-slate-50 align-top">
-                  <td className="py-3 px-3">
+                  {workflow.showVendorPurpose !== false && <td className="py-3 px-3">
                     <div className="font-medium text-slate-800">{evidence.updateTitle || e.vendor_name || 'Expense Update'}</div>
                     <div className="text-xs text-slate-400 truncate max-w-48">{e.purpose}</div>
                     {(evidence.voucherUrl || e.receipt_url) && (
                       <a href={evidence.voucherUrl || e.receipt_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">View Receipt</a>
                     )}
-                  </td>
-                  <td className="py-3 px-3 font-bold text-slate-800">{fmt(e.amount_spent)}</td>
-                  <td className="py-3 px-3 text-slate-600 text-xs">{e.fund_name}</td>
-                  <td className="py-3 px-3 text-slate-600 text-sm">{e.volunteer_name || '—'}</td>
-                  <td className="py-3 px-3 text-xs text-slate-600 space-y-1 min-w-[180px]">
+                  </td>}
+                  {workflow.showAmount !== false && <td className="py-3 px-3 font-bold text-slate-800">{fmt(e.amount_spent)}</td>}
+                  {workflow.showFund !== false && <td className="py-3 px-3 text-slate-600 text-xs">{e.fund_name}</td>}
+                  {workflow.showVolunteer !== false && <td className="py-3 px-3 text-slate-600 text-sm">{e.volunteer_name || '—'}</td>}
+                  {workflow.showProject !== false && <td className="py-3 px-3 text-slate-600 text-sm">{e.project_name || '—'}</td>}
+                  {workflow.showEvidence !== false && <td className="py-3 px-3 text-xs text-slate-600 space-y-1 min-w-[180px]">
                     {(evidence.voucherUrl || e.receipt_url) && (
                       <div><a href={evidence.voucherUrl || e.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">Voucher</a></div>
                     )}
@@ -243,20 +301,22 @@ export default function ExpensesAdminPanel() {
                       ))}</div>
                     )}
                     {!((evidence.voucherUrl || e.receipt_url) || evidence.cashMemoUrl || evidence.photos.length) && <span className="text-slate-400">—</span>}
-                  </td>
-                  <td className="py-3 px-3 text-slate-500 text-xs">{fmtDate(e.spent_timestamp)}</td>
-                  <td className="py-3 px-3">
-                    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${STATUS_COLORS[e.status]}`}>{e.status}</span>
-                  </td>
-                  {statusFilter === 'Pending' && (
+                  </td>}
+                  {workflow.showDate !== false && <td className="py-3 px-3 text-slate-500 text-xs">{fmtDate(e.spent_timestamp)}</td>}
+                  {workflow.showStatus !== false && <td className="py-3 px-3">
+                    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${STATUS_COLORS[e.status] || 'bg-slate-100 text-slate-700'}`}>{e.status}</span>
+                  </td>}
+                  {workflow.showApproveReject !== false && (
                     <td className="py-3 px-3">
                       <div className="flex gap-2">
-                        <button onClick={() => approve(e.expense_id)} disabled={actingOn === e.expense_id}
-                          className="flex items-center gap-1 text-green-700 hover:text-green-800 text-xs px-2 py-1 border border-green-200 rounded bg-green-50">
+                        <button onClick={() => approve(e.expense_id)} disabled={actingOn === e.expense_id || e.status !== 'Pending'}
+                          className="flex items-center gap-1 text-green-700 hover:text-green-800 text-xs px-2 py-1 border border-green-200 rounded bg-green-50 disabled:opacity-40"
+                          title={e.status === 'Pending' ? 'Approve expense' : 'Only pending expenses can be approved'}>
                           {actingOn === e.expense_id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />} Approve
                         </button>
-                        <button onClick={() => reject(e.expense_id)} disabled={actingOn === e.expense_id}
-                          className="flex items-center gap-1 text-red-700 hover:text-red-800 text-xs px-2 py-1 border border-red-200 rounded bg-red-50">
+                        <button onClick={() => reject(e.expense_id)} disabled={actingOn === e.expense_id || e.status !== 'Pending'}
+                          className="flex items-center gap-1 text-red-700 hover:text-red-800 text-xs px-2 py-1 border border-red-200 rounded bg-red-50 disabled:opacity-40"
+                          title={e.status === 'Pending' ? 'Reject expense' : 'Only pending expenses can be rejected'}>
                           <XCircle size={12} /> Reject
                         </button>
                       </div>
@@ -265,7 +325,7 @@ export default function ExpensesAdminPanel() {
                 </tr>
               );})}
               {filtered.length === 0 && (
-                <tr><td colSpan={8} className="text-center py-8 text-slate-400">No expenses found for "{statusFilter}" status</td></tr>
+                <tr><td colSpan={9} className="text-center py-8 text-slate-400">No expenses found for "{statusFilter}" status</td></tr>
               )}
             </tbody>
           </table>

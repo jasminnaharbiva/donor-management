@@ -20,6 +20,7 @@ expenseRouter.get(
   requireRoles('Super Admin', 'Admin', 'Finance'),
   [
     query('status').optional().isIn(['Pending', 'Approved', 'Rejected', 'Cancelled']),
+    query('includeCounts').optional().isBoolean().toBoolean(),
     query('page').optional().isInt({ min: 1 }).toInt(),
     query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
   ],
@@ -37,6 +38,8 @@ expenseRouter.get(
       .leftJoin('dfb_volunteers as v', 'e.submitted_by_volunteer_id', 'v.volunteer_id')
       .whereNull('e.deleted_at');
 
+    const baseFilter = db('dfb_expenses as e').whereNull('e.deleted_at');
+
     if (req.query.status) q = q.where('e.status', req.query.status as string);
 
     const [{ total }] = await q.clone().count('e.expense_id as total');
@@ -45,10 +48,23 @@ expenseRouter.get(
       .limit(limit).offset(offset)
       .select('e.*', 'f.fund_name', 'p.project_name', db.raw("CONCAT(v.first_name, ' ', v.last_name) as volunteer_name"));
 
+    let statusCounts: Record<string, number> | undefined;
+    if (Boolean(req.query.includeCounts)) {
+      const countRows = await baseFilter.clone()
+        .groupBy('e.status')
+        .select('e.status')
+        .count('e.expense_id as total');
+
+      statusCounts = { Pending: 0, Approved: 0, Rejected: 0, Cancelled: 0 };
+      countRows.forEach((row: any) => {
+        statusCounts![String(row.status)] = Number(row.total || 0);
+      });
+    }
+
     res.json({
       success: true,
       data:    expenses,
-      meta:    { page, limit, total: Number(total), totalPages: Math.ceil(Number(total) / limit) },
+      meta:    { page, limit, total: Number(total), totalPages: Math.ceil(Number(total) / limit), statusCounts },
     });
   }
 );
@@ -239,7 +255,7 @@ expenseRouter.post(
   authenticate,
   requireRoles('Super Admin', 'Admin', 'Finance'),
   param('id').isUUID(),
-  body('reason').trim().notEmpty().isLength({ max: 500 }),
+  body('reason').optional().isString().isLength({ max: 500 }),
   async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
@@ -261,7 +277,7 @@ expenseRouter.post(
       tableAffected: 'dfb_expenses',
       recordId:      expense.expense_id,
       actionType:    'REJECT',
-      newPayload:    { reason: req.body.reason },
+      newPayload:    { reason: req.body.reason || null },
       actorId:       req.user!.userId,
       ipAddress:     req.ip,
     });
@@ -280,7 +296,7 @@ expenseRouter.post(
             firstName: vol.first_name || 'Volunteer',
             amount: Number(expense.amount_spent),
             purpose: expense.purpose || 'Expense',
-            reason: req.body.reason,
+            reason: req.body.reason || 'No reason provided',
             expenseId: expense.expense_id,
           }).catch(() => {});
         }

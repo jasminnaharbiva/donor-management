@@ -8,11 +8,17 @@ export const recurringRouter = Router();
 
 recurringRouter.use(authenticate);
 
+async function resolveRoleName(roleId: number): Promise<string> {
+  const role = await db('dfb_roles').where({ role_id: roleId }).first('role_name');
+  return role?.role_name || '';
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/v1/recurring — My subscriptions or all (admin)
 // ---------------------------------------------------------------------------
 recurringRouter.get('/', async (req: Request, res: Response) => {
-  const isAdmin = ['Super Admin', 'Admin'].includes(req.user!.roleName || '');
+  const roleName = await resolveRoleName(req.user!.roleId);
+  const isAdmin = ['Super Admin', 'Admin'].includes(roleName);
 
   let q = db('dfb_recurring_subscriptions as rs')
     .leftJoin('dfb_donors as d', 'rs.donor_id', 'd.donor_id')
@@ -54,10 +60,25 @@ recurringRouter.post('/',
     const errors = validationResult(req);
     if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
 
+    const roleName = await resolveRoleName(req.user!.roleId);
+    const isAdmin = ['Super Admin', 'Admin'].includes(roleName);
+
     let donorId = req.body.donorId;
-    if (!donorId) {
-      const user = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
-      donorId = user?.donor_id;
+    const user = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
+    const linkedDonorId = user?.donor_id ? Number(user.donor_id) : null;
+
+    if (!isAdmin) {
+      if (!linkedDonorId) {
+        res.status(400).json({ success: false, message: 'No donor profile' });
+        return;
+      }
+      if (donorId && Number(donorId) !== linkedDonorId) {
+        res.status(403).json({ success: false, message: 'You cannot create subscriptions for another donor account' });
+        return;
+      }
+      donorId = linkedDonorId;
+    } else if (!donorId) {
+      donorId = linkedDonorId;
     }
     if (!donorId) { res.status(400).json({ success: false, message: 'No donor profile' }); return; }
 
@@ -87,7 +108,25 @@ recurringRouter.patch('/:id/cancel',
   requireRoles('Super Admin', 'Admin', 'Donor'),
   param('id').isInt().toInt(),
   async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.array() }); return; }
+
     const id = req.params.id as any;
+    const existing = await db('dfb_recurring_subscriptions').where({ subscription_id: id }).first();
+    if (!existing) { res.status(404).json({ success: false, message: 'Subscription not found' }); return; }
+
+    const roleName = await resolveRoleName(req.user!.roleId);
+    const isAdmin = ['Super Admin', 'Admin'].includes(roleName);
+
+    if (!isAdmin) {
+      const user = await db('dfb_users').where({ user_id: req.user!.userId }).first('donor_id');
+      const linkedDonorId = user?.donor_id ? Number(user.donor_id) : null;
+      if (!linkedDonorId || Number(existing.donor_id) !== linkedDonorId) {
+        res.status(403).json({ success: false, message: 'You can only cancel your own subscriptions' });
+        return;
+      }
+    }
+
     const updated = await db('dfb_recurring_subscriptions').where({ subscription_id: id }).update({
       status: 'cancelled',
       cancelled_at: new Date()

@@ -23,6 +23,38 @@ type DonorVisibilityPayload = {
   updateFields: VisibilityUpdateFields;
 };
 
+type ExpenseWorkflowPayload = {
+  volunteerFormFields: {
+    showAmountSpent?: boolean;
+    amountRequired?: boolean;
+    showUpdateTitle?: boolean;
+    titleRequired?: boolean;
+    showUpdateDetails?: boolean;
+    showVendorName?: boolean;
+    showVoucher?: boolean;
+    voucherRequired?: boolean;
+    showCashMemo?: boolean;
+    cashMemoRequired?: boolean;
+    showPhotos?: boolean;
+    photosRequired?: boolean;
+    showProgressLogs?: boolean;
+    allowEditPending?: boolean;
+    allowWithdrawPending?: boolean;
+  };
+  adminReviewFields: {
+    defaultStatusFilter?: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled' | 'All';
+    showVendorPurpose?: boolean;
+    showAmount?: boolean;
+    showFund?: boolean;
+    showVolunteer?: boolean;
+    showEvidence?: boolean;
+    showDate?: boolean;
+    showStatus?: boolean;
+    showProject?: boolean;
+    showApproveReject?: boolean;
+  };
+};
+
 const DEFAULT_DONOR_VISIBILITY: DonorVisibilityPayload = {
   menuItems: [
     { key: 'overview', label: 'Overview', enabled: true },
@@ -46,6 +78,38 @@ const DEFAULT_DONOR_VISIBILITY: DonorVisibilityPayload = {
   },
 };
 
+const DEFAULT_EXPENSE_WORKFLOW: ExpenseWorkflowPayload = {
+  volunteerFormFields: {
+    showAmountSpent: true,
+    amountRequired: true,
+    showUpdateTitle: true,
+    titleRequired: true,
+    showUpdateDetails: true,
+    showVendorName: true,
+    showVoucher: true,
+    voucherRequired: false,
+    showCashMemo: true,
+    cashMemoRequired: false,
+    showPhotos: true,
+    photosRequired: false,
+    showProgressLogs: true,
+    allowEditPending: true,
+    allowWithdrawPending: true,
+  },
+  adminReviewFields: {
+    defaultStatusFilter: 'Pending',
+    showVendorPurpose: true,
+    showAmount: true,
+    showFund: true,
+    showVolunteer: true,
+    showEvidence: true,
+    showDate: true,
+    showStatus: true,
+    showProject: true,
+    showApproveReject: true,
+  },
+};
+
 export default function SettingsPanel() {
   const [settings, setSettings] = useState<Setting[]>([]);
   const [settingDrafts, setSettingDrafts] = useState<Record<string, string>>({});
@@ -54,6 +118,9 @@ export default function SettingsPanel() {
   const [visibility, setVisibility] = useState<DonorVisibilityPayload>(DEFAULT_DONOR_VISIBILITY);
   const [visibilityLoading, setVisibilityLoading] = useState(true);
   const [visibilitySaving, setVisibilitySaving] = useState(false);
+  const [expenseWorkflow, setExpenseWorkflow] = useState<ExpenseWorkflowPayload>(DEFAULT_EXPENSE_WORKFLOW);
+  const [workflowLoading, setWorkflowLoading] = useState(true);
+  const [workflowSaving, setWorkflowSaving] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -61,9 +128,10 @@ export default function SettingsPanel() {
 
   const fetchSettings = async () => {
     try {
-      const [settingsRes, visibilityRes] = await Promise.all([
+      const [settingsRes, visibilityRes, workflowRes] = await Promise.all([
         api.get('/admin/settings'),
         api.get('/admin/donor-visibility').catch(() => ({ data: { data: DEFAULT_DONOR_VISIBILITY } })),
+        api.get('/admin/expense-workflow-settings').catch(() => ({ data: { data: DEFAULT_EXPENSE_WORKFLOW } })),
       ]);
 
       const loadedSettings = settingsRes.data.data || [];
@@ -81,11 +149,24 @@ export default function SettingsPanel() {
         impactSections: Array.isArray(payload.impactSections) ? payload.impactSections : DEFAULT_DONOR_VISIBILITY.impactSections,
         updateFields: { ...DEFAULT_DONOR_VISIBILITY.updateFields, ...(payload.updateFields || {}) },
       });
+
+      const workflowPayload = workflowRes.data?.data || DEFAULT_EXPENSE_WORKFLOW;
+      setExpenseWorkflow({
+        volunteerFormFields: {
+          ...DEFAULT_EXPENSE_WORKFLOW.volunteerFormFields,
+          ...(workflowPayload.volunteerFormFields || {}),
+        },
+        adminReviewFields: {
+          ...DEFAULT_EXPENSE_WORKFLOW.adminReviewFields,
+          ...(workflowPayload.adminReviewFields || {}),
+        },
+      });
     } catch (err) {
       console.error('Failed to load settings', err);
     } finally {
       setLoading(false);
       setVisibilityLoading(false);
+      setWorkflowLoading(false);
     }
   };
 
@@ -159,6 +240,31 @@ export default function SettingsPanel() {
     }
   };
 
+  const saveExpenseWorkflow = async () => {
+    setWorkflowSaving(true);
+    try {
+      const payload: ExpenseWorkflowPayload = {
+        volunteerFormFields: {
+          ...DEFAULT_EXPENSE_WORKFLOW.volunteerFormFields,
+          ...(expenseWorkflow.volunteerFormFields || {}),
+        },
+        adminReviewFields: {
+          ...DEFAULT_EXPENSE_WORKFLOW.adminReviewFields,
+          ...(expenseWorkflow.adminReviewFields || {}),
+        },
+      };
+
+      await api.put('/admin/expense-workflow-settings', payload);
+      setExpenseWorkflow(payload);
+      alert('Expense workflow settings saved.');
+    } catch (err) {
+      console.error('Failed to save expense workflow settings', err);
+      alert('Failed to save expense workflow settings');
+    } finally {
+      setWorkflowSaving(false);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary-500" size={32} /></div>;
   }
@@ -205,6 +311,75 @@ export default function SettingsPanel() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="glass rounded-xl p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 border-b border-slate-200 pb-4">
+          <h2 className="text-sm sm:text-base font-semibold text-slate-800">Expense Workflow Controls</h2>
+          <button
+            onClick={saveExpenseWorkflow}
+            disabled={workflowLoading || workflowSaving}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60"
+          >
+            {workflowSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            Save Workflow
+          </button>
+        </div>
+
+        {workflowLoading ? (
+          <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary-500" size={28} /></div>
+        ) : (
+          <div className="space-y-6">
+            <div className="rounded-lg border border-slate-200 p-4 bg-slate-50">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">Volunteer Expense Form Fields</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-700">
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.showAmountSpent !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, showAmountSpent: e.target.checked } }))} /> Show amount</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.amountRequired !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, amountRequired: e.target.checked } }))} /> Amount required</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.showUpdateTitle !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, showUpdateTitle: e.target.checked } }))} /> Show update title</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.titleRequired !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, titleRequired: e.target.checked } }))} /> Title required</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.showUpdateDetails !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, showUpdateDetails: e.target.checked } }))} /> Show details</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.showVendorName !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, showVendorName: e.target.checked } }))} /> Show vendor</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.showVoucher !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, showVoucher: e.target.checked } }))} /> Show voucher</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.voucherRequired === true} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, voucherRequired: e.target.checked } }))} /> Voucher required</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.showCashMemo !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, showCashMemo: e.target.checked } }))} /> Show cash memo</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.cashMemoRequired === true} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, cashMemoRequired: e.target.checked } }))} /> Cash memo required</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.showPhotos !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, showPhotos: e.target.checked } }))} /> Show photos</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.photosRequired === true} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, photosRequired: e.target.checked } }))} /> Photos required</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.allowEditPending !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, allowEditPending: e.target.checked } }))} /> Allow edit pending</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.allowWithdrawPending !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, allowWithdrawPending: e.target.checked } }))} /> Allow withdraw pending</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.volunteerFormFields.showProgressLogs !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, volunteerFormFields: { ...prev.volunteerFormFields, showProgressLogs: e.target.checked } }))} /> Show progress logs</label>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 p-4 bg-slate-50">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">Admin Expense Review Fields</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-700">
+                <label className="inline-flex items-center gap-2">Default status
+                  <select
+                    className="ml-2 border border-slate-300 rounded px-2 py-1 text-xs"
+                    value={expenseWorkflow.adminReviewFields.defaultStatusFilter || 'Pending'}
+                    onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, adminReviewFields: { ...prev.adminReviewFields, defaultStatusFilter: e.target.value as any } }))}
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="Cancelled">Cancelled</option>
+                    <option value="All">All</option>
+                  </select>
+                </label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.adminReviewFields.showVendorPurpose !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, adminReviewFields: { ...prev.adminReviewFields, showVendorPurpose: e.target.checked } }))} /> Show vendor/purpose</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.adminReviewFields.showAmount !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, adminReviewFields: { ...prev.adminReviewFields, showAmount: e.target.checked } }))} /> Show amount</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.adminReviewFields.showFund !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, adminReviewFields: { ...prev.adminReviewFields, showFund: e.target.checked } }))} /> Show fund</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.adminReviewFields.showVolunteer !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, adminReviewFields: { ...prev.adminReviewFields, showVolunteer: e.target.checked } }))} /> Show volunteer</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.adminReviewFields.showProject !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, adminReviewFields: { ...prev.adminReviewFields, showProject: e.target.checked } }))} /> Show project</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.adminReviewFields.showEvidence !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, adminReviewFields: { ...prev.adminReviewFields, showEvidence: e.target.checked } }))} /> Show evidence</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.adminReviewFields.showDate !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, adminReviewFields: { ...prev.adminReviewFields, showDate: e.target.checked } }))} /> Show date</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.adminReviewFields.showStatus !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, adminReviewFields: { ...prev.adminReviewFields, showStatus: e.target.checked } }))} /> Show status</label>
+                <label className="inline-flex items-center gap-2"><input type="checkbox" checked={expenseWorkflow.adminReviewFields.showApproveReject !== false} onChange={(e) => setExpenseWorkflow(prev => ({ ...prev, adminReviewFields: { ...prev.adminReviewFields, showApproveReject: e.target.checked } }))} /> Show approve/reject actions</label>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="glass rounded-xl p-6">
